@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ecampus-postgres
+    environment:
+      POSTGRES_USER: ecampus
+      POSTGRES_PASSWORD: ecampus_dev
+      POSTGRES_DB: ecampus
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecampus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecampus
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecampus-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecampus
+
+  minio:
+    image: minio/minio:latest
+    container_name: ecampus-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ecampus
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  ecampus:
+    driver: bridge
