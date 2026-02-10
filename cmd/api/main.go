@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,13 +11,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/ranj/e-campus-server/internal/config"
-	"github.com/ranj/e-campus-server/internal/database"
+	"github.com/ranjdotdev/e-campus-server/internal/config"
+	"github.com/ranjdotdev/e-campus-server/internal/database"
+	"github.com/ranjdotdev/e-campus-server/internal/logger"
+	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
@@ -29,6 +33,9 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+
+	log := logger.Must(cfg.Server.Env)
+	defer log.Sync()
 
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
@@ -44,16 +51,19 @@ func run() error {
 		return fmt.Errorf("connect postgres: %w", err)
 	}
 	defer db.Close()
-	log.Println("Connected to PostgreSQL")
+	log.Info("connected to PostgreSQL")
 
 	rdb, err := database.NewRedis(cfg.Redis.URL)
 	if err != nil {
 		return fmt.Errorf("connect redis: %w", err)
 	}
 	defer rdb.Close()
-	log.Println("Connected to Redis")
+	log.Info("connected to Redis")
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.RequestID())
+	router.Use(middleware.Logger(log))
 
 	router.GET("/health", handleHealth)
 
@@ -74,34 +84,32 @@ func run() error {
 	}
 
 	go func() {
-		log.Printf("Server starting on port %d", cfg.Server.Port)
+		log.Info("server starting", zap.Int("port", cfg.Server.Port))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			log.Fatal("server failed", zap.Error(err))
 		}
 	}()
 
-	return gracefulShutdown(srv)
+	return gracefulShutdown(srv, log)
 }
 
 func handleHealth(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"status": "ok",
 		"time":   time.Now().UTC(),
 	})
 }
 
 func handleNotImplemented(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error": "not implemented",
-	})
+	response.Err(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", "not implemented")
 }
 
-func gracefulShutdown(srv *http.Server) error {
+func gracefulShutdown(srv *http.Server, log *zap.Logger) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Info("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -110,6 +118,6 @@ func gracefulShutdown(srv *http.Server) error {
 		return fmt.Errorf("server shutdown: %w", err)
 	}
 
-	log.Println("Server exited")
+	log.Info("server exited")
 	return nil
 }
