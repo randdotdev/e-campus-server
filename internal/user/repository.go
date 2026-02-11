@@ -271,3 +271,65 @@ func (r *Repository) UpdateStaffProfile(ctx context.Context, profile *StaffProfi
 	}
 	return err
 }
+
+func (r *Repository) SetPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $2 WHERE id = $1`
+	result, err := r.db.ExecContext(ctx, query, userID, passwordHash)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	userQuery := `
+		INSERT INTO users (email, password_hash, full_name_en, full_name_ku)
+		VALUES ($1, $2, $3, $4)
+		RETURNING *`
+	if err := tx.QueryRowxContext(ctx, userQuery, user.Email, user.PasswordHash, user.FullNameEN, user.FullNameKU).StructScan(user); err != nil {
+		return err
+	}
+
+	profile.UserID = user.ID
+	profileQuery := `
+		INSERT INTO staff_profiles (user_id, highest_degree, field_of_study, years_of_service, salary, salary_currency)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at, updated_at`
+	if err := tx.QueryRowxContext(ctx, profileQuery,
+		profile.UserID, profile.HighestDegree, profile.FieldOfStudy,
+		profile.YearsOfService, profile.Salary, profile.SalaryCurrency,
+	).Scan(&profile.ID, &profile.CreatedAt, &profile.UpdatedAt); err != nil {
+		return err
+	}
+
+	if role != nil {
+		role.UserID = user.ID
+		roleQuery := `
+			INSERT INTO roles (user_id, title, permission, scope_type, scope_id, assigned_by)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, created_at`
+		if err := tx.QueryRowxContext(ctx, roleQuery,
+			role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy,
+		).Scan(&role.ID, &role.CreatedAt); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}

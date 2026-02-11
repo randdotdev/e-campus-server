@@ -334,6 +334,111 @@ func (h *Handler) UpdateStaffProfile(c *gin.Context) {
 	response.OK(c, ToStaffProfileResponse(profile))
 }
 
+func (h *Handler) CreateUser(c *gin.Context) {
+	if !h.isAdmin(c) {
+		response.Forbidden(c, "admin access required")
+		return
+	}
+
+	var req CreateStaffUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	adminID := middleware.GetUserID(c)
+	user, staffProfile, role, err := h.service.CreateStaffUser(c.Request.Context(), adminID, req)
+	if err != nil {
+		if errors.Is(err, ErrEmailExists) {
+			response.Conflict(c, "email already exists")
+			return
+		}
+		if errors.Is(err, ErrScopeIDRequired) {
+			response.BadRequest(c, "scope_id required for non-university scope")
+			return
+		}
+		if errors.Is(err, ErrScopeIDNotAllowed) {
+			response.BadRequest(c, "scope_id not allowed for university scope")
+			return
+		}
+		h.log.Error("create staff user failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	var roles []RoleResponse
+	if role != nil {
+		roles = []RoleResponse{ToRoleResponse(role)}
+	}
+
+	response.Created(c, UserDetailResponse{
+		UserResponse: ToUserResponse(user),
+		Roles:        roles,
+		StaffProfile: ToStaffProfileResponse(staffProfile),
+	})
+}
+
+func (h *Handler) AdminSetPassword(c *gin.Context) {
+	if !h.isAdmin(c) {
+		response.Forbidden(c, "admin access required")
+		return
+	}
+
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	var req AdminSetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.service.AdminSetPassword(c.Request.Context(), userID, req.Password); err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			response.NotFound(c, "user not found")
+			return
+		}
+		h.log.Error("admin set password failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.NoContent(c)
+}
+
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.service.ChangePassword(c.Request.Context(), userID, req); err != nil {
+		if errors.Is(err, ErrInvalidPassword) {
+			response.Unauthorized(c, "invalid current password")
+			return
+		}
+		if errors.Is(err, ErrSamePassword) {
+			response.BadRequest(c, "new password must be different from current")
+			return
+		}
+		if errors.Is(err, ErrUserNotFound) {
+			response.NotFound(c, "user not found")
+			return
+		}
+		h.log.Error("change password failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.NoContent(c)
+}
+
 func (h *Handler) isAdmin(c *gin.Context) bool {
 	roles := middleware.GetUserRoles(c)
 	for _, role := range roles {

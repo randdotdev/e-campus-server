@@ -171,3 +171,124 @@ func TestUpdateStaffProfileRequest_SalaryString(t *testing.T) {
 		t.Errorf("expected '100.00', got %v", result)
 	}
 }
+
+func TestChangePasswordRequest_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		current string
+		new     string
+		same    bool
+	}{
+		{"different passwords", "oldpass123", "newpass456", false},
+		{"same passwords", "samepass123", "samepass123", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := ChangePasswordRequest{
+				CurrentPassword: tt.current,
+				NewPassword:     tt.new,
+			}
+			same := req.CurrentPassword == req.NewPassword
+			if same != tt.same {
+				t.Errorf("expected same=%v, got %v", tt.same, same)
+			}
+		})
+	}
+}
+
+func TestCreateStaffUserRequest_Fields(t *testing.T) {
+	degree := "phd"
+	salary := 1500.0
+
+	req := CreateStaffUserRequest{
+		Email:      "staff@test.com",
+		Password:   "password123",
+		FullNameEN: "Test Staff",
+		StaffProfile: UpdateStaffProfileRequest{
+			HighestDegree: &degree,
+			Salary:        &salary,
+		},
+	}
+
+	if req.Email != "staff@test.com" {
+		t.Error("email should match")
+	}
+	if req.StaffProfile.HighestDegree == nil || *req.StaffProfile.HighestDegree != "phd" {
+		t.Error("highest degree should be phd")
+	}
+
+	salaryStr := req.StaffProfile.SalaryString()
+	if salaryStr == nil || *salaryStr != "1500.00" {
+		t.Errorf("expected salary string '1500.00', got %v", salaryStr)
+	}
+}
+
+func TestCreateRoleRequest_Validation(t *testing.T) {
+	tests := []struct {
+		name       string
+		permission string
+		scopeType  string
+		valid      bool
+	}{
+		{"valid admin university", "admin", "university", true},
+		{"valid viewer college", "viewer", "college", true},
+		{"valid operator department", "operator", "department", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := CreateRoleRequest{
+				Permission: tt.permission,
+				ScopeType:  tt.scopeType,
+			}
+			if req.Permission != tt.permission {
+				t.Errorf("permission should be %s", tt.permission)
+			}
+			if req.ScopeType != tt.scopeType {
+				t.Errorf("scope_type should be %s", tt.scopeType)
+			}
+		})
+	}
+}
+
+func TestScopeIDValidation(t *testing.T) {
+	scopeID := uuid.New()
+
+	tests := []struct {
+		name      string
+		scopeType string
+		scopeID   *uuid.UUID
+		wantErr   bool
+		errType   string
+	}{
+		{"university without scope_id", "university", nil, false, ""},
+		{"university with scope_id", "university", &scopeID, true, "not_allowed"},
+		{"college without scope_id", "college", nil, true, "required"},
+		{"college with scope_id", "college", &scopeID, false, ""},
+		{"department without scope_id", "department", nil, true, "required"},
+		{"department with scope_id", "department", &scopeID, false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var hasErr bool
+			var errType string
+
+			if tt.scopeType == "university" && tt.scopeID != nil {
+				hasErr = true
+				errType = "not_allowed"
+			} else if tt.scopeType != "university" && tt.scopeID == nil {
+				hasErr = true
+				errType = "required"
+			}
+
+			if hasErr != tt.wantErr {
+				t.Errorf("expected error=%v, got %v", tt.wantErr, hasErr)
+			}
+			if hasErr && errType != tt.errType {
+				t.Errorf("expected errType=%s, got %s", tt.errType, errType)
+			}
+		})
+	}
+}

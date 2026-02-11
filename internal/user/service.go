@@ -13,8 +13,11 @@ import (
 var (
 	ErrInvalidPassword  = errors.New("invalid password")
 	ErrSameEmail        = errors.New("new email is the same as current")
+	ErrSamePassword     = errors.New("new password is the same as current")
 	ErrSessionNotFound  = errors.New("session not found")
 	ErrCannotDeactivate = errors.New("cannot deactivate user")
+	ErrScopeIDRequired   = errors.New("scope_id required for non-university scope")
+	ErrScopeIDNotAllowed = errors.New("scope_id not allowed for university scope")
 )
 
 type UserRepository interface {
@@ -23,12 +26,14 @@ type UserRepository interface {
 	UpdateEmail(ctx context.Context, id uuid.UUID, email string) error
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetPasswordHash(ctx context.Context, id uuid.UUID) (string, error)
+	SetPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
 	List(ctx context.Context, limit, offset int) ([]User, int, error)
 	Deactivate(ctx context.Context, id uuid.UUID) error
 	GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error)
 	GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error)
 	CreateStaffProfile(ctx context.Context, profile *StaffProfile) error
 	UpdateStaffProfile(ctx context.Context, profile *StaffProfile) error
+	CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error
 }
 
 type Service struct {
@@ -213,6 +218,97 @@ func (s *Service) UpdateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 	}
 
 	return profile, nil
+}
+
+func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
+	if req.Role != nil {
+		if req.Role.ScopeType == "university" && req.Role.ScopeID != nil {
+			return nil, nil, nil, ErrScopeIDNotAllowed
+		}
+		if req.Role.ScopeType != "university" && req.Role.ScopeID == nil {
+			return nil, nil, nil, ErrScopeIDRequired
+		}
+	}
+
+	exists, err := s.repo.EmailExists(ctx, req.Email)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if exists {
+		return nil, nil, nil, ErrEmailExists
+	}
+
+	passwordHash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	user := &User{
+		Email:        req.Email,
+		PasswordHash: passwordHash,
+		FullNameEN:   req.FullNameEN,
+		FullNameKU:   req.FullNameKU,
+	}
+
+	profile := &StaffProfile{
+		HighestDegree:  req.StaffProfile.HighestDegree,
+		FieldOfStudy:   req.StaffProfile.FieldOfStudy,
+		YearsOfService: derefInt(req.StaffProfile.YearsOfService, 0),
+		Salary:         req.StaffProfile.SalaryString(),
+		SalaryCurrency: req.StaffProfile.SalaryCurrency,
+	}
+
+	var role *Role
+	if req.Role != nil {
+		role = &Role{
+			Title:      req.Role.Title,
+			Permission: req.Role.Permission,
+			ScopeType:  req.Role.ScopeType,
+			ScopeID:    req.Role.ScopeID,
+			AssignedBy: &adminID,
+		}
+	}
+
+	if err := s.repo.CreateStaffUserTx(ctx, user, profile, role); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return user, profile, role, nil
+}
+
+func (s *Service) AdminSetPassword(ctx context.Context, userID uuid.UUID, password string) error {
+	if _, err := s.repo.GetUser(ctx, userID); err != nil {
+		return err
+	}
+
+	passwordHash, err := auth.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SetPassword(ctx, userID, passwordHash)
+}
+
+func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) error {
+	hash, err := s.repo.GetPasswordHash(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if !auth.CheckPassword(req.CurrentPassword, hash) {
+		return ErrInvalidPassword
+	}
+
+	if req.CurrentPassword == req.NewPassword {
+		return ErrSamePassword
+	}
+
+	passwordHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SetPassword(ctx, userID, passwordHash)
 }
 
 func checkPassword(password, hash string) bool {

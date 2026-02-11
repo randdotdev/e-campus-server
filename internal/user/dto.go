@@ -15,6 +15,31 @@ type UpdateProfileRequest struct {
 	Phone      *string `json:"phone" binding:"omitempty,max=50"`
 }
 
+type CreateStaffUserRequest struct {
+	Email        string                    `json:"email" binding:"required,email"`
+	Password     string                    `json:"password" binding:"required,min=8,max=72"`
+	FullNameEN   string                    `json:"full_name_en" binding:"required,min=2,max=255"`
+	FullNameKU   *string                   `json:"full_name_ku" binding:"omitempty,max=255"`
+	StaffProfile UpdateStaffProfileRequest `json:"staff_profile" binding:"required"`
+	Role         *CreateRoleRequest        `json:"role"`
+}
+
+type CreateRoleRequest struct {
+	Title      *string    `json:"title" binding:"omitempty,max=100"`
+	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
+	ScopeType  string     `json:"scope_type" binding:"required,oneof=university college department program"`
+	ScopeID    *uuid.UUID `json:"scope_id"`
+}
+
+type AdminSetPasswordRequest struct {
+	Password string `json:"password" binding:"required,min=8,max=72"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8,max=72"`
+}
+
 type UpdateEmailRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

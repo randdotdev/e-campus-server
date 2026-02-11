@@ -107,6 +107,13 @@ func run() error {
 			protected.GET("/me/roles", userHandler.GetMyRoles)
 			protected.GET("/me/sessions", userHandler.GetMySessions)
 			protected.DELETE("/me/sessions/:id", userHandler.RevokeSession)
+			protected.PUT("/me/password", userHandler.ChangePassword)
+
+			admin := protected.Group("/admin")
+			{
+				admin.POST("/users", userHandler.CreateUser)
+				admin.PUT("/users/:id/password", userHandler.AdminSetPassword)
+			}
 
 			protected.GET("/users", userHandler.ListUsers)
 			protected.GET("/users/:id", userHandler.GetUser)
