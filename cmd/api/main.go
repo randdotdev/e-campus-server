@@ -11,11 +11,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/user"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +37,9 @@ func run() error {
 	}
 
 	log := logger.Must(cfg.Server.Env)
-	defer log.Sync()
+	defer func() {
+		_ = log.Sync()
+	}()
 
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
@@ -50,15 +54,32 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("connect postgres: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Error("failed to close postgres", zap.Error(err))
+		}
+	}()
 	log.Info("connected to PostgreSQL")
 
 	rdb, err := database.NewRedis(cfg.Redis.URL)
 	if err != nil {
 		return fmt.Errorf("connect redis: %w", err)
 	}
-	defer rdb.Close()
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			log.Error("failed to close redis", zap.Error(err))
+		}
+	}()
 	log.Info("connected to Redis")
+
+	authRepo := auth.NewTokenRepository(rdb)
+	userRepo := user.NewRepository(db)
+
+	authService := auth.NewService(authRepo, userRepo, &cfg.JWT)
+	authHandler := auth.NewHandler(authService, log, cfg.IsProduction())
+
+	userService := user.NewService(userRepo, authRepo)
+	userHandler := user.NewHandler(userService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -69,10 +90,31 @@ func run() error {
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/auth/register", handleNotImplemented)
-		v1.POST("/auth/login", handleNotImplemented)
-		v1.POST("/auth/refresh", handleNotImplemented)
-		v1.GET("/me", handleNotImplemented)
+		authRoutes := v1.Group("/auth")
+		{
+			authRoutes.POST("/register", authHandler.Register)
+			authRoutes.POST("/login", authHandler.Login)
+			authRoutes.POST("/refresh", authHandler.Refresh)
+			authRoutes.POST("/logout", authHandler.Logout)
+		}
+
+		protected := v1.Group("")
+		protected.Use(middleware.Auth(authService))
+		{
+			protected.GET("/me", userHandler.GetMe)
+			protected.PUT("/me", userHandler.UpdateMe)
+			protected.PUT("/me/email", userHandler.UpdateEmail)
+			protected.GET("/me/roles", userHandler.GetMyRoles)
+			protected.GET("/me/sessions", userHandler.GetMySessions)
+			protected.DELETE("/me/sessions/:id", userHandler.RevokeSession)
+
+			protected.GET("/users", userHandler.ListUsers)
+			protected.GET("/users/:id", userHandler.GetUser)
+			protected.PUT("/users/:id/deactivate", userHandler.DeactivateUser)
+			protected.GET("/users/:id/staff-profile", userHandler.GetStaffProfile)
+			protected.POST("/users/:id/staff-profile", userHandler.CreateStaffProfile)
+			protected.PUT("/users/:id/staff-profile", userHandler.UpdateStaffProfile)
+		}
 	}
 
 	srv := &http.Server{
@@ -98,10 +140,6 @@ func handleHealth(c *gin.Context) {
 		"status": "ok",
 		"time":   time.Now().UTC(),
 	})
-}
-
-func handleNotImplemented(c *gin.Context) {
-	response.Err(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", "not implemented")
 }
 
 func gracefulShutdown(srv *http.Server, log *zap.Logger) error {

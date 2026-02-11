@@ -17,22 +17,6 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_active ON users(is_active) WHERE is_active = true;
 
-CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(255) NOT NULL,
-    family UUID NOT NULL,
-    device VARCHAR(255),
-    ip_address VARCHAR(45),
-    used_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_family ON refresh_tokens(family);
-
 CREATE TABLE roles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -166,4 +150,21 @@ CREATE TRIGGER update_programs_updated_at BEFORE UPDATE ON programs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE staff_profiles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    highest_degree VARCHAR(30) CHECK (highest_degree IS NULL OR highest_degree IN ('bachelor', 'masters', 'phd', 'professor')),
+    field_of_study VARCHAR(255),
+    years_of_service INTEGER NOT NULL DEFAULT 0 CHECK (years_of_service >= 0),
+    salary DECIMAL(10,2),
+    salary_currency VARCHAR(3) DEFAULT 'USD',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_staff_profiles_user ON staff_profiles(user_id);
+
+CREATE TRIGGER update_staff_profiles_updated_at BEFORE UPDATE ON staff_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
