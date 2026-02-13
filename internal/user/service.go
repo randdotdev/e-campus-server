@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
+	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,12 +28,13 @@ type UserRepository interface {
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetPasswordHash(ctx context.Context, id uuid.UUID) (string, error)
 	SetPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
-	List(ctx context.Context, limit, offset int) ([]User, int, error)
+	List(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error)
 	Deactivate(ctx context.Context, id uuid.UUID) error
 	GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error)
 	GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error)
 	CreateStaffProfile(ctx context.Context, profile *StaffProfile) error
 	UpdateStaffProfile(ctx context.Context, profile *StaffProfile) error
+	ScopeExists(ctx context.Context, scopeType string, scopeID uuid.UUID) (bool, error)
 	CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error
 }
 
@@ -105,18 +107,8 @@ func (s *Service) UpdateEmail(ctx context.Context, userID uuid.UUID, req UpdateE
 	return s.repo.UpdateEmail(ctx, userID, req.Email)
 }
 
-func (s *Service) ListUsers(ctx context.Context, limit, offset int) ([]User, int, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	return s.repo.List(ctx, limit, offset)
+func (s *Service) ListUsers(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error) {
+	return s.repo.List(ctx, params, filters)
 }
 
 func (s *Service) GetUserByID(ctx context.Context, userID uuid.UUID) (*User, error) {
@@ -175,6 +167,13 @@ func (s *Service) CreateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 		return nil, err
 	}
 
+	// Check if staff profile already exists
+	if _, err := s.repo.GetStaffProfile(ctx, userID); err == nil {
+		return nil, ErrStaffProfileExists
+	} else if !errors.Is(err, ErrStaffProfileNotFound) {
+		return nil, err
+	}
+
 	profile := &StaffProfile{
 		UserID:         userID,
 		HighestDegree:  req.HighestDegree,
@@ -227,6 +226,16 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, req Cr
 		}
 		if req.Role.ScopeType != "university" && req.Role.ScopeID == nil {
 			return nil, nil, nil, ErrScopeIDRequired
+		}
+		// Validate scope_id exists in database
+		if req.Role.ScopeID != nil {
+			exists, err := s.repo.ScopeExists(ctx, req.Role.ScopeType, *req.Role.ScopeID)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if !exists {
+				return nil, nil, nil, ErrInvalidScopeID
+			}
 		}
 	}
 
@@ -286,7 +295,12 @@ func (s *Service) AdminSetPassword(ctx context.Context, userID uuid.UUID, passwo
 		return err
 	}
 
-	return s.repo.SetPassword(ctx, userID, passwordHash)
+	if err := s.repo.SetPassword(ctx, userID, passwordHash); err != nil {
+		return err
+	}
+
+	// Invalidate all user sessions after password change
+	return s.tokens.DeleteUserTokens(ctx, userID)
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) error {
@@ -308,7 +322,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 		return err
 	}
 
-	return s.repo.SetPassword(ctx, userID, passwordHash)
+	if err := s.repo.SetPassword(ctx, userID, passwordHash); err != nil {
+		return err
+	}
+
+	// Invalidate all user sessions after password change
+	return s.tokens.DeleteUserTokens(ctx, userID)
 }
 
 func checkPassword(password, hash string) bool {

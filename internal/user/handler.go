@@ -2,11 +2,12 @@ package user
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -44,7 +45,10 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	staffProfile, _ := h.service.GetStaffProfile(c.Request.Context(), userID)
+	staffProfile, err := h.service.GetStaffProfile(c.Request.Context(), userID)
+	if err != nil && !errors.Is(err, ErrStaffProfileNotFound) {
+		h.log.Error("get staff profile failed", zap.Error(err))
+	}
 
 	response.OK(c, UserDetailResponse{
 		UserResponse: ToUserResponse(user),
@@ -156,8 +160,8 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 }
 
 func (h *Handler) GetUser(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -178,8 +182,15 @@ func (h *Handler) GetUser(c *gin.Context) {
 		return
 	}
 
-	roles, _ := h.service.GetRoles(c.Request.Context(), userID)
-	staffProfile, _ := h.service.GetStaffProfile(c.Request.Context(), userID)
+	roles, err := h.service.GetRoles(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("get user roles failed", zap.Error(err))
+	}
+
+	staffProfile, err := h.service.GetStaffProfile(c.Request.Context(), userID)
+	if err != nil && !errors.Is(err, ErrStaffProfileNotFound) {
+		h.log.Error("get user staff profile failed", zap.Error(err))
+	}
 
 	response.OK(c, UserDetailResponse{
 		UserResponse: ToUserResponse(user),
@@ -189,32 +200,40 @@ func (h *Handler) GetUser(c *gin.Context) {
 }
 
 func (h *Handler) ListUsers(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	params := pagination.ParsePageParams(c)
+	filters := h.parseUserFilters(c)
 
-	users, total, err := h.service.ListUsers(c.Request.Context(), limit, offset)
+	users, hasMore, err := h.service.ListUsers(c.Request.Context(), params, filters)
 	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
 		h.log.Error("list users failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
 
-	response.OK(c, PaginatedUsersResponse{
-		Users:  ToUsersResponse(users),
-		Total:  total,
-		Limit:  limit,
-		Offset: offset,
-	})
+	result := pagination.PageResult[UserResponse]{
+		Data:    ToUsersResponse(users),
+		HasMore: hasMore,
+	}
+	if hasMore && len(users) > 0 {
+		last := users[len(users)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
 }
 
 func (h *Handler) DeactivateUser(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -251,7 +270,8 @@ func (h *Handler) GetStaffProfile(c *gin.Context) {
 	}
 
 	currentUserID := middleware.GetUserID(c)
-	if userID != currentUserID && !h.isAdmin(c) {
+	// Only allow self-access or university admin (staff profiles contain sensitive salary data)
+	if userID != currentUserID && !permission.HasUniversityAdmin(c) {
 		response.Forbidden(c, "access denied")
 		return
 	}
@@ -271,8 +291,8 @@ func (h *Handler) GetStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) CreateStaffProfile(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -294,6 +314,10 @@ func (h *Handler) CreateStaffProfile(c *gin.Context) {
 			response.NotFound(c, "user not found")
 			return
 		}
+		if errors.Is(err, ErrStaffProfileExists) {
+			response.Conflict(c, "staff profile already exists")
+			return
+		}
 		h.log.Error("create staff profile failed", zap.Error(err))
 		response.InternalError(c)
 		return
@@ -303,8 +327,8 @@ func (h *Handler) CreateStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) UpdateStaffProfile(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -335,8 +359,8 @@ func (h *Handler) UpdateStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) CreateUser(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -361,6 +385,10 @@ func (h *Handler) CreateUser(c *gin.Context) {
 			response.BadRequest(c, "scope_id not allowed for university scope")
 			return
 		}
+		if errors.Is(err, ErrInvalidScopeID) {
+			response.BadRequest(c, "scope_id does not exist")
+			return
+		}
 		h.log.Error("create staff user failed", zap.Error(err))
 		response.InternalError(c)
 		return
@@ -379,8 +407,8 @@ func (h *Handler) CreateUser(c *gin.Context) {
 }
 
 func (h *Handler) AdminSetPassword(c *gin.Context) {
-	if !h.isAdmin(c) {
-		response.Forbidden(c, "admin access required")
+	if !permission.HasUniversityAdmin(c) {
+		response.Forbidden(c, "university admin access required")
 		return
 	}
 
@@ -439,12 +467,9 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	response.NoContent(c)
 }
 
-func (h *Handler) isAdmin(c *gin.Context) bool {
-	roles := middleware.GetUserRoles(c)
-	for _, role := range roles {
-		if role.Permission == "super_admin" || role.Permission == "admin" {
-			return true
-		}
+func (h *Handler) parseUserFilters(c *gin.Context) UserFilters {
+	return UserFilters{
+		IsActive:        pagination.ParseBool(c, "is_active"),
+		HasStaffProfile: pagination.ParseBool(c, "has_staff_profile"),
 	}
-	return false
 }

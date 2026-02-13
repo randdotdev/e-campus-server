@@ -4,16 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
+	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
 var (
 	ErrUserNotFound         = errors.New("user not found")
 	ErrStaffProfileNotFound = errors.New("staff profile not found")
+	ErrStaffProfileExists   = errors.New("staff profile already exists")
 	ErrEmailExists          = errors.New("email already exists")
+	ErrInvalidScopeID       = errors.New("invalid scope id")
 )
 
 type Repository struct {
@@ -161,21 +166,58 @@ func (r *Repository) UpdateEmail(ctx context.Context, id uuid.UUID, email string
 	return nil
 }
 
-func (r *Repository) List(ctx context.Context, limit, offset int) ([]User, int, error) {
+func (r *Repository) List(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error) {
+	query := strings.Builder{}
+	args := []any{}
+	argN := 1
+
+	query.WriteString("SELECT * FROM users WHERE 1=1")
+
+	if params.Cursor != "" {
+		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
+		if err != nil {
+			return nil, false, err
+		}
+		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		args = append(args, createdAt, id)
+		argN += 2
+	}
+
+	if params.Query != "" {
+		query.WriteString(fmt.Sprintf(" AND (email ILIKE $%d OR full_name_en ILIKE $%d OR full_name_ku ILIKE $%d)", argN, argN, argN))
+		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
+		argN++
+	}
+
+	if filters.IsActive != nil {
+		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		args = append(args, *filters.IsActive)
+		argN++
+	}
+
+	if filters.HasStaffProfile != nil {
+		if *filters.HasStaffProfile {
+			query.WriteString(" AND EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
+		} else {
+			query.WriteString(" AND NOT EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
+		}
+	}
+
+	query.WriteString(" ORDER BY created_at DESC, id DESC")
+	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	args = append(args, params.Limit+1)
+
 	var users []User
-	var total int
-
-	countQuery := `SELECT COUNT(*) FROM users`
-	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
-		return nil, 0, err
+	if err := r.db.SelectContext(ctx, &users, query.String(), args...); err != nil {
+		return nil, false, err
 	}
 
-	query := `SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`
-	if err := r.db.SelectContext(ctx, &users, query, limit, offset); err != nil {
-		return nil, 0, err
+	hasMore := len(users) > params.Limit
+	if hasMore {
+		users = users[:params.Limit]
 	}
 
-	return users, total, nil
+	return users, hasMore, nil
 }
 
 func (r *Repository) Deactivate(ctx context.Context, id uuid.UUID) error {
@@ -287,6 +329,25 @@ func (r *Repository) SetPassword(ctx context.Context, userID uuid.UUID, password
 		return ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *Repository) ScopeExists(ctx context.Context, scopeType string, scopeID uuid.UUID) (bool, error) {
+	var exists bool
+	var query string
+
+	switch scopeType {
+	case "college":
+		query = `SELECT EXISTS(SELECT 1 FROM colleges WHERE id = $1)`
+	case "department":
+		query = `SELECT EXISTS(SELECT 1 FROM departments WHERE id = $1)`
+	case "program":
+		query = `SELECT EXISTS(SELECT 1 FROM programs WHERE id = $1)`
+	default:
+		return false, ErrInvalidScopeID
+	}
+
+	err := r.db.GetContext(ctx, &exists, query, scopeID)
+	return exists, err
 }
 
 func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error {

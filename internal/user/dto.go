@@ -8,6 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserFilters struct {
+	IsActive        *bool
+	HasStaffProfile *bool
+}
+
 type UpdateProfileRequest struct {
 	FullNameEN *string `json:"full_name_en" binding:"omitempty,min=2,max=255"`
 	FullNameKU *string `json:"full_name_ku" binding:"omitempty,max=255"`
@@ -108,12 +113,6 @@ type StaffProfileResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-type PaginatedUsersResponse struct {
-	Users  []UserResponse `json:"users"`
-	Total  int            `json:"total"`
-	Limit  int            `json:"limit"`
-	Offset int            `json:"offset"`
-}
 
 func ToUserResponse(u *User) UserResponse {
 	return UserResponse{
