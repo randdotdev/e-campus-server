@@ -100,7 +100,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken, device, ip string) 
 		return nil, ErrTokenReused
 	}
 
-	if err := s.tokens.MarkTokenUsed(ctx, stored.ID); err != nil {
+	if err := s.tokens.MarkTokenUsed(ctx, hash); err != nil {
 		return nil, err
 	}
 

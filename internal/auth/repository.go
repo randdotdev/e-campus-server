@@ -18,7 +18,7 @@ var (
 type TokenRepository interface {
 	CreateToken(ctx context.Context, token *RefreshToken) error
 	GetTokenByHash(ctx context.Context, hash string) (*RefreshToken, error)
-	MarkTokenUsed(ctx context.Context, id uuid.UUID) error
+	MarkTokenUsed(ctx context.Context, hash string) error
 	InvalidateFamily(ctx context.Context, family uuid.UUID) error
 	DeleteToken(ctx context.Context, hash string) error
 	DeleteUserTokens(ctx context.Context, userID uuid.UUID) error
@@ -86,33 +86,32 @@ func (r *tokenRepository) GetTokenByHash(ctx context.Context, hash string) (*Ref
 	return &token, nil
 }
 
-func (r *tokenRepository) MarkTokenUsed(ctx context.Context, id uuid.UUID) error {
-	// Scan for the token by ID - this is less efficient but maintains the interface
-	// In practice, we have the hash when calling this, consider refactoring
-	iter := r.rdb.Scan(ctx, 0, "token:*", 100).Iterator()
-	for iter.Next(ctx) {
-		data, err := r.rdb.Get(ctx, iter.Val()).Bytes()
-		if err != nil {
-			continue
-		}
+func (r *tokenRepository) MarkTokenUsed(ctx context.Context, hash string) error {
+	key := tokenKey(hash)
 
-		var token RefreshToken
-		if err := json.Unmarshal(data, &token); err != nil {
-			continue
+	data, err := r.rdb.Get(ctx, key).Bytes()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return ErrTokenNotFound
 		}
-
-		if token.ID == id {
-			now := time.Now()
-			token.UsedAt = &now
-			newData, err := json.Marshal(token)
-			if err != nil {
-				return err
-			}
-			ttl := r.rdb.TTL(ctx, iter.Val()).Val()
-			return r.rdb.Set(ctx, iter.Val(), newData, ttl).Err()
-		}
+		return err
 	}
-	return nil
+
+	var token RefreshToken
+	if err := json.Unmarshal(data, &token); err != nil {
+		return err
+	}
+
+	now := time.Now()
+	token.UsedAt = &now
+
+	newData, err := json.Marshal(token)
+	if err != nil {
+		return err
+	}
+
+	ttl := r.rdb.TTL(ctx, key).Val()
+	return r.rdb.Set(ctx, key, newData, ttl).Err()
 }
 
 func (r *tokenRepository) InvalidateFamily(ctx context.Context, family uuid.UUID) error {
