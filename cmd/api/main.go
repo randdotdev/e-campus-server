@@ -17,6 +17,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/university"
 	"github.com/ranjdotdev/e-campus-server/internal/user"
 	"go.uber.org/zap"
 )
@@ -81,6 +82,10 @@ func run() error {
 	userService := user.NewService(userRepo, authRepo)
 	userHandler := user.NewHandler(userService, log)
 
+	universityRepo := university.NewRepository(db)
+	universityService := university.NewService(universityRepo)
+	universityHandler := university.NewHandler(universityService, log)
+
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestID())
@@ -121,6 +126,26 @@ func run() error {
 			protected.GET("/users/:id/staff-profile", userHandler.GetStaffProfile)
 			protected.POST("/users/:id/staff-profile", userHandler.CreateStaffProfile)
 			protected.PUT("/users/:id/staff-profile", userHandler.UpdateStaffProfile)
+
+			// University structure routes - flat (for searching/listing)
+			protected.GET("/colleges", universityHandler.ListColleges)
+			protected.POST("/colleges", universityHandler.CreateCollege)
+			protected.GET("/colleges/:id", universityHandler.GetCollege)
+			protected.PUT("/colleges/:id", universityHandler.UpdateCollege)
+
+			protected.GET("/departments", universityHandler.ListDepartments)
+			protected.POST("/departments", universityHandler.CreateDepartment)
+			protected.GET("/departments/:id", universityHandler.GetDepartment)
+			protected.PUT("/departments/:id", universityHandler.UpdateDepartment)
+
+			protected.GET("/programs", universityHandler.ListPrograms)
+			protected.POST("/programs", universityHandler.CreateProgram)
+			protected.GET("/programs/:id", universityHandler.GetProgram)
+			protected.PUT("/programs/:id", universityHandler.UpdateProgram)
+
+			// University structure routes - nested (for hierarchical browsing)
+			protected.GET("/colleges/:college_id/departments", universityHandler.ListDepartments)
+			protected.GET("/departments/:department_id/programs", universityHandler.ListPrograms)
 		}
 	}
 
