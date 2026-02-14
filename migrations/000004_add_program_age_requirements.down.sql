@@ -1,0 +1,4 @@
+ALTER TABLE programs
+DROP CONSTRAINT IF EXISTS programs_age_range_valid,
+DROP COLUMN IF EXISTS max_age,
+DROP COLUMN IF EXISTS min_age;

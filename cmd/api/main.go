@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/ranjdotdev/e-campus-server/internal/application"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
@@ -86,6 +87,10 @@ func run() error {
 	universityService := university.NewService(universityRepo)
 	universityHandler := university.NewHandler(universityService, log)
 
+	applicationRepo := application.NewRepository(db)
+	applicationService := application.NewService(applicationRepo)
+	applicationHandler := application.NewHandler(applicationService, log)
+
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestID())
@@ -146,6 +151,18 @@ func run() error {
 			// University structure routes - nested (for hierarchical browsing)
 			protected.GET("/colleges/:college_id/departments", universityHandler.ListDepartments)
 			protected.GET("/departments/:department_id/programs", universityHandler.ListPrograms)
+
+			// Application routes - user's own applications
+			protected.POST("/applications", applicationHandler.Create)
+			protected.GET("/me/applications", applicationHandler.ListMine)
+			protected.GET("/me/applications/:id", applicationHandler.GetMine)
+			protected.PUT("/me/applications/:id", applicationHandler.UpdateMine)
+			protected.PUT("/me/applications/:id/withdraw", applicationHandler.Withdraw)
+
+			// Application routes - admin
+			protected.GET("/applications", applicationHandler.List)
+			protected.GET("/applications/:id", applicationHandler.Get)
+			protected.PUT("/applications/:id/review", applicationHandler.Review)
 		}
 	}
 

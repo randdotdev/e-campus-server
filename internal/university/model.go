@@ -39,6 +39,8 @@ type Program struct {
 	DegreeType    string    `db:"degree_type"`
 	DurationYears int       `db:"duration_years"`
 	TotalECTS     int       `db:"total_ects"`
+	MinAge        *int      `db:"min_age"`
+	MaxAge        *int      `db:"max_age"`
 	Description   *string   `db:"description"`
 	IsActive      bool      `db:"is_active"`
 	CreatedAt     time.Time `db:"created_at"`

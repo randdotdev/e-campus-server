@@ -134,6 +134,8 @@ type CreateProgramRequest struct {
 	DegreeType    string    `json:"degree_type" binding:"required,oneof=bachelor master phd"`
 	DurationYears int       `json:"duration_years" binding:"required,min=1,max=8"`
 	TotalECTS     int       `json:"total_ects" binding:"required,min=1"`
+	MinAge        *int      `json:"min_age" binding:"omitempty,min=0"`
+	MaxAge        *int      `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string   `json:"description"`
 }
 
@@ -144,6 +146,8 @@ type UpdateProgramRequest struct {
 	DegreeType    *string `json:"degree_type" binding:"omitempty,oneof=bachelor master phd"`
 	DurationYears *int    `json:"duration_years" binding:"omitempty,min=1,max=8"`
 	TotalECTS     *int    `json:"total_ects" binding:"omitempty,min=1"`
+	MinAge        *int    `json:"min_age" binding:"omitempty,min=0"`
+	MaxAge        *int    `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string `json:"description"`
 	IsActive      *bool   `json:"is_active"`
 }
@@ -157,6 +161,8 @@ type ProgramResponse struct {
 	DegreeType    string    `json:"degree_type"`
 	DurationYears int       `json:"duration_years"`
 	TotalECTS     int       `json:"total_ects"`
+	MinAge        *int      `json:"min_age,omitempty"`
+	MaxAge        *int      `json:"max_age,omitempty"`
 	Description   *string   `json:"description,omitempty"`
 	IsActive      bool      `json:"is_active"`
 	CreatedAt     time.Time `json:"created_at"`
@@ -173,6 +179,8 @@ func ToProgramResponse(p *Program) ProgramResponse {
 		DegreeType:    p.DegreeType,
 		DurationYears: p.DurationYears,
 		TotalECTS:     p.TotalECTS,
+		MinAge:        p.MinAge,
+		MaxAge:        p.MaxAge,
 		Description:   p.Description,
 		IsActive:      p.IsActive,
 		CreatedAt:     p.CreatedAt,

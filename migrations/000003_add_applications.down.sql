@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS update_applications_updated_at ON applications;
+DROP INDEX IF EXISTS idx_applications_pending_unique;
+DROP INDEX IF EXISTS idx_applications_gender;
+DROP INDEX IF EXISTS idx_applications_nationality;
+DROP INDEX IF EXISTS idx_applications_created;
+DROP INDEX IF EXISTS idx_applications_admission_year;
+DROP INDEX IF EXISTS idx_applications_status;
+DROP INDEX IF EXISTS idx_applications_program;
+DROP INDEX IF EXISTS idx_applications_user;
+DROP TABLE IF EXISTS applications;

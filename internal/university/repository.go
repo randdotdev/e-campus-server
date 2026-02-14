@@ -249,13 +249,13 @@ func (r *Repository) DepartmentCodeExists(ctx context.Context, collegeID uuid.UU
 
 func (r *Repository) CreateProgram(ctx context.Context, program *Program) error {
 	query := `
-		INSERT INTO programs (department_id, name_en, name_ku, code, degree_type, duration_years, total_ects, description)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO programs (department_id, name_en, name_ku, code, degree_type, duration_years, total_ects, min_age, max_age, description)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, is_active, created_at, updated_at`
 
 	return r.db.QueryRowxContext(ctx, query,
 		program.DepartmentID, program.NameEN, program.NameKU, program.Code,
-		program.DegreeType, program.DurationYears, program.TotalECTS, program.Description,
+		program.DegreeType, program.DurationYears, program.TotalECTS, program.MinAge, program.MaxAge, program.Description,
 	).Scan(&program.ID, &program.IsActive, &program.CreatedAt, &program.UpdatedAt)
 }
 
@@ -333,13 +333,13 @@ func (r *Repository) ListPrograms(ctx context.Context, params pagination.PagePar
 func (r *Repository) UpdateProgram(ctx context.Context, program *Program) error {
 	query := `
 		UPDATE programs
-		SET name_en = $2, name_ku = $3, code = $4, degree_type = $5, duration_years = $6, total_ects = $7, description = $8, is_active = $9
+		SET name_en = $2, name_ku = $3, code = $4, degree_type = $5, duration_years = $6, total_ects = $7, min_age = $8, max_age = $9, description = $10, is_active = $11
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
 		program.ID, program.NameEN, program.NameKU, program.Code,
-		program.DegreeType, program.DurationYears, program.TotalECTS, program.Description, program.IsActive,
+		program.DegreeType, program.DurationYears, program.TotalECTS, program.MinAge, program.MaxAge, program.Description, program.IsActive,
 	).Scan(&program.UpdatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
