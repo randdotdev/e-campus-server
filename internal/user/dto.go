@@ -8,10 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// Filter types
+
 type UserFilters struct {
 	IsActive        *bool
 	HasStaffProfile *bool
 }
+
+// Request DTOs
 
 type UpdateProfileRequest struct {
 	FullNameEN *string `json:"full_name_en" binding:"omitempty,min=2,max=255"`
@@ -66,6 +70,8 @@ func (r UpdateStaffProfileRequest) SalaryString() *string {
 	return &s
 }
 
+// Response DTOs
+
 type UserResponse struct {
 	ID         uuid.UUID `json:"id"`
 	Email      string    `json:"email"`
@@ -113,6 +119,7 @@ type StaffProfileResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// Mapper functions
 
 func ToUserResponse(u *User) UserResponse {
 	return UserResponse{

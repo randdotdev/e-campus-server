@@ -2,9 +2,17 @@ package university
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/subscription"
+)
+
+var (
+	ErrCollegeLimitReached    = errors.New("college limit reached")
+	ErrDepartmentLimitReached = errors.New("department limit reached")
+	ErrProgramLimitReached    = errors.New("program limit reached")
 )
 
 type UniversityRepository interface {
@@ -13,31 +21,53 @@ type UniversityRepository interface {
 	ListColleges(ctx context.Context, params pagination.PageParams, filters CollegeFilters) ([]College, bool, error)
 	UpdateCollege(ctx context.Context, college *College) error
 	CollegeCodeExists(ctx context.Context, code string, excludeID *uuid.UUID) (bool, error)
+	CountColleges(ctx context.Context) (int, error)
 
 	CreateDepartment(ctx context.Context, dept *Department) error
 	GetDepartment(ctx context.Context, id uuid.UUID) (*Department, error)
 	ListDepartments(ctx context.Context, params pagination.PageParams, filters DepartmentFilters) ([]Department, bool, error)
 	UpdateDepartment(ctx context.Context, dept *Department) error
 	DepartmentCodeExists(ctx context.Context, collegeID uuid.UUID, code string, excludeID *uuid.UUID) (bool, error)
+	CountDepartmentsByCollege(ctx context.Context, collegeID uuid.UUID) (int, error)
 
 	CreateProgram(ctx context.Context, program *Program) error
 	GetProgram(ctx context.Context, id uuid.UUID) (*Program, error)
 	ListPrograms(ctx context.Context, params pagination.PageParams, filters ProgramFilters) ([]Program, bool, error)
 	UpdateProgram(ctx context.Context, program *Program) error
 	ProgramCodeExists(ctx context.Context, departmentID uuid.UUID, code string, excludeID *uuid.UUID) (bool, error)
+	CountProgramsByDepartment(ctx context.Context, departmentID uuid.UUID) (int, error)
+}
+
+type LimitsProvider interface {
+	GetLimits(ctx context.Context) (subscription.Limits, error)
 }
 
 type Service struct {
-	repo UniversityRepository
+	repo   UniversityRepository
+	limits LimitsProvider
 }
 
-func NewService(repo UniversityRepository) *Service {
-	return &Service{repo: repo}
+func NewService(repo UniversityRepository, limits LimitsProvider) *Service {
+	return &Service{repo: repo, limits: limits}
 }
 
 // College operations
 
 func (s *Service) CreateCollege(ctx context.Context, req CreateCollegeRequest) (*College, error) {
+	limits, err := s.limits.GetLimits(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := s.repo.CountColleges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !subscription.CanCreate(count, limits.MaxColleges) {
+		return nil, ErrCollegeLimitReached
+	}
+
 	exists, err := s.repo.CollegeCodeExists(ctx, req.Code, nil)
 	if err != nil {
 		return nil, err
@@ -110,6 +140,20 @@ func (s *Service) UpdateCollege(ctx context.Context, id uuid.UUID, req UpdateCol
 func (s *Service) CreateDepartment(ctx context.Context, req CreateDepartmentRequest) (*Department, error) {
 	if _, err := s.repo.GetCollege(ctx, req.CollegeID); err != nil {
 		return nil, err
+	}
+
+	limits, err := s.limits.GetLimits(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := s.repo.CountDepartmentsByCollege(ctx, req.CollegeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !subscription.CanCreate(count, limits.MaxDepartmentsPerCollege) {
+		return nil, ErrDepartmentLimitReached
 	}
 
 	exists, err := s.repo.DepartmentCodeExists(ctx, req.CollegeID, req.Code, nil)
@@ -190,6 +234,20 @@ func (s *Service) UpdateDepartment(ctx context.Context, id uuid.UUID, req Update
 func (s *Service) CreateProgram(ctx context.Context, req CreateProgramRequest) (*Program, error) {
 	if _, err := s.repo.GetDepartment(ctx, req.DepartmentID); err != nil {
 		return nil, err
+	}
+
+	limits, err := s.limits.GetLimits(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := s.repo.CountProgramsByDepartment(ctx, req.DepartmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !subscription.CanCreate(count, limits.MaxProgramsPerDepartment) {
+		return nil, ErrProgramLimitReached
 	}
 
 	exists, err := s.repo.ProgramCodeExists(ctx, req.DepartmentID, req.Code, nil)

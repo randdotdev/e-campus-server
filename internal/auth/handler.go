@@ -25,6 +25,8 @@ func NewHandler(service *Service, log *zap.Logger, secureCookie bool) *Handler {
 	}
 }
 
+// Auth handlers
+
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -126,6 +128,8 @@ func (h *Handler) Logout(c *gin.Context) {
 	h.clearRefreshCookie(c)
 	response.NoContent(c)
 }
+
+// Helper functions
 
 func (h *Handler) setRefreshCookie(c *gin.Context, token string) {
 	c.SetSameSite(http.SameSiteStrictMode)

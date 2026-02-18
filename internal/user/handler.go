@@ -24,6 +24,8 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 	}
 }
 
+// User self handlers
+
 func (h *Handler) GetMe(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
@@ -159,8 +161,10 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	response.NoContent(c)
 }
 
+// Admin handlers
+
 func (h *Handler) GetUser(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -200,7 +204,7 @@ func (h *Handler) GetUser(c *gin.Context) {
 }
 
 func (h *Handler) ListUsers(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -232,7 +236,7 @@ func (h *Handler) ListUsers(c *gin.Context) {
 }
 
 func (h *Handler) DeactivateUser(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -271,7 +275,7 @@ func (h *Handler) GetStaffProfile(c *gin.Context) {
 
 	currentUserID := middleware.GetUserID(c)
 	// Only allow self-access or university admin (staff profiles contain sensitive salary data)
-	if userID != currentUserID && !permission.HasUniversityAdmin(c) {
+	if userID != currentUserID && !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "access denied")
 		return
 	}
@@ -291,7 +295,7 @@ func (h *Handler) GetStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) CreateStaffProfile(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -327,7 +331,7 @@ func (h *Handler) CreateStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) UpdateStaffProfile(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -359,7 +363,7 @@ func (h *Handler) UpdateStaffProfile(c *gin.Context) {
 }
 
 func (h *Handler) CreateUser(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -371,10 +375,15 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	adminID := middleware.GetUserID(c)
-	user, staffProfile, role, err := h.service.CreateStaffUser(c.Request.Context(), adminID, req)
+	actorRoles := middleware.GetUserRoles(c)
+	user, staffProfile, role, err := h.service.CreateStaffUser(c.Request.Context(), adminID, actorRoles, req)
 	if err != nil {
 		if errors.Is(err, ErrEmailExists) {
 			response.Conflict(c, "email already exists")
+			return
+		}
+		if errors.Is(err, ErrCannotManageHigherRole) {
+			response.Forbidden(c, "cannot assign role with higher permission than your own")
 			return
 		}
 		if errors.Is(err, ErrScopeIDRequired) {
@@ -407,7 +416,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 }
 
 func (h *Handler) AdminSetPassword(c *gin.Context) {
-	if !permission.HasUniversityAdmin(c) {
+	if !permission.CanAdminUniversity(c) {
 		response.Forbidden(c, "university admin access required")
 		return
 	}
@@ -466,6 +475,8 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 
 	response.NoContent(c)
 }
+
+// Helper functions
 
 func (h *Handler) parseUserFilters(c *gin.Context) UserFilters {
 	return UserFilters{

@@ -1,4 +1,4 @@
-// Package permission provides role-based access control utilities.
+// Package permission provides centralized role-based access control.
 package permission
 
 import (
@@ -8,7 +8,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 )
 
-// Permission levels
 const (
 	SuperAdmin = "super_admin"
 	Admin      = "admin"
@@ -16,8 +15,8 @@ const (
 	Viewer     = "viewer"
 )
 
-// Scope levels
 const (
+	ScopePlatform   = "platform"
 	ScopeUniversity = "university"
 	ScopeCollege    = "college"
 	ScopeDepartment = "department"
@@ -32,15 +31,13 @@ var permissionRank = map[string]int{
 }
 
 var scopeRank = map[string]int{
+	ScopePlatform:   5,
 	ScopeUniversity: 4,
 	ScopeCollege:    3,
 	ScopeDepartment: 2,
 	ScopeProgram:    1,
 }
 
-// Check verifies if any of the given roles grants the required permission at the specified scope.
-// For university scope, broader access is automatically granted.
-// For other scopes, the scopeID must match exactly unless the role is at university level.
 func Check(roles []auth.RoleClaim, requiredPermission, scopeType string, scopeID *uuid.UUID) bool {
 	requiredRank := permissionRank[requiredPermission]
 	requiredScopeRank := scopeRank[scopeType]
@@ -53,9 +50,7 @@ func Check(roles []auth.RoleClaim, requiredPermission, scopeType string, scopeID
 			continue
 		}
 
-		// Only university scope (no specific ID) can auto-allow broader access
-		// Other broader scopes need explicit hierarchy verification in handlers
-		if roleScopeRank > requiredScopeRank && role.ScopeType == ScopeUniversity {
+		if roleScopeRank > requiredScopeRank && (role.ScopeType == ScopePlatform || role.ScopeType == ScopeUniversity) {
 			return true
 		}
 
@@ -72,18 +67,95 @@ func Check(roles []auth.RoleClaim, requiredPermission, scopeType string, scopeID
 	return false
 }
 
-// CheckFromContext is a convenience function that extracts roles from gin context.
-func CheckFromContext(c *gin.Context, requiredPermission, scopeType string, scopeID *uuid.UUID) bool {
+func checkFromContext(c *gin.Context, permission, scope string, scopeID *uuid.UUID) bool {
 	roles := middleware.GetUserRoles(c)
-	return Check(roles, requiredPermission, scopeType, scopeID)
+	return Check(roles, permission, scope, scopeID)
 }
 
-// HasAdminAccess checks if user has admin or higher access at the given scope.
-func HasAdminAccess(c *gin.Context, scopeType string, scopeID *uuid.UUID) bool {
-	return CheckFromContext(c, Admin, scopeType, scopeID)
+func CanAdminPlatform(c *gin.Context) bool {
+	return checkFromContext(c, Admin, ScopePlatform, nil)
 }
 
-// HasUniversityAdmin checks if user has university-level admin access.
-func HasUniversityAdmin(c *gin.Context) bool {
-	return CheckFromContext(c, Admin, ScopeUniversity, nil)
+func CanOperatePlatform(c *gin.Context) bool {
+	return checkFromContext(c, Operator, ScopePlatform, nil)
+}
+
+func CanViewPlatform(c *gin.Context) bool {
+	return checkFromContext(c, Viewer, ScopePlatform, nil)
+}
+
+func CanAdminUniversity(c *gin.Context) bool {
+	return checkFromContext(c, Admin, ScopeUniversity, nil)
+}
+
+func CanOperateUniversity(c *gin.Context) bool {
+	return checkFromContext(c, Operator, ScopeUniversity, nil)
+}
+
+func CanViewUniversity(c *gin.Context) bool {
+	return checkFromContext(c, Viewer, ScopeUniversity, nil)
+}
+
+func CanAdminCollege(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Admin, ScopeCollege, &id)
+}
+
+func CanOperateCollege(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Operator, ScopeCollege, &id)
+}
+
+func CanViewCollege(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Viewer, ScopeCollege, &id)
+}
+
+func CanAdminDepartment(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Admin, ScopeDepartment, &id)
+}
+
+func CanOperateDepartment(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Operator, ScopeDepartment, &id)
+}
+
+func CanViewDepartment(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Viewer, ScopeDepartment, &id)
+}
+
+func CanAdminProgram(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Admin, ScopeProgram, &id)
+}
+
+func CanOperateProgram(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Operator, ScopeProgram, &id)
+}
+
+func CanViewProgram(c *gin.Context, id uuid.UUID) bool {
+	return checkFromContext(c, Viewer, ScopeProgram, &id)
+}
+
+func CanAdmin(c *gin.Context, scope string, scopeID *uuid.UUID) bool {
+	return checkFromContext(c, Admin, scope, scopeID)
+}
+
+func CanOperate(c *gin.Context, scope string, scopeID *uuid.UUID) bool {
+	return checkFromContext(c, Operator, scope, scopeID)
+}
+
+func CanView(c *gin.Context, scope string, scopeID *uuid.UUID) bool {
+	return checkFromContext(c, Viewer, scope, scopeID)
+}
+
+func CanManageRole(actorPermission, targetPermission string) bool {
+	return permissionRank[actorPermission] >= permissionRank[targetPermission]
+}
+
+func MaxPermissionFromRoles(roles []auth.RoleClaim) string {
+	highest := ""
+	highestRank := 0
+	for _, role := range roles {
+		if rank := permissionRank[role.Permission]; rank > highestRank {
+			highestRank = rank
+			highest = role.Permission
+		}
+	}
+	return highest
 }

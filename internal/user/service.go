@@ -1,4 +1,3 @@
-// Package user handles user profile and session management.
 package user
 
 import (
@@ -8,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/ranjdotdev/e-campus-server/internal/permission"
 )
 
 var (
@@ -17,8 +16,9 @@ var (
 	ErrSamePassword     = errors.New("new password is the same as current")
 	ErrSessionNotFound  = errors.New("session not found")
 	ErrCannotDeactivate = errors.New("cannot deactivate user")
-	ErrScopeIDRequired   = errors.New("scope_id required for non-university scope")
-	ErrScopeIDNotAllowed = errors.New("scope_id not allowed for university scope")
+	ErrScopeIDRequired        = errors.New("scope_id required for non-university scope")
+	ErrScopeIDNotAllowed      = errors.New("scope_id not allowed for university scope")
+	ErrCannotManageHigherRole = errors.New("cannot manage role with higher permission level")
 )
 
 type UserRepository interface {
@@ -219,15 +219,18 @@ func (s *Service) UpdateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 	return profile, nil
 }
 
-func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
+func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorRoles []auth.RoleClaim, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
 	if req.Role != nil {
+		actorPermission := permission.MaxPermissionFromRoles(actorRoles)
+		if !permission.CanManageRole(actorPermission, req.Role.Permission) {
+			return nil, nil, nil, ErrCannotManageHigherRole
+		}
 		if req.Role.ScopeType == "university" && req.Role.ScopeID != nil {
 			return nil, nil, nil, ErrScopeIDNotAllowed
 		}
 		if req.Role.ScopeType != "university" && req.Role.ScopeID == nil {
 			return nil, nil, nil, ErrScopeIDRequired
 		}
-		// Validate scope_id exists in database
 		if req.Role.ScopeID != nil {
 			exists, err := s.repo.ScopeExists(ctx, req.Role.ScopeType, *req.Role.ScopeID)
 			if err != nil {
@@ -330,13 +333,3 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 	return s.tokens.DeleteUserTokens(ctx, userID)
 }
 
-func checkPassword(password, hash string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
-}
-
-func derefInt(p *int, defaultVal int) int {
-	if p == nil {
-		return defaultVal
-	}
-	return *p
-}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/subscription"
 )
 
 // MockRepository implements UniversityRepository for testing
@@ -31,6 +32,11 @@ type MockRepository struct {
 	ListProgramsFunc      func(ctx context.Context, params pagination.PageParams, filters ProgramFilters) ([]Program, bool, error)
 	UpdateProgramFunc     func(ctx context.Context, program *Program) error
 	ProgramCodeExistsFunc func(ctx context.Context, departmentID uuid.UUID, code string, excludeID *uuid.UUID) (bool, error)
+
+	// Count mocks
+	CountCollegesFunc            func(ctx context.Context) (int, error)
+	CountDepartmentsByCollegeFunc func(ctx context.Context, collegeID uuid.UUID) (int, error)
+	CountProgramsByDepartmentFunc func(ctx context.Context, departmentID uuid.UUID) (int, error)
 }
 
 func (m *MockRepository) CreateCollege(ctx context.Context, college *College) error {
@@ -141,6 +147,52 @@ func (m *MockRepository) ProgramCodeExists(ctx context.Context, departmentID uui
 	return false, nil
 }
 
+func (m *MockRepository) CountColleges(ctx context.Context) (int, error) {
+	if m.CountCollegesFunc != nil {
+		return m.CountCollegesFunc(ctx)
+	}
+	return 0, nil
+}
+
+func (m *MockRepository) CountDepartmentsByCollege(ctx context.Context, collegeID uuid.UUID) (int, error) {
+	if m.CountDepartmentsByCollegeFunc != nil {
+		return m.CountDepartmentsByCollegeFunc(ctx, collegeID)
+	}
+	return 0, nil
+}
+
+func (m *MockRepository) CountProgramsByDepartment(ctx context.Context, departmentID uuid.UUID) (int, error) {
+	if m.CountProgramsByDepartmentFunc != nil {
+		return m.CountProgramsByDepartmentFunc(ctx, departmentID)
+	}
+	return 0, nil
+}
+
+// MockLimitsProvider implements LimitsProvider for testing
+type MockLimitsProvider struct {
+	GetLimitsFunc func(ctx context.Context) (subscription.Limits, error)
+}
+
+func (m *MockLimitsProvider) GetLimits(ctx context.Context) (subscription.Limits, error) {
+	if m.GetLimitsFunc != nil {
+		return m.GetLimitsFunc(ctx)
+	}
+	// Return generous defaults for tests
+	return subscription.Limits{
+		MaxColleges:              100,
+		MaxDepartmentsPerCollege: 100,
+		MaxProgramsPerDepartment: 100,
+		MaxStudentsPerProgram:    1000,
+		MaxApplicationsPerUser:   10,
+		MaxStaffUsers:            500,
+	}, nil
+}
+
+// defaultLimitsProvider returns a MockLimitsProvider with generous defaults
+func defaultLimitsProvider() *MockLimitsProvider {
+	return &MockLimitsProvider{}
+}
+
 // College service tests
 
 func TestCreateCollege_Success(t *testing.T) {
@@ -154,7 +206,7 @@ func TestCreateCollege_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
@@ -179,7 +231,7 @@ func TestCreateCollege_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
@@ -199,7 +251,7 @@ func TestCreateCollege_RepoError(t *testing.T) {
 			return false, repoErr
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
@@ -219,7 +271,7 @@ func TestGetCollege_Success(t *testing.T) {
 			return &College{ID: id, NameEN: "Science", Code: "SCI"}, nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	college, err := svc.GetCollege(context.Background(), collegeID)
 	if err != nil {
@@ -236,7 +288,7 @@ func TestGetCollege_NotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	_, err := svc.GetCollege(context.Background(), uuid.New())
 	if !errors.Is(err, ErrCollegeNotFound) {
@@ -257,7 +309,7 @@ func TestUpdateCollege_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	newName := "New Name"
 	newCode := "NEW"
@@ -288,7 +340,7 @@ func TestUpdateCollege_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	newCode := "TAKEN"
 	req := UpdateCollegeRequest{
@@ -317,7 +369,7 @@ func TestCreateDepartment_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: collegeID,
@@ -340,7 +392,7 @@ func TestCreateDepartment_CollegeNotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: uuid.New(),
@@ -364,7 +416,7 @@ func TestCreateDepartment_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: collegeID,
@@ -385,7 +437,7 @@ func TestListDepartments_CollegeNotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	_, _, err := svc.ListDepartments(context.Background(), pagination.PageParams{}, DepartmentFilters{CollegeID: &collegeID})
 	if !errors.Is(err, ErrCollegeNotFound) {
@@ -409,7 +461,7 @@ func TestCreateProgram_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  deptID,
@@ -438,7 +490,7 @@ func TestCreateProgram_DepartmentNotFound(t *testing.T) {
 			return nil, ErrDepartmentNotFound
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  uuid.New(),
@@ -465,7 +517,7 @@ func TestCreateProgram_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  deptID,
@@ -496,7 +548,7 @@ func TestUpdateProgram_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	newName := "New Name"
 	newYears := 5
@@ -524,7 +576,7 @@ func TestListPrograms_DepartmentNotFound(t *testing.T) {
 			return nil, ErrDepartmentNotFound
 		},
 	}
-	svc := NewService(mock)
+	svc := NewService(mock, defaultLimitsProvider())
 
 	_, _, err := svc.ListPrograms(context.Background(), pagination.PageParams{}, ProgramFilters{DepartmentID: &deptID})
 	if !errors.Is(err, ErrDepartmentNotFound) {

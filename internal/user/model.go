@@ -1,3 +1,4 @@
+// Package user handles user profile and session management.
 package user
 
 import (

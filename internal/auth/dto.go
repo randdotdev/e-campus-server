@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// Request DTOs
+
 type RegisterRequest struct {
 	Email      string  `json:"email" binding:"required,email"`
 	Password   string  `json:"password" binding:"required,min=8"`
@@ -17,6 +19,8 @@ type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
+
+// Response DTOs
 
 type UserResponse struct {
 	ID         uuid.UUID `json:"id"`
@@ -38,6 +42,8 @@ type RefreshResponse struct {
 	AccessToken string    `json:"access_token"`
 	ExpiresAt   time.Time `json:"expires_at"`
 }
+
+// Mapper functions
 
 func ToUserResponse(u *UserData) UserResponse {
 	return UserResponse{

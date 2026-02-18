@@ -364,3 +364,26 @@ func (r *Repository) ProgramCodeExists(ctx context.Context, departmentID uuid.UU
 	err := r.db.GetContext(ctx, &exists, query, args...)
 	return exists, err
 }
+
+// Count operations
+
+func (r *Repository) CountColleges(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM colleges`
+	err := r.db.GetContext(ctx, &count, query)
+	return count, err
+}
+
+func (r *Repository) CountDepartmentsByCollege(ctx context.Context, collegeID uuid.UUID) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM departments WHERE college_id = $1`
+	err := r.db.GetContext(ctx, &count, query, collegeID)
+	return count, err
+}
+
+func (r *Repository) CountProgramsByDepartment(ctx context.Context, departmentID uuid.UUID) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM programs WHERE department_id = $1`
+	err := r.db.GetContext(ctx, &count, query, departmentID)
+	return count, err
+}

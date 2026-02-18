@@ -121,3 +121,59 @@ func TestCheck_DepartmentAdmin_OwnDepartmentOnly(t *testing.T) {
 func ptr(u uuid.UUID) *uuid.UUID {
 	return &u
 }
+
+func TestCanManageRole(t *testing.T) {
+	tests := []struct {
+		actor  string
+		target string
+		want   bool
+	}{
+		{SuperAdmin, SuperAdmin, true},
+		{SuperAdmin, Admin, true},
+		{SuperAdmin, Operator, true},
+		{SuperAdmin, Viewer, true},
+		{Admin, Admin, true},
+		{Admin, Operator, true},
+		{Admin, Viewer, true},
+		{Admin, SuperAdmin, false},
+		{Operator, Operator, true},
+		{Operator, Viewer, true},
+		{Operator, Admin, false},
+		{Operator, SuperAdmin, false},
+		{Viewer, Viewer, true},
+		{Viewer, Operator, false},
+		{Viewer, Admin, false},
+		{Viewer, SuperAdmin, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.actor+"_to_"+tt.target, func(t *testing.T) {
+			got := CanManageRole(tt.actor, tt.target)
+			if got != tt.want {
+				t.Errorf("CanManageRole(%s, %s) = %v, want %v", tt.actor, tt.target, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMaxPermissionFromRoles(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []auth.RoleClaim
+		want  string
+	}{
+		{"empty", []auth.RoleClaim{}, ""},
+		{"single admin", []auth.RoleClaim{{Permission: Admin}}, Admin},
+		{"viewer and admin", []auth.RoleClaim{{Permission: Viewer}, {Permission: Admin}}, Admin},
+		{"multiple with super_admin", []auth.RoleClaim{{Permission: Operator}, {Permission: SuperAdmin}, {Permission: Admin}}, SuperAdmin},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MaxPermissionFromRoles(tt.roles)
+			if got != tt.want {
+				t.Errorf("MaxPermissionFromRoles() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

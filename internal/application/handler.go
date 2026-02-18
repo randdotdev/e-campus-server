@@ -291,7 +291,7 @@ func (h *Handler) Review(c *gin.Context) {
 // Helper functions
 
 func (h *Handler) canAccessApplication(c *gin.Context, app *Application) bool {
-	if permission.HasUniversityAdmin(c) {
+	if permission.CanAdminUniversity(c) {
 		return true
 	}
 
@@ -300,20 +300,20 @@ func (h *Handler) canAccessApplication(c *gin.Context, app *Application) bool {
 		return false
 	}
 
-	return permission.HasAdminAccess(c, permission.ScopeProgram, &hierarchy.ProgramID) ||
-		permission.HasAdminAccess(c, permission.ScopeDepartment, &hierarchy.DepartmentID) ||
-		permission.HasAdminAccess(c, permission.ScopeCollege, &hierarchy.CollegeID)
+	return permission.CanAdminProgram(c, hierarchy.ProgramID) ||
+		permission.CanAdminDepartment(c, hierarchy.DepartmentID) ||
+		permission.CanAdminCollege(c, hierarchy.CollegeID)
 }
 
 func (h *Handler) hasAnyAdminAccess(c *gin.Context) bool {
-	return permission.HasAdminAccess(c, permission.ScopeUniversity, nil) ||
-		permission.HasAdminAccess(c, permission.ScopeCollege, nil) ||
-		permission.HasAdminAccess(c, permission.ScopeDepartment, nil) ||
-		permission.HasAdminAccess(c, permission.ScopeProgram, nil)
+	return permission.CanAdmin(c, permission.ScopeUniversity, nil) ||
+		permission.CanAdmin(c, permission.ScopeCollege, nil) ||
+		permission.CanAdmin(c, permission.ScopeDepartment, nil) ||
+		permission.CanAdmin(c, permission.ScopeProgram, nil)
 }
 
 func (h *Handler) applyScopeRestrictions(c *gin.Context, filters ApplicationFilters) ApplicationFilters {
-	if permission.HasUniversityAdmin(c) {
+	if permission.CanAdminUniversity(c) {
 		return filters
 	}
 

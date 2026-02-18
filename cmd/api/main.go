@@ -18,6 +18,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/subscription"
 	"github.com/ranjdotdev/e-campus-server/internal/university"
 	"github.com/ranjdotdev/e-campus-server/internal/user"
 	"go.uber.org/zap"
@@ -83,8 +84,12 @@ func run() error {
 	userService := user.NewService(userRepo, authRepo)
 	userHandler := user.NewHandler(userService, log)
 
+	subscriptionRepo := subscription.NewRepository(db)
+	subscriptionService := subscription.NewService(subscriptionRepo)
+	subscriptionHandler := subscription.NewHandler(subscriptionService, log)
+
 	universityRepo := university.NewRepository(db)
-	universityService := university.NewService(universityRepo)
+	universityService := university.NewService(universityRepo, subscriptionService)
 	universityHandler := university.NewHandler(universityService, log)
 
 	applicationRepo := application.NewRepository(db)
@@ -123,6 +128,23 @@ func run() error {
 			{
 				admin.POST("/users", userHandler.CreateUser)
 				admin.PUT("/users/:id/password", userHandler.AdminSetPassword)
+			}
+
+			// Subscription routes - university admin (read-only)
+			protected.GET("/subscription", subscriptionHandler.GetMySubscription)
+			protected.GET("/subscription/limits", subscriptionHandler.GetMyLimits)
+
+			// Subscription routes - platform admin
+			platformAdmin := protected.Group("/platform")
+			{
+				platformAdmin.GET("/subscription", subscriptionHandler.GetSubscription)
+				platformAdmin.GET("/subscription/limits", subscriptionHandler.GetLimits)
+				platformAdmin.PUT("/subscription/tier", subscriptionHandler.UpdateTier)
+				platformAdmin.PUT("/subscription/overrides", subscriptionHandler.SetOverrides)
+				platformAdmin.DELETE("/subscription/overrides", subscriptionHandler.ClearOverrides)
+				platformAdmin.GET("/subscription/history", subscriptionHandler.GetHistory)
+				platformAdmin.GET("/tier-limits", subscriptionHandler.GetAllTierLimits)
+				platformAdmin.PUT("/tier-limits/:tier", subscriptionHandler.UpdateTierLimits)
 			}
 
 			protected.GET("/users", userHandler.ListUsers)

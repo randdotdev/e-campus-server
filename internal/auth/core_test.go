@@ -28,12 +28,22 @@ func TestCheckPassword(t *testing.T) {
 	password := "password123"
 	hash, _ := HashPassword(password)
 
-	if !CheckPassword(password, hash) {
-		t.Error("CheckPassword should return true for correct password")
+	tests := []struct {
+		name     string
+		password string
+		want     bool
+	}{
+		{"correct password", password, true},
+		{"wrong password", "wrongpassword", false},
+		{"empty password", "", false},
 	}
 
-	if CheckPassword("wrongpassword", hash) {
-		t.Error("CheckPassword should return false for wrong password")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckPassword(tt.password, hash); got != tt.want {
+				t.Errorf("CheckPassword() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -70,27 +80,42 @@ func TestGenerateRefreshToken(t *testing.T) {
 }
 
 func TestIsTokenExpired(t *testing.T) {
-	past := time.Now().Add(-time.Hour)
-	future := time.Now().Add(time.Hour)
-
-	if !IsTokenExpired(past) {
-		t.Error("past time should be expired")
+	tests := []struct {
+		name      string
+		expiresAt time.Time
+		want      bool
+	}{
+		{"past time", time.Now().Add(-time.Hour), true},
+		{"future time", time.Now().Add(time.Hour), false},
 	}
 
-	if IsTokenExpired(future) {
-		t.Error("future time should not be expired")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsTokenExpired(tt.expiresAt); got != tt.want {
+				t.Errorf("IsTokenExpired() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestIsTokenUsed(t *testing.T) {
 	now := time.Now()
 
-	if IsTokenUsed(nil) {
-		t.Error("nil should mean not used")
+	tests := []struct {
+		name   string
+		usedAt *time.Time
+		want   bool
+	}{
+		{"nil", nil, false},
+		{"non-nil", &now, true},
 	}
 
-	if !IsTokenUsed(&now) {
-		t.Error("non-nil time should mean used")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsTokenUsed(tt.usedAt); got != tt.want {
+				t.Errorf("IsTokenUsed() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -123,14 +148,25 @@ func TestBuildRoleClaims(t *testing.T) {
 }
 
 func TestStrPtr(t *testing.T) {
-	result := strPtr("")
-	if result != nil {
-		t.Error("strPtr should return nil for empty string")
+	tests := []struct {
+		name  string
+		input string
+		isNil bool
+	}{
+		{"empty string", "", true},
+		{"non-empty string", "test", false},
 	}
 
-	result = strPtr("test")
-	if result == nil || *result != "test" {
-		t.Error("strPtr should return pointer to non-empty string")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strPtr(tt.input)
+			if tt.isNil && result != nil {
+				t.Error("expected nil")
+			}
+			if !tt.isNil && (result == nil || *result != tt.input) {
+				t.Errorf("expected %q, got %v", tt.input, result)
+			}
+		})
 	}
 }
 
@@ -140,15 +176,21 @@ func TestGetString(t *testing.T) {
 		"key2": 123,
 	}
 
-	if getString(m, "key1") != "value1" {
-		t.Error("getString should return string value")
+	tests := []struct {
+		name string
+		key  string
+		want string
+	}{
+		{"string value", "key1", "value1"},
+		{"non-string value", "key2", ""},
+		{"missing key", "missing", ""},
 	}
 
-	if getString(m, "key2") != "" {
-		t.Error("getString should return empty for non-string")
-	}
-
-	if getString(m, "missing") != "" {
-		t.Error("getString should return empty for missing key")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getString(m, tt.key); got != tt.want {
+				t.Errorf("getString() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
