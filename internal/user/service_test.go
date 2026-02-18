@@ -21,7 +21,10 @@ type MockUserRepository struct {
 	SetPasswordFunc        func(ctx context.Context, userID uuid.UUID, passwordHash string) error
 	ListFunc               func(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error)
 	DeactivateFunc         func(ctx context.Context, id uuid.UUID) error
-	GetRolesFunc           func(ctx context.Context, userID uuid.UUID) ([]Role, error)
+	GetRoleFunc            func(ctx context.Context, userID uuid.UUID) (*Role, error)
+	CreateRoleFunc         func(ctx context.Context, role *Role) error
+	UpdateRoleFunc         func(ctx context.Context, role *Role) error
+	DeleteRoleFunc         func(ctx context.Context, userID uuid.UUID) error
 	GetStaffProfileFunc    func(ctx context.Context, userID uuid.UUID) (*StaffProfile, error)
 	CreateStaffProfileFunc func(ctx context.Context, profile *StaffProfile) error
 	UpdateStaffProfileFunc func(ctx context.Context, profile *StaffProfile) error
@@ -85,11 +88,33 @@ func (m *MockUserRepository) Deactivate(ctx context.Context, id uuid.UUID) error
 	return nil
 }
 
-func (m *MockUserRepository) GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error) {
-	if m.GetRolesFunc != nil {
-		return m.GetRolesFunc(ctx, userID)
+func (m *MockUserRepository) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {
+	if m.GetRoleFunc != nil {
+		return m.GetRoleFunc(ctx, userID)
 	}
-	return []Role{}, nil
+	return nil, nil
+}
+
+func (m *MockUserRepository) CreateRole(ctx context.Context, role *Role) error {
+	if m.CreateRoleFunc != nil {
+		return m.CreateRoleFunc(ctx, role)
+	}
+	role.ID = uuid.New()
+	return nil
+}
+
+func (m *MockUserRepository) UpdateRole(ctx context.Context, role *Role) error {
+	if m.UpdateRoleFunc != nil {
+		return m.UpdateRoleFunc(ctx, role)
+	}
+	return nil
+}
+
+func (m *MockUserRepository) DeleteRole(ctx context.Context, userID uuid.UUID) error {
+	if m.DeleteRoleFunc != nil {
+		return m.DeleteRoleFunc(ctx, userID)
+	}
+	return nil
 }
 
 func (m *MockUserRepository) GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error) {
@@ -598,7 +623,7 @@ func TestChangePassword_SamePassword(t *testing.T) {
 
 func TestCreateStaffUser_Success(t *testing.T) {
 	adminID := uuid.New()
-	actorRoles := []auth.RoleClaim{{Permission: "admin", ScopeType: "university"}}
+	actorRole := &auth.RoleClaim{Permission: "admin", ScopeType: "university"}
 
 	mockRepo := &MockUserRepository{
 		EmailExistsFunc: func(ctx context.Context, email string) (bool, error) {
@@ -614,7 +639,7 @@ func TestCreateStaffUser_Success(t *testing.T) {
 
 	svc := NewService(mockRepo, mockTokens)
 
-	user, profile, _, err := svc.CreateStaffUser(context.Background(), adminID, actorRoles, CreateStaffUserRequest{
+	user, profile, _, err := svc.CreateStaffUser(context.Background(), adminID, actorRole, CreateStaffUserRequest{
 		Email:        "new@example.com",
 		Password:     "password123",
 		FullNameEN:   "New Staff",
@@ -633,7 +658,7 @@ func TestCreateStaffUser_Success(t *testing.T) {
 }
 
 func TestCreateStaffUser_EmailExists(t *testing.T) {
-	actorRoles := []auth.RoleClaim{{Permission: "admin", ScopeType: "university"}}
+	actorRole := &auth.RoleClaim{Permission: "admin", ScopeType: "university"}
 	mockRepo := &MockUserRepository{
 		EmailExistsFunc: func(ctx context.Context, email string) (bool, error) {
 			return true, nil
@@ -643,7 +668,7 @@ func TestCreateStaffUser_EmailExists(t *testing.T) {
 
 	svc := NewService(mockRepo, mockTokens)
 
-	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRoles, CreateStaffUserRequest{
+	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "existing@example.com",
 		Password:     "password123",
 		FullNameEN:   "Staff",
@@ -655,13 +680,13 @@ func TestCreateStaffUser_EmailExists(t *testing.T) {
 }
 
 func TestCreateStaffUser_ScopeIDRequired(t *testing.T) {
-	actorRoles := []auth.RoleClaim{{Permission: "admin", ScopeType: "university"}}
+	actorRole := &auth.RoleClaim{Permission: "admin", ScopeType: "university"}
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
 	svc := NewService(mockRepo, mockTokens)
 
-	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRoles, CreateStaffUserRequest{
+	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
 		Password:     "password123",
 		FullNameEN:   "Staff",
@@ -679,14 +704,14 @@ func TestCreateStaffUser_ScopeIDRequired(t *testing.T) {
 
 func TestCreateStaffUser_ScopeIDNotAllowed(t *testing.T) {
 	scopeID := uuid.New()
-	actorRoles := []auth.RoleClaim{{Permission: "admin", ScopeType: "university"}}
+	actorRole := &auth.RoleClaim{Permission: "admin", ScopeType: "university"}
 
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
 	svc := NewService(mockRepo, mockTokens)
 
-	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRoles, CreateStaffUserRequest{
+	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
 		Password:     "password123",
 		FullNameEN:   "Staff",
@@ -703,13 +728,13 @@ func TestCreateStaffUser_ScopeIDNotAllowed(t *testing.T) {
 }
 
 func TestCreateStaffUser_CannotManageHigherRole(t *testing.T) {
-	actorRoles := []auth.RoleClaim{{Permission: "admin", ScopeType: "university"}}
+	actorRole := &auth.RoleClaim{Permission: "admin", ScopeType: "university"}
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
 	svc := NewService(mockRepo, mockTokens)
 
-	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRoles, CreateStaffUserRequest{
+	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
 		Password:     "password123",
 		FullNameEN:   "Staff",

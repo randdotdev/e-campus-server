@@ -40,22 +40,26 @@ func TestToUserResponse(t *testing.T) {
 	}
 }
 
-func TestToRolesResponse(t *testing.T) {
-	roles := []Role{
-		{ID: uuid.New(), Permission: "admin", ScopeType: "university"},
-		{ID: uuid.New(), Permission: "viewer", ScopeType: "college"},
-	}
+func TestToRoleResponse(t *testing.T) {
+	role := &Role{ID: uuid.New(), Permission: "admin", ScopeType: "university"}
 
-	resp := ToRolesResponse(roles)
+	resp := ToRoleResponse(role)
 
-	if len(resp) != 2 {
-		t.Fatalf("expected 2 roles, got %d", len(resp))
+	if resp == nil {
+		t.Fatal("response should not be nil")
 	}
-	if resp[0].Permission != "admin" {
-		t.Error("first role permission should be admin")
+	if resp.Permission != "admin" {
+		t.Error("role permission should be admin")
 	}
-	if resp[1].ScopeType != "college" {
-		t.Error("second role scope_type should be college")
+	if resp.ScopeType != "university" {
+		t.Error("role scope_type should be university")
+	}
+}
+
+func TestToRoleResponse_Nil(t *testing.T) {
+	resp := ToRoleResponse(nil)
+	if resp != nil {
+		t.Error("nil input should return nil")
 	}
 }
 

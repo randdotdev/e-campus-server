@@ -40,9 +40,9 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	roles, err := h.service.GetRoles(c.Request.Context(), userID)
+	role, err := h.service.GetRole(c.Request.Context(), userID)
 	if err != nil {
-		h.log.Error("get roles failed", zap.Error(err))
+		h.log.Error("get role failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
@@ -54,7 +54,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 
 	response.OK(c, UserDetailResponse{
 		UserResponse: ToUserResponse(user),
-		Roles:        ToRolesResponse(roles),
+		Role:         ToRoleResponse(role),
 		StaffProfile: ToStaffProfileResponse(staffProfile),
 	})
 }
@@ -113,17 +113,17 @@ func (h *Handler) UpdateEmail(c *gin.Context) {
 	response.NoContent(c)
 }
 
-func (h *Handler) GetMyRoles(c *gin.Context) {
+func (h *Handler) GetMyRole(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
-	roles, err := h.service.GetRoles(c.Request.Context(), userID)
+	role, err := h.service.GetRole(c.Request.Context(), userID)
 	if err != nil {
-		h.log.Error("get roles failed", zap.Error(err))
+		h.log.Error("get role failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
 
-	response.OK(c, ToRolesResponse(roles))
+	response.OK(c, ToRoleResponse(role))
 }
 
 func (h *Handler) GetMySessions(c *gin.Context) {
@@ -186,9 +186,9 @@ func (h *Handler) GetUser(c *gin.Context) {
 		return
 	}
 
-	roles, err := h.service.GetRoles(c.Request.Context(), userID)
+	role, err := h.service.GetRole(c.Request.Context(), userID)
 	if err != nil {
-		h.log.Error("get user roles failed", zap.Error(err))
+		h.log.Error("get user role failed", zap.Error(err))
 	}
 
 	staffProfile, err := h.service.GetStaffProfile(c.Request.Context(), userID)
@@ -198,7 +198,7 @@ func (h *Handler) GetUser(c *gin.Context) {
 
 	response.OK(c, UserDetailResponse{
 		UserResponse: ToUserResponse(user),
-		Roles:        ToRolesResponse(roles),
+		Role:         ToRoleResponse(role),
 		StaffProfile: ToStaffProfileResponse(staffProfile),
 	})
 }
@@ -375,8 +375,8 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	adminID := middleware.GetUserID(c)
-	actorRoles := middleware.GetUserRoles(c)
-	user, staffProfile, role, err := h.service.CreateStaffUser(c.Request.Context(), adminID, actorRoles, req)
+	actorRole := middleware.GetUserRole(c)
+	user, staffProfile, role, err := h.service.CreateStaffUser(c.Request.Context(), adminID, actorRole, req)
 	if err != nil {
 		if errors.Is(err, ErrEmailExists) {
 			response.Conflict(c, "email already exists")
@@ -403,14 +403,9 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	var roles []RoleResponse
-	if role != nil {
-		roles = []RoleResponse{ToRoleResponse(role)}
-	}
-
 	response.Created(c, UserDetailResponse{
 		UserResponse: ToUserResponse(user),
-		Roles:        roles,
+		Role:         ToRoleResponse(role),
 		StaffProfile: ToStaffProfileResponse(staffProfile),
 	})
 }
@@ -469,6 +464,106 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 			return
 		}
 		h.log.Error("change password failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.NoContent(c)
+}
+
+func (h *Handler) AssignRole(c *gin.Context) {
+	if !permission.CanAdminUniversity(c) {
+		response.Forbidden(c, "university admin access required")
+		return
+	}
+
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	var req AssignRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	adminID := middleware.GetUserID(c)
+	actorRole := middleware.GetUserRole(c)
+
+	role, err := h.service.AssignRole(c.Request.Context(), adminID, userID, actorRole, req)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			response.NotFound(c, "user not found")
+			return
+		}
+		if errors.Is(err, ErrCannotModifyOwnRole) {
+			response.BadRequest(c, "cannot modify own role")
+			return
+		}
+		if errors.Is(err, ErrCannotManageHigherRole) {
+			response.Forbidden(c, "cannot assign role with higher permission than your own")
+			return
+		}
+		if errors.Is(err, ErrCannotManageHigherScope) {
+			response.Forbidden(c, "cannot assign role at higher scope level than your own")
+			return
+		}
+		if errors.Is(err, ErrScopeIDRequired) {
+			response.BadRequest(c, "scope_id required for this scope type")
+			return
+		}
+		if errors.Is(err, ErrScopeIDNotAllowed) {
+			response.BadRequest(c, "scope_id not allowed for this scope type")
+			return
+		}
+		if errors.Is(err, ErrInvalidScopeID) {
+			response.BadRequest(c, "scope_id does not exist")
+			return
+		}
+		h.log.Error("assign role failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ToRoleResponse(role))
+}
+
+func (h *Handler) RemoveRole(c *gin.Context) {
+	if !permission.CanAdminUniversity(c) {
+		response.Forbidden(c, "university admin access required")
+		return
+	}
+
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	adminID := middleware.GetUserID(c)
+	actorRole := middleware.GetUserRole(c)
+
+	err = h.service.RemoveRole(c.Request.Context(), adminID, userID, actorRole)
+	if err != nil {
+		if errors.Is(err, ErrRoleNotFound) {
+			response.NotFound(c, "role not found")
+			return
+		}
+		if errors.Is(err, ErrCannotModifyOwnRole) {
+			response.BadRequest(c, "cannot remove own role")
+			return
+		}
+		if errors.Is(err, ErrCannotManageHigherRole) {
+			response.Forbidden(c, "cannot remove role with higher permission than your own")
+			return
+		}
+		if errors.Is(err, ErrCannotManageHigherScope) {
+			response.Forbidden(c, "cannot remove role at higher scope level than your own")
+			return
+		}
+		h.log.Error("remove role failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}

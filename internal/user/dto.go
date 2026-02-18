@@ -40,6 +40,13 @@ type CreateRoleRequest struct {
 	ScopeID    *uuid.UUID `json:"scope_id"`
 }
 
+type AssignRoleRequest struct {
+	Title      *string    `json:"title" binding:"omitempty,max=100"`
+	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
+	ScopeType  string     `json:"scope_type" binding:"required,oneof=platform university college department program"`
+	ScopeID    *uuid.UUID `json:"scope_id"`
+}
+
 type AdminSetPasswordRequest struct {
 	Password string `json:"password" binding:"required,min=8,max=72"`
 }
@@ -86,8 +93,8 @@ type UserResponse struct {
 
 type UserDetailResponse struct {
 	UserResponse
-	Roles        []RoleResponse         `json:"roles"`
-	StaffProfile *StaffProfileResponse  `json:"staff_profile,omitempty"`
+	Role         *RoleResponse         `json:"role"`
+	StaffProfile *StaffProfileResponse `json:"staff_profile,omitempty"`
 }
 
 type RoleResponse struct {
@@ -135,8 +142,11 @@ func ToUserResponse(u *User) UserResponse {
 	}
 }
 
-func ToRoleResponse(r *Role) RoleResponse {
-	return RoleResponse{
+func ToRoleResponse(r *Role) *RoleResponse {
+	if r == nil {
+		return nil
+	}
+	return &RoleResponse{
 		ID:         r.ID,
 		Title:      r.Title,
 		Permission: r.Permission,
@@ -144,14 +154,6 @@ func ToRoleResponse(r *Role) RoleResponse {
 		ScopeID:    r.ScopeID,
 		ExpiresAt:  r.ExpiresAt,
 	}
-}
-
-func ToRolesResponse(roles []Role) []RoleResponse {
-	result := make([]RoleResponse, len(roles))
-	for i := range roles {
-		result[i] = ToRoleResponse(&roles[i])
-	}
-	return result
 }
 
 func ToSessionResponse(s *Session) SessionResponse {

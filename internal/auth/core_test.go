@@ -119,31 +119,35 @@ func TestIsTokenUsed(t *testing.T) {
 	}
 }
 
-func TestBuildRoleClaims(t *testing.T) {
+func TestBuildRoleClaim(t *testing.T) {
 	title := "Admin"
 	scopeID := uuid.New()
 
-	roles := []RoleData{
-		{ID: uuid.New(), Permission: "admin", ScopeType: "university"},
-		{ID: uuid.New(), Title: &title, Permission: "viewer", ScopeType: "college", ScopeID: &scopeID},
+	role := &RoleData{ID: uuid.New(), Title: &title, Permission: "admin", ScopeType: "university", ScopeID: &scopeID}
+
+	claim := BuildRoleClaim(role)
+
+	if claim == nil {
+		t.Fatal("claim should not be nil")
 	}
 
-	claims := BuildRoleClaims(roles)
-
-	if len(claims) != 2 {
-		t.Fatalf("expected 2 claims, got %d", len(claims))
+	if claim["permission"] != "admin" {
+		t.Error("claim permission should be admin")
 	}
 
-	if claims[0]["permission"] != "admin" {
-		t.Error("first claim permission should be admin")
+	if claim["title"] != "Admin" {
+		t.Error("claim should have title")
 	}
 
-	if claims[1]["title"] != "Admin" {
-		t.Error("second claim should have title")
+	if claim["scope_id"] != scopeID.String() {
+		t.Error("claim should have scope_id")
 	}
+}
 
-	if claims[1]["scope_id"] != scopeID.String() {
-		t.Error("second claim should have scope_id")
+func TestBuildRoleClaim_NilRole(t *testing.T) {
+	claim := BuildRoleClaim(nil)
+	if claim != nil {
+		t.Error("BuildRoleClaim(nil) should return nil")
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 const (
 	UserIDKey     = "user_id"
 	UserEmailKey  = "user_email"
-	UserRolesKey  = "user_roles"
+	UserRoleKey   = "user_role"
 	UserClaimsKey = "user_claims"
 )
 
@@ -38,7 +38,7 @@ func Auth(authService *auth.Service) gin.HandlerFunc {
 
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(UserEmailKey, claims.Email)
-		c.Set(UserRolesKey, claims.Roles)
+		c.Set(UserRoleKey, claims.Role)
 		c.Set(UserClaimsKey, claims)
 		c.Next()
 	}
@@ -58,9 +58,12 @@ func GetUserEmail(c *gin.Context) string {
 	return ""
 }
 
-func GetUserRoles(c *gin.Context) []auth.RoleClaim {
-	if roles, exists := c.Get(UserRolesKey); exists {
-		return roles.([]auth.RoleClaim)
+func GetUserRole(c *gin.Context) *auth.RoleClaim {
+	if role, exists := c.Get(UserRoleKey); exists {
+		if role == nil {
+			return nil
+		}
+		return role.(*auth.RoleClaim)
 	}
 	return nil
 }

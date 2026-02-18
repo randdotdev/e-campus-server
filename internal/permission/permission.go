@@ -38,29 +38,31 @@ var scopeRank = map[string]int{
 	ScopeProgram:    1,
 }
 
-func Check(roles []auth.RoleClaim, requiredPermission, scopeType string, scopeID *uuid.UUID) bool {
+func Check(role *auth.RoleClaim, requiredPermission, scopeType string, scopeID *uuid.UUID) bool {
+	if role == nil {
+		return false
+	}
+
 	requiredRank := permissionRank[requiredPermission]
 	requiredScopeRank := scopeRank[scopeType]
 
-	for _, role := range roles {
-		roleRank := permissionRank[role.Permission]
-		roleScopeRank := scopeRank[role.ScopeType]
+	roleRank := permissionRank[role.Permission]
+	roleScopeRank := scopeRank[role.ScopeType]
 
-		if roleRank < requiredRank {
-			continue
-		}
+	if roleRank < requiredRank {
+		return false
+	}
 
-		if roleScopeRank > requiredScopeRank && (role.ScopeType == ScopePlatform || role.ScopeType == ScopeUniversity) {
+	if roleScopeRank > requiredScopeRank && (role.ScopeType == ScopePlatform || role.ScopeType == ScopeUniversity) {
+		return true
+	}
+
+	if roleScopeRank == requiredScopeRank {
+		if scopeID == nil || role.ScopeID == nil {
 			return true
 		}
-
-		if roleScopeRank == requiredScopeRank {
-			if scopeID == nil || role.ScopeID == nil {
-				return true
-			}
-			if *role.ScopeID == *scopeID {
-				return true
-			}
+		if *role.ScopeID == *scopeID {
+			return true
 		}
 	}
 
@@ -68,8 +70,8 @@ func Check(roles []auth.RoleClaim, requiredPermission, scopeType string, scopeID
 }
 
 func checkFromContext(c *gin.Context, permission, scope string, scopeID *uuid.UUID) bool {
-	roles := middleware.GetUserRoles(c)
-	return Check(roles, permission, scope, scopeID)
+	role := middleware.GetUserRole(c)
+	return Check(role, permission, scope, scopeID)
 }
 
 func CanAdminPlatform(c *gin.Context) bool {
@@ -148,14 +150,11 @@ func CanManageRole(actorPermission, targetPermission string) bool {
 	return permissionRank[actorPermission] >= permissionRank[targetPermission]
 }
 
-func MaxPermissionFromRoles(roles []auth.RoleClaim) string {
-	highest := ""
-	highestRank := 0
-	for _, role := range roles {
-		if rank := permissionRank[role.Permission]; rank > highestRank {
-			highestRank = rank
-			highest = role.Permission
-		}
-	}
-	return highest
+// CanManageScope checks if actor can manage roles at the target scope level.
+// Actor can only assign roles at their own scope level or below.
+func CanManageScope(actorScopeType, targetScopeType string) bool {
+	actorRank := scopeRank[actorScopeType]
+	targetRank := scopeRank[targetScopeType]
+	return actorRank >= targetRank
 }
+

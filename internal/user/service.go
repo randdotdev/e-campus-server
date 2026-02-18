@@ -11,14 +11,16 @@ import (
 )
 
 var (
-	ErrInvalidPassword  = errors.New("invalid password")
-	ErrSameEmail        = errors.New("new email is the same as current")
-	ErrSamePassword     = errors.New("new password is the same as current")
-	ErrSessionNotFound  = errors.New("session not found")
-	ErrCannotDeactivate = errors.New("cannot deactivate user")
+	ErrInvalidPassword        = errors.New("invalid password")
+	ErrSameEmail              = errors.New("new email is the same as current")
+	ErrSamePassword           = errors.New("new password is the same as current")
+	ErrSessionNotFound        = errors.New("session not found")
+	ErrCannotDeactivate       = errors.New("cannot deactivate user")
 	ErrScopeIDRequired        = errors.New("scope_id required for non-university scope")
 	ErrScopeIDNotAllowed      = errors.New("scope_id not allowed for university scope")
 	ErrCannotManageHigherRole = errors.New("cannot manage role with higher permission level")
+	ErrCannotModifyOwnRole    = errors.New("cannot modify own role")
+	ErrCannotManageHigherScope = errors.New("cannot manage role at higher scope level")
 )
 
 type UserRepository interface {
@@ -30,7 +32,10 @@ type UserRepository interface {
 	SetPassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
 	List(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error)
 	Deactivate(ctx context.Context, id uuid.UUID) error
-	GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error)
+	GetRole(ctx context.Context, userID uuid.UUID) (*Role, error)
+	CreateRole(ctx context.Context, role *Role) error
+	UpdateRole(ctx context.Context, role *Role) error
+	DeleteRole(ctx context.Context, userID uuid.UUID) error
 	GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error)
 	CreateStaffProfile(ctx context.Context, profile *StaffProfile) error
 	UpdateStaffProfile(ctx context.Context, profile *StaffProfile) error
@@ -119,8 +124,8 @@ func (s *Service) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
 	return s.repo.Deactivate(ctx, userID)
 }
 
-func (s *Service) GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error) {
-	return s.repo.GetRoles(ctx, userID)
+func (s *Service) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {
+	return s.repo.GetRole(ctx, userID)
 }
 
 func (s *Service) GetSessions(ctx context.Context, userID uuid.UUID) ([]Session, error) {
@@ -219,9 +224,12 @@ func (s *Service) UpdateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 	return profile, nil
 }
 
-func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorRoles []auth.RoleClaim, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
+func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorRole *auth.RoleClaim, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
 	if req.Role != nil {
-		actorPermission := permission.MaxPermissionFromRoles(actorRoles)
+		actorPermission := ""
+		if actorRole != nil {
+			actorPermission = actorRole.Permission
+		}
 		if !permission.CanManageRole(actorPermission, req.Role.Permission) {
 			return nil, nil, nil, ErrCannotManageHigherRole
 		}
@@ -331,5 +339,128 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 
 	// Invalidate all user sessions after password change
 	return s.tokens.DeleteUserTokens(ctx, userID)
+}
+
+func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUID, actorRole *auth.RoleClaim, req AssignRoleRequest) (*Role, error) {
+	// Prevent modifying own role
+	if adminID == targetUserID {
+		return nil, ErrCannotModifyOwnRole
+	}
+
+	// Check permission level
+	actorPermission := ""
+	actorScopeType := ""
+	if actorRole != nil {
+		actorPermission = actorRole.Permission
+		actorScopeType = actorRole.ScopeType
+	}
+	if !permission.CanManageRole(actorPermission, req.Permission) {
+		return nil, ErrCannotManageHigherRole
+	}
+
+	// Check scope level - actor cannot assign roles at higher scope than their own
+	if !permission.CanManageScope(actorScopeType, req.ScopeType) {
+		return nil, ErrCannotManageHigherScope
+	}
+
+	// Validate scope requirements
+	if err := s.validateRoleScope(ctx, req.ScopeType, req.ScopeID); err != nil {
+		return nil, err
+	}
+
+	// Verify target user exists
+	if _, err := s.repo.GetUser(ctx, targetUserID); err != nil {
+		return nil, err
+	}
+
+	role := &Role{
+		UserID:     targetUserID,
+		Title:      req.Title,
+		Permission: req.Permission,
+		ScopeType:  req.ScopeType,
+		ScopeID:    req.ScopeID,
+		AssignedBy: &adminID,
+	}
+
+	// Try to create, if exists then update
+	if err := s.repo.CreateRole(ctx, role); err != nil {
+		if errors.Is(err, ErrRoleExists) {
+			if err := s.repo.UpdateRole(ctx, role); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	// Invalidate user sessions so they get fresh JWT with new role
+	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
+
+	return role, nil
+}
+
+func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUID, actorRole *auth.RoleClaim) error {
+	// Prevent modifying own role
+	if adminID == targetUserID {
+		return ErrCannotModifyOwnRole
+	}
+
+	// Get target user's current role to check permission
+	targetRole, err := s.repo.GetRole(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+	if targetRole == nil {
+		return ErrRoleNotFound
+	}
+
+	// Check if actor can manage the target's permission level
+	actorPermission := ""
+	actorScopeType := ""
+	if actorRole != nil {
+		actorPermission = actorRole.Permission
+		actorScopeType = actorRole.ScopeType
+	}
+	if !permission.CanManageRole(actorPermission, targetRole.Permission) {
+		return ErrCannotManageHigherRole
+	}
+
+	// Check scope level - actor cannot remove roles at higher scope than their own
+	if !permission.CanManageScope(actorScopeType, targetRole.ScopeType) {
+		return ErrCannotManageHigherScope
+	}
+
+	if err := s.repo.DeleteRole(ctx, targetUserID); err != nil {
+		return err
+	}
+
+	// Invalidate user sessions so they get fresh JWT without role
+	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
+
+	return nil
+}
+
+func (s *Service) validateRoleScope(ctx context.Context, scopeType string, scopeID *uuid.UUID) error {
+	if scopeType == "platform" || scopeType == "university" {
+		if scopeID != nil {
+			return ErrScopeIDNotAllowed
+		}
+		return nil
+	}
+
+	// For college, department, program - scope_id is required
+	if scopeID == nil {
+		return ErrScopeIDRequired
+	}
+
+	exists, err := s.repo.ScopeExists(ctx, scopeType, *scopeID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrInvalidScopeID
+	}
+
+	return nil
 }
 

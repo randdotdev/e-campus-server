@@ -119,7 +119,7 @@ func run() error {
 			protected.GET("/me", userHandler.GetMe)
 			protected.PUT("/me", userHandler.UpdateMe)
 			protected.PUT("/me/email", userHandler.UpdateEmail)
-			protected.GET("/me/roles", userHandler.GetMyRoles)
+			protected.GET("/me/role", userHandler.GetMyRole)
 			protected.GET("/me/sessions", userHandler.GetMySessions)
 			protected.DELETE("/me/sessions/:id", userHandler.RevokeSession)
 			protected.PUT("/me/password", userHandler.ChangePassword)
@@ -128,6 +128,8 @@ func run() error {
 			{
 				admin.POST("/users", userHandler.CreateUser)
 				admin.PUT("/users/:id/password", userHandler.AdminSetPassword)
+				admin.PUT("/users/:id/role", userHandler.AssignRole)
+				admin.DELETE("/users/:id/role", userHandler.RemoveRole)
 			}
 
 			// Subscription routes - university admin (read-only)

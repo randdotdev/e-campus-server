@@ -16,7 +16,7 @@ type MockUserStore struct {
 	GetByEmailFunc   func(ctx context.Context, email string) (*UserData, error)
 	GetByIDFunc      func(ctx context.Context, id uuid.UUID) (*UserData, error)
 	EmailExistsFunc  func(ctx context.Context, email string) (bool, error)
-	GetUserRolesFunc func(ctx context.Context, userID uuid.UUID) ([]RoleData, error)
+	GetUserRoleFunc func(ctx context.Context, userID uuid.UUID) (*RoleData, error)
 }
 
 func (m *MockUserStore) Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*UserData, error) {
@@ -47,11 +47,11 @@ func (m *MockUserStore) EmailExists(ctx context.Context, email string) (bool, er
 	return false, nil
 }
 
-func (m *MockUserStore) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleData, error) {
-	if m.GetUserRolesFunc != nil {
-		return m.GetUserRolesFunc(ctx, userID)
+func (m *MockUserStore) GetUserRole(ctx context.Context, userID uuid.UUID) (*RoleData, error) {
+	if m.GetUserRoleFunc != nil {
+		return m.GetUserRoleFunc(ctx, userID)
 	}
-	return []RoleData{}, nil
+	return nil, nil
 }
 
 // MockTokenRepository implements TokenRepository interface for testing
@@ -197,8 +197,8 @@ func TestLogin_Success(t *testing.T) {
 				IsActive:     true,
 			}, nil
 		},
-		GetUserRolesFunc: func(ctx context.Context, userID uuid.UUID) ([]RoleData, error) {
-			return []RoleData{}, nil
+		GetUserRoleFunc: func(ctx context.Context, userID uuid.UUID) (*RoleData, error) {
+			return nil, nil
 		},
 	}
 	mockTokens := &MockTokenRepository{
@@ -323,8 +323,8 @@ func TestRefresh_Success(t *testing.T) {
 				IsActive:   true,
 			}, nil
 		},
-		GetUserRolesFunc: func(ctx context.Context, userID uuid.UUID) ([]RoleData, error) {
-			return []RoleData{}, nil
+		GetUserRoleFunc: func(ctx context.Context, userID uuid.UUID) (*RoleData, error) {
+			return nil, nil
 		},
 	}
 	mockTokens := &MockTokenRepository{
@@ -466,7 +466,7 @@ func TestValidateAccessToken_Success(t *testing.T) {
 	jwtCfg := testJWTConfig()
 	expiresAt := time.Now().Add(15 * time.Minute)
 
-	accessToken, err := GenerateAccessToken(userID, "test@example.com", []map[string]any{}, expiresAt, jwtCfg.Secret)
+	accessToken, err := GenerateAccessToken(userID, "test@example.com", nil, expiresAt, jwtCfg.Secret)
 	if err != nil {
 		t.Fatalf("GenerateAccessToken() error = %v", err)
 	}

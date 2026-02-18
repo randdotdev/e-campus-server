@@ -26,9 +26,9 @@ type TokenPair struct {
 }
 
 type JWTClaims struct {
-	UserID uuid.UUID   `json:"sub"`
-	Email  string      `json:"email"`
-	Roles  []RoleClaim `json:"roles"`
+	UserID uuid.UUID  `json:"sub"`
+	Email  string     `json:"email"`
+	Role   *RoleClaim `json:"role"`
 }
 
 type RoleClaim struct {

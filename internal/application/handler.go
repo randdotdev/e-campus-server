@@ -317,28 +317,28 @@ func (h *Handler) applyScopeRestrictions(c *gin.Context, filters ApplicationFilt
 		return filters
 	}
 
-	roles := middleware.GetUserRoles(c)
+	role := middleware.GetUserRole(c)
+	if role == nil {
+		return filters
+	}
 
-	for _, role := range roles {
-		if role.Permission != permission.Admin && role.Permission != permission.SuperAdmin {
-			continue
-		}
+	if role.Permission != permission.Admin && role.Permission != permission.SuperAdmin {
+		return filters
+	}
 
-		switch role.ScopeType {
-		case permission.ScopeCollege:
-			if role.ScopeID != nil {
-				filters.CollegeID = role.ScopeID
-			}
-		case permission.ScopeDepartment:
-			if role.ScopeID != nil {
-				filters.DepartmentID = role.ScopeID
-			}
-		case permission.ScopeProgram:
-			if role.ScopeID != nil {
-				filters.ProgramID = role.ScopeID
-			}
+	switch role.ScopeType {
+	case permission.ScopeCollege:
+		if role.ScopeID != nil {
+			filters.CollegeID = role.ScopeID
 		}
-		break
+	case permission.ScopeDepartment:
+		if role.ScopeID != nil {
+			filters.DepartmentID = role.ScopeID
+		}
+	case permission.ScopeProgram:
+		if role.ScopeID != nil {
+			filters.ProgramID = role.ScopeID
+		}
 	}
 
 	return filters

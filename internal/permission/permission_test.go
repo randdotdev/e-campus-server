@@ -8,9 +8,7 @@ import (
 )
 
 func TestCheck_UniversityAdmin_HasAccessEverywhere(t *testing.T) {
-	roles := []auth.RoleClaim{
-		{Permission: Admin, ScopeType: ScopeUniversity},
-	}
+	role := &auth.RoleClaim{Permission: Admin, ScopeType: ScopeUniversity}
 
 	tests := []struct {
 		name      string
@@ -26,7 +24,7 @@ func TestCheck_UniversityAdmin_HasAccessEverywhere(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Check(roles, Admin, tt.scopeType, tt.scopeID)
+			got := Check(role, Admin, tt.scopeType, tt.scopeID)
 			if got != tt.want {
 				t.Errorf("Check() = %v, want %v", got, tt.want)
 			}
@@ -37,9 +35,7 @@ func TestCheck_UniversityAdmin_HasAccessEverywhere(t *testing.T) {
 func TestCheck_CollegeAdmin_LimitedToOwnCollege(t *testing.T) {
 	collegeID := uuid.New()
 	otherCollegeID := uuid.New()
-	roles := []auth.RoleClaim{
-		{Permission: Admin, ScopeType: ScopeCollege, ScopeID: &collegeID},
-	}
+	role := &auth.RoleClaim{Permission: Admin, ScopeType: ScopeCollege, ScopeID: &collegeID}
 
 	tests := []struct {
 		name      string
@@ -56,7 +52,7 @@ func TestCheck_CollegeAdmin_LimitedToOwnCollege(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Check(roles, Admin, tt.scopeType, tt.scopeID)
+			got := Check(role, Admin, tt.scopeType, tt.scopeID)
 			if got != tt.want {
 				t.Errorf("Check() = %v, want %v", got, tt.want)
 			}
@@ -65,55 +61,49 @@ func TestCheck_CollegeAdmin_LimitedToOwnCollege(t *testing.T) {
 }
 
 func TestCheck_InsufficientPermission(t *testing.T) {
-	roles := []auth.RoleClaim{
-		{Permission: Viewer, ScopeType: ScopeUniversity},
-	}
+	role := &auth.RoleClaim{Permission: Viewer, ScopeType: ScopeUniversity}
 
-	got := Check(roles, Admin, ScopeUniversity, nil)
+	got := Check(role, Admin, ScopeUniversity, nil)
 	if got {
 		t.Error("viewer should not have admin access")
 	}
 }
 
 func TestCheck_OperatorCanViewButNotAdmin(t *testing.T) {
-	roles := []auth.RoleClaim{
-		{Permission: Operator, ScopeType: ScopeUniversity},
-	}
+	role := &auth.RoleClaim{Permission: Operator, ScopeType: ScopeUniversity}
 
-	if !Check(roles, Operator, ScopeUniversity, nil) {
+	if !Check(role, Operator, ScopeUniversity, nil) {
 		t.Error("operator should have operator access")
 	}
-	if !Check(roles, Viewer, ScopeUniversity, nil) {
+	if !Check(role, Viewer, ScopeUniversity, nil) {
 		t.Error("operator should have viewer access")
 	}
-	if Check(roles, Admin, ScopeUniversity, nil) {
+	if Check(role, Admin, ScopeUniversity, nil) {
 		t.Error("operator should not have admin access")
 	}
 }
 
-func TestCheck_NoRoles(t *testing.T) {
-	var roles []auth.RoleClaim
+func TestCheck_NoRole(t *testing.T) {
+	var role *auth.RoleClaim
 
-	got := Check(roles, Viewer, ScopeUniversity, nil)
+	got := Check(role, Viewer, ScopeUniversity, nil)
 	if got {
-		t.Error("no roles should not have any access")
+		t.Error("nil role should not have any access")
 	}
 }
 
 func TestCheck_DepartmentAdmin_OwnDepartmentOnly(t *testing.T) {
 	deptID := uuid.New()
 	otherDeptID := uuid.New()
-	roles := []auth.RoleClaim{
-		{Permission: Admin, ScopeType: ScopeDepartment, ScopeID: &deptID},
-	}
+	role := &auth.RoleClaim{Permission: Admin, ScopeType: ScopeDepartment, ScopeID: &deptID}
 
-	if !Check(roles, Admin, ScopeDepartment, &deptID) {
+	if !Check(role, Admin, ScopeDepartment, &deptID) {
 		t.Error("should have access to own department")
 	}
-	if Check(roles, Admin, ScopeDepartment, &otherDeptID) {
+	if Check(role, Admin, ScopeDepartment, &otherDeptID) {
 		t.Error("should not have access to other department")
 	}
-	if Check(roles, Admin, ScopeCollege, ptr(uuid.New())) {
+	if Check(role, Admin, ScopeCollege, ptr(uuid.New())) {
 		t.Error("should not have college-level access")
 	}
 }
@@ -151,28 +141,6 @@ func TestCanManageRole(t *testing.T) {
 			got := CanManageRole(tt.actor, tt.target)
 			if got != tt.want {
 				t.Errorf("CanManageRole(%s, %s) = %v, want %v", tt.actor, tt.target, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMaxPermissionFromRoles(t *testing.T) {
-	tests := []struct {
-		name  string
-		roles []auth.RoleClaim
-		want  string
-	}{
-		{"empty", []auth.RoleClaim{}, ""},
-		{"single admin", []auth.RoleClaim{{Permission: Admin}}, Admin},
-		{"viewer and admin", []auth.RoleClaim{{Permission: Viewer}, {Permission: Admin}}, Admin},
-		{"multiple with super_admin", []auth.RoleClaim{{Permission: Operator}, {Permission: SuperAdmin}, {Permission: Admin}}, SuperAdmin},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := MaxPermissionFromRoles(tt.roles)
-			if got != tt.want {
-				t.Errorf("MaxPermissionFromRoles() = %v, want %v", got, tt.want)
 			}
 		})
 	}

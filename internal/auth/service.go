@@ -24,7 +24,7 @@ type UserStore interface {
 	GetByEmail(ctx context.Context, email string) (*UserData, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*UserData, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
-	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleData, error)
+	GetUserRole(ctx context.Context, userID uuid.UUID) (*RoleData, error)
 }
 
 type Service struct {
@@ -125,15 +125,15 @@ func (s *Service) ValidateAccessToken(tokenString string) (*JWTClaims, error) {
 }
 
 func (s *Service) createTokenPair(ctx context.Context, user *UserData, family uuid.UUID, device, ip string) (*TokenPair, error) {
-	roles, err := s.users.GetUserRoles(ctx, user.ID)
+	role, err := s.users.GetUserRole(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	expiresAt := time.Now().Add(s.jwt.AccessTTL)
-	roleClaims := BuildRoleClaims(roles)
+	roleClaim := BuildRoleClaim(role)
 
-	accessToken, err := GenerateAccessToken(user.ID, user.Email, roleClaims, expiresAt, s.jwt.Secret)
+	accessToken, err := GenerateAccessToken(user.ID, user.Email, roleClaim, expiresAt, s.jwt.Secret)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,8 @@ var (
 	ErrStaffProfileExists   = errors.New("staff profile already exists")
 	ErrEmailExists          = errors.New("email already exists")
 	ErrInvalidScopeID       = errors.New("invalid scope id")
+	ErrRoleNotFound         = errors.New("role not found")
+	ErrRoleExists           = errors.New("role already exists")
 )
 
 type Repository struct {
@@ -79,17 +81,20 @@ func (r *Repository) EmailExists(ctx context.Context, email string) (bool, error
 	return exists, err
 }
 
-func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]auth.RoleData, error) {
-	var roles []Role
+func (r *Repository) GetUserRole(ctx context.Context, userID uuid.UUID) (*auth.RoleData, error) {
+	var role Role
 	query := `
 		SELECT * FROM roles
 		WHERE user_id = $1
 		AND (expires_at IS NULL OR expires_at > NOW())`
 
-	if err := r.db.SelectContext(ctx, &roles, query, userID); err != nil {
+	if err := r.db.GetContext(ctx, &role, query, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	return toRoleDataSlice(roles), nil
+	return toRoleData(&role), nil
 }
 
 func toUserData(u *User) *auth.UserData {
@@ -106,18 +111,14 @@ func toUserData(u *User) *auth.UserData {
 	}
 }
 
-func toRoleDataSlice(roles []Role) []auth.RoleData {
-	result := make([]auth.RoleData, len(roles))
-	for i, r := range roles {
-		result[i] = auth.RoleData{
-			ID:         r.ID,
-			Title:      r.Title,
-			Permission: r.Permission,
-			ScopeType:  r.ScopeType,
-			ScopeID:    r.ScopeID,
-		}
+func toRoleData(r *Role) *auth.RoleData {
+	return &auth.RoleData{
+		ID:         r.ID,
+		Title:      r.Title,
+		Permission: r.Permission,
+		ScopeType:  r.ScopeType,
+		ScopeID:    r.ScopeID,
 	}
-	return result
 }
 
 func (r *Repository) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
@@ -250,17 +251,20 @@ func (r *Repository) GetPasswordHash(ctx context.Context, id uuid.UUID) (string,
 	return hash, nil
 }
 
-func (r *Repository) GetRoles(ctx context.Context, userID uuid.UUID) ([]Role, error) {
-	var roles []Role
+func (r *Repository) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {
+	var role Role
 	query := `
 		SELECT * FROM roles
 		WHERE user_id = $1
 		AND (expires_at IS NULL OR expires_at > NOW())`
 
-	if err := r.db.SelectContext(ctx, &roles, query, userID); err != nil {
+	if err := r.db.GetContext(ctx, &role, query, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	return roles, nil
+	return &role, nil
 }
 
 func (r *Repository) GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error) {
@@ -393,4 +397,54 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 	}
 
 	return tx.Commit()
+}
+
+func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
+	query := `
+		INSERT INTO roles (user_id, title, permission, scope_type, scope_id, assigned_by, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at`
+
+	err := r.db.QueryRowxContext(ctx, query,
+		role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+	).Scan(&role.ID, &role.CreatedAt)
+
+	if err != nil && strings.Contains(err.Error(), "roles_user_id_key") {
+		return ErrRoleExists
+	}
+	return err
+}
+
+func (r *Repository) UpdateRole(ctx context.Context, role *Role) error {
+	query := `
+		UPDATE roles
+		SET title = $2, permission = $3, scope_type = $4, scope_id = $5, assigned_by = $6, expires_at = $7
+		WHERE user_id = $1
+		RETURNING id, created_at`
+
+	err := r.db.QueryRowxContext(ctx, query,
+		role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+	).Scan(&role.ID, &role.CreatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrRoleNotFound
+	}
+	return err
+}
+
+func (r *Repository) DeleteRole(ctx context.Context, userID uuid.UUID) error {
+	query := `DELETE FROM roles WHERE user_id = $1`
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrRoleNotFound
+	}
+	return nil
 }

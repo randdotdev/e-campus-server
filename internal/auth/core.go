@@ -38,33 +38,35 @@ func IsTokenUsed(usedAt *time.Time) bool {
 	return usedAt != nil
 }
 
-func BuildRoleClaims(roles []RoleData) []map[string]any {
-	claims := make([]map[string]any, len(roles))
-	for i, r := range roles {
-		claim := map[string]any{
-			"id":         r.ID.String(),
-			"permission": r.Permission,
-			"scope_type": r.ScopeType,
-		}
-		if r.Title != nil {
-			claim["title"] = *r.Title
-		}
-		if r.ScopeID != nil {
-			claim["scope_id"] = r.ScopeID.String()
-		}
-		claims[i] = claim
+func BuildRoleClaim(role *RoleData) map[string]any {
+	if role == nil {
+		return nil
 	}
-	return claims
+	claim := map[string]any{
+		"id":         role.ID.String(),
+		"permission": role.Permission,
+		"scope_type": role.ScopeType,
+	}
+	if role.Title != nil {
+		claim["title"] = *role.Title
+	}
+	if role.ScopeID != nil {
+		claim["scope_id"] = role.ScopeID.String()
+	}
+	return claim
 }
 
-func GenerateAccessToken(userID uuid.UUID, email string, roleClaims []map[string]any, expiresAt time.Time, secret string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+func GenerateAccessToken(userID uuid.UUID, email string, roleClaim map[string]any, expiresAt time.Time, secret string) (string, error) {
+	claims := jwt.MapClaims{
 		"sub":   userID.String(),
 		"email": email,
-		"roles": roleClaims,
 		"iat":   time.Now().Unix(),
 		"exp":   expiresAt.Unix(),
-	})
+	}
+	if roleClaim != nil {
+		claims["role"] = roleClaim
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
 }
 
@@ -109,31 +111,24 @@ func parseClaims(claims jwt.MapClaims) (*JWTClaims, error) {
 		Email:  email,
 	}
 
-	if rolesData, ok := claims["roles"].([]any); ok {
-		for _, r := range rolesData {
-			roleMap, ok := r.(map[string]any)
-			if !ok {
-				continue
-			}
+	if roleMap, ok := claims["role"].(map[string]any); ok {
+		idStr, _ := roleMap["id"].(string)
+		roleID, _ := uuid.Parse(idStr)
 
-			idStr, _ := roleMap["id"].(string)
-			roleID, _ := uuid.Parse(idStr)
-
-			role := RoleClaim{
-				ID:         roleID,
-				Permission: getString(roleMap, "permission"),
-				ScopeType:  getString(roleMap, "scope_type"),
-				Title:      getString(roleMap, "title"),
-			}
-
-			if scopeIDStr := getString(roleMap, "scope_id"); scopeIDStr != "" {
-				if parsed, err := uuid.Parse(scopeIDStr); err == nil {
-					role.ScopeID = &parsed
-				}
-			}
-
-			jwtClaims.Roles = append(jwtClaims.Roles, role)
+		role := RoleClaim{
+			ID:         roleID,
+			Permission: getString(roleMap, "permission"),
+			ScopeType:  getString(roleMap, "scope_type"),
+			Title:      getString(roleMap, "title"),
 		}
+
+		if scopeIDStr := getString(roleMap, "scope_id"); scopeIDStr != "" {
+			if parsed, err := uuid.Parse(scopeIDStr); err == nil {
+				role.ScopeID = &parsed
+			}
+		}
+
+		jwtClaims.Role = &role
 	}
 
 	return jwtClaims, nil
