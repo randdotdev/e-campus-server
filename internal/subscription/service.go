@@ -2,14 +2,8 @@ package subscription
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
-)
-
-var (
-	ErrInvalidTier         = errors.New("invalid tier")
-	ErrSubscriptionExpired = errors.New("subscription expired")
 )
 
 type SubscriptionRepository interface {

@@ -3,7 +3,6 @@ package pagination
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -17,8 +16,6 @@ const (
 	DefaultLimit = 20
 	MaxLimit     = 100
 )
-
-var ErrInvalidCursor = errors.New("invalid cursor")
 
 type PageParams struct {
 	Cursor string

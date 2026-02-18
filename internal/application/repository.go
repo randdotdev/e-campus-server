@@ -12,12 +12,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
-var (
-	ErrApplicationNotFound  = errors.New("application not found")
-	ErrDuplicateApplication = errors.New("pending application already exists for this program and year")
-	ErrProgramNotFound      = errors.New("program not found")
-)
-
 type Repository struct {
 	db *sqlx.DB
 }

@@ -9,11 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var (
-	ErrSubscriptionNotFound = errors.New("subscription not found")
-	ErrTierNotFound         = errors.New("tier not found")
-)
-
 type Repository struct {
 	db *sqlx.DB
 }

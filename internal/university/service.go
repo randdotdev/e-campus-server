@@ -2,17 +2,10 @@ package university
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
-)
-
-var (
-	ErrCollegeLimitReached    = errors.New("college limit reached")
-	ErrDepartmentLimitReached = errors.New("department limit reached")
-	ErrProgramLimitReached    = errors.New("program limit reached")
 )
 
 type UniversityRepository interface {

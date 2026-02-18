@@ -10,19 +10,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/permission"
 )
 
-var (
-	ErrInvalidPassword        = errors.New("invalid password")
-	ErrSameEmail              = errors.New("new email is the same as current")
-	ErrSamePassword           = errors.New("new password is the same as current")
-	ErrSessionNotFound        = errors.New("session not found")
-	ErrCannotDeactivate       = errors.New("cannot deactivate user")
-	ErrScopeIDRequired        = errors.New("scope_id required for non-university scope")
-	ErrScopeIDNotAllowed      = errors.New("scope_id not allowed for university scope")
-	ErrCannotManageHigherRole = errors.New("cannot manage role with higher permission level")
-	ErrCannotModifyOwnRole    = errors.New("cannot modify own role")
-	ErrCannotManageHigherScope = errors.New("cannot manage role at higher scope level")
-)
-
 type UserRepository interface {
 	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
 	Update(ctx context.Context, user *User) error

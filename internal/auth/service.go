@@ -9,16 +9,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 )
 
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrEmailExists        = errors.New("email already exists")
-	ErrInvalidToken       = errors.New("invalid token")
-	ErrTokenExpired       = errors.New("token expired")
-	ErrTokenReused        = errors.New("token reused")
-	ErrUserInactive       = errors.New("user is inactive")
-	ErrUserNotFound       = errors.New("user not found")
-)
-
 type UserStore interface {
 	Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*UserData, error)
 	GetByEmail(ctx context.Context, email string) (*UserData, error)

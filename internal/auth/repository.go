@@ -11,10 +11,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var (
-	ErrTokenNotFound = errors.New("token not found")
-)
-
 type TokenRepository interface {
 	CreateToken(ctx context.Context, token *RefreshToken) error
 	GetTokenByHash(ctx context.Context, hash string) (*RefreshToken, error)

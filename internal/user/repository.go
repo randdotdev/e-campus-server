@@ -13,16 +13,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
-var (
-	ErrUserNotFound         = errors.New("user not found")
-	ErrStaffProfileNotFound = errors.New("staff profile not found")
-	ErrStaffProfileExists   = errors.New("staff profile already exists")
-	ErrEmailExists          = errors.New("email already exists")
-	ErrInvalidScopeID       = errors.New("invalid scope id")
-	ErrRoleNotFound         = errors.New("role not found")
-	ErrRoleExists           = errors.New("role already exists")
-)
-
 type Repository struct {
 	db *sqlx.DB
 }

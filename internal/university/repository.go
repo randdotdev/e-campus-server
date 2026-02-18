@@ -12,13 +12,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
-var (
-	ErrCollegeNotFound    = errors.New("college not found")
-	ErrDepartmentNotFound = errors.New("department not found")
-	ErrProgramNotFound    = errors.New("program not found")
-	ErrCodeExists         = errors.New("code already exists")
-)
-
 type Repository struct {
 	db *sqlx.DB
 }
