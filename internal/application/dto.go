@@ -26,7 +26,7 @@ type ApplicationFilters struct {
 type CreateApplicationRequest struct {
 	ProgramID     uuid.UUID       `json:"program_id" binding:"required"`
 	AdmissionYear int             `json:"admission_year" binding:"required,min=2000,max=2100"`
-	StudyType     string          `json:"study_type" binding:"required,oneof=morning evening"`
+	StudyType     string          `json:"study_type" binding:"required,oneof=morning evening parallel"`
 	DateOfBirth   string          `json:"date_of_birth" binding:"required"`
 	Gender        string          `json:"gender" binding:"required,oneof=male female other"`
 	Nationality   string          `json:"nationality" binding:"required,max=100"`
