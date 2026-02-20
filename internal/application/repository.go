@@ -25,15 +25,15 @@ func NewRepository(db *sqlx.DB) *Repository {
 func (r *Repository) Create(ctx context.Context, app *Application) error {
 	query := `
 		INSERT INTO applications (
-			user_id, program_id, admission_year, study_type,
+			user_id, program_id, admission_year, shift, tuition,
 			date_of_birth, gender, nationality,
 			personal_extra, academic, documents, status
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at`
 
 	return r.db.QueryRowxContext(ctx, query,
-		app.UserID, app.ProgramID, app.AdmissionYear, app.StudyType,
+		app.UserID, app.ProgramID, app.AdmissionYear, app.Shift, app.Tuition,
 		app.DateOfBirth, app.Gender, app.Nationality,
 		app.PersonalExtra, app.Academic, app.Documents, app.Status,
 	).Scan(&app.ID, &app.CreatedAt, &app.UpdatedAt)
@@ -145,9 +145,15 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 		argN++
 	}
 
-	if filters.StudyType != nil {
-		query.WriteString(fmt.Sprintf(" AND a.study_type = $%d", argN))
-		args = append(args, *filters.StudyType)
+	if filters.Shift != nil {
+		query.WriteString(fmt.Sprintf(" AND a.shift = $%d", argN))
+		args = append(args, *filters.Shift)
+		argN++
+	}
+
+	if filters.Tuition != nil {
+		query.WriteString(fmt.Sprintf(" AND a.tuition = $%d", argN))
+		args = append(args, *filters.Tuition)
 		argN++
 	}
 

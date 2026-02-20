@@ -14,6 +14,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/application"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
+	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
@@ -95,6 +96,10 @@ func run() error {
 	applicationRepo := application.NewRepository(db)
 	applicationService := application.NewService(applicationRepo)
 	applicationHandler := application.NewHandler(applicationService, log)
+
+	courseRepo := course.NewRepository(db)
+	courseService := course.NewService(courseRepo)
+	courseHandler := course.NewHandler(courseService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -187,6 +192,44 @@ func run() error {
 			protected.GET("/applications", applicationHandler.List)
 			protected.GET("/applications/:id", applicationHandler.Get)
 			protected.PUT("/applications/:id/review", applicationHandler.Review)
+
+			// Course routes
+			protected.GET("/courses", courseHandler.ListCourses)
+			protected.POST("/courses", courseHandler.CreateCourse)
+			protected.GET("/courses/:id", courseHandler.GetCourse)
+			protected.PUT("/courses/:id", courseHandler.UpdateCourse)
+			protected.GET("/courses/:id/siblings", courseHandler.GetSiblingCourses)
+
+			// Offering routes
+			protected.GET("/offerings", courseHandler.ListOfferings)
+			protected.POST("/offerings", courseHandler.CreateOffering)
+			protected.GET("/offerings/:id", courseHandler.GetOffering)
+			protected.PUT("/offerings/:id", courseHandler.UpdateOffering)
+			protected.GET("/offerings/:id/access-level", courseHandler.GetAccessLevel)
+
+			// Teacher routes
+			protected.GET("/offerings/:offering_id/teachers", courseHandler.ListTeachers)
+			protected.POST("/offerings/:offering_id/teachers", courseHandler.AddTeacher)
+			protected.DELETE("/offerings/:offering_id/teachers/:user_id", courseHandler.RemoveTeacher)
+
+			// Enrollment routes
+			protected.GET("/offerings/:offering_id/enrollments", courseHandler.ListEnrollments)
+			protected.POST("/offerings/:offering_id/enrollments", courseHandler.EnrollStudent)
+
+			// Section routes
+			protected.GET("/offerings/:offering_id/sections", courseHandler.ListSections)
+			protected.POST("/sections", courseHandler.CreateSection)
+			protected.GET("/sections/:id", courseHandler.GetSection)
+			protected.PUT("/sections/:id", courseHandler.UpdateSection)
+			protected.DELETE("/sections/:id", courseHandler.DeleteSection)
+
+			// Lesson routes
+			protected.GET("/sections/:section_id/lessons", courseHandler.ListLessonsBySection)
+			protected.GET("/offerings/:offering_id/lessons", courseHandler.ListLessonsByOffering)
+			protected.POST("/lessons", courseHandler.CreateLesson)
+			protected.GET("/lessons/:id", courseHandler.GetLesson)
+			protected.PUT("/lessons/:id", courseHandler.UpdateLesson)
+			protected.DELETE("/lessons/:id", courseHandler.DeleteLesson)
 		}
 	}
 

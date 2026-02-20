@@ -26,7 +26,8 @@ func TestToApplicationResponse(t *testing.T) {
 		UserID:        &userID,
 		ProgramID:     programID,
 		AdmissionYear: 2024,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "male",
 		Nationality:   "Iraq",
@@ -55,8 +56,11 @@ func TestToApplicationResponse(t *testing.T) {
 	if resp.AdmissionYear != 2024 {
 		t.Errorf("AdmissionYear = %v, want 2024", resp.AdmissionYear)
 	}
-	if resp.StudyType != StudyTypeMorning {
-		t.Errorf("StudyType = %v, want %v", resp.StudyType, StudyTypeMorning)
+	if resp.Shift != ShiftDay {
+		t.Errorf("Shift = %v, want %v", resp.Shift, ShiftDay)
+	}
+	if resp.Tuition != TuitionFree {
+		t.Errorf("Tuition = %v, want %v", resp.Tuition, TuitionFree)
 	}
 	if resp.DateOfBirth != "2000-01-15" {
 		t.Errorf("DateOfBirth = %v, want 2000-01-15", resp.DateOfBirth)
@@ -94,7 +98,8 @@ func TestToApplicationResponse_EmptyJSONB(t *testing.T) {
 		ID:            uuid.New(),
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2024,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "female",
 		Nationality:   "Iraq",
@@ -134,7 +139,8 @@ func TestToApplicationsResponse(t *testing.T) {
 			ID:            uuid.New(),
 			ProgramID:     uuid.New(),
 			AdmissionYear: 2024,
-			StudyType:     StudyTypeMorning,
+			Shift:         ShiftDay,
+			Tuition:       TuitionFree,
 			DateOfBirth:   "2000-01-15",
 			Gender:        "male",
 			Nationality:   "Iraq",
@@ -146,7 +152,8 @@ func TestToApplicationsResponse(t *testing.T) {
 			ID:            uuid.New(),
 			ProgramID:     uuid.New(),
 			AdmissionYear: 2025,
-			StudyType:     StudyTypeEvening,
+			Shift:         ShiftEvening,
+			Tuition:       TuitionPaid,
 			DateOfBirth:   "1999-05-20",
 			Gender:        "female",
 			Nationality:   "Turkey",

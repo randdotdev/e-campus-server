@@ -109,7 +109,8 @@ func TestCreateApplication_Success(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "male",
 		Nationality:   "Iraqi",
@@ -135,7 +136,8 @@ func TestCreateApplication_ProgramNotFound(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "male",
 		Nationality:   "Iraqi",
@@ -158,7 +160,8 @@ func TestCreateApplication_ProgramInactive(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "male",
 		Nationality:   "Iraqi",
@@ -185,7 +188,8 @@ func TestCreateApplication_AgeTooYoung(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2015-01-15", // too young
 		Gender:        "male",
 		Nationality:   "Iraqi",
@@ -212,7 +216,8 @@ func TestCreateApplication_AgeTooOld(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "1980-01-15", // too old
 		Gender:        "male",
 		Nationality:   "Iraqi",
@@ -241,7 +246,8 @@ func TestCreateApplication_DuplicateApplication(t *testing.T) {
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
 		AdmissionYear: 2025,
-		StudyType:     StudyTypeMorning,
+		Shift:         ShiftDay,
+		Tuition:       TuitionFree,
 		DateOfBirth:   "2000-01-15",
 		Gender:        "male",
 		Nationality:   "Iraqi",

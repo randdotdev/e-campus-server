@@ -15,7 +15,8 @@ type ApplicationFilters struct {
 	CollegeID     *uuid.UUID
 	Status        *string
 	AdmissionYear *int
-	StudyType     *string
+	Shift         *string
+	Tuition       *string
 	Nationality   *string
 	Gender        *string
 	UserID        *uuid.UUID
@@ -26,7 +27,8 @@ type ApplicationFilters struct {
 type CreateApplicationRequest struct {
 	ProgramID     uuid.UUID       `json:"program_id" binding:"required"`
 	AdmissionYear int             `json:"admission_year" binding:"required,min=2000,max=2100"`
-	StudyType     string          `json:"study_type" binding:"required,oneof=morning evening parallel"`
+	Shift         string          `json:"shift" binding:"required,oneof=day evening"`
+	Tuition       string          `json:"tuition" binding:"required,oneof=free paid"`
 	DateOfBirth   string          `json:"date_of_birth" binding:"required"`
 	Gender        string          `json:"gender" binding:"required,oneof=male female other"`
 	Nationality   string          `json:"nationality" binding:"required,max=100"`
@@ -58,7 +60,8 @@ type ApplicationResponse struct {
 	UserID        *uuid.UUID     `json:"user_id,omitempty"`
 	ProgramID     uuid.UUID      `json:"program_id"`
 	AdmissionYear int            `json:"admission_year"`
-	StudyType     string         `json:"study_type"`
+	Shift         string         `json:"shift"`
+	Tuition       string         `json:"tuition"`
 	DateOfBirth   string         `json:"date_of_birth"`
 	Gender        string         `json:"gender"`
 	Nationality   string         `json:"nationality"`
@@ -79,7 +82,8 @@ func ToApplicationResponse(a *Application) ApplicationResponse {
 		UserID:        a.UserID,
 		ProgramID:     a.ProgramID,
 		AdmissionYear: a.AdmissionYear,
-		StudyType:     a.StudyType,
+		Shift:         a.Shift,
+		Tuition:       a.Tuition,
 		DateOfBirth:   a.DateOfBirth,
 		Gender:        a.Gender,
 		Nationality:   a.Nationality,

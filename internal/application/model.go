@@ -13,7 +13,8 @@ type Application struct {
 	UserID        *uuid.UUID      `db:"user_id"`
 	ProgramID     uuid.UUID       `db:"program_id"`
 	AdmissionYear int             `db:"admission_year"`
-	StudyType     string          `db:"study_type"`
+	Shift         string          `db:"shift"`
+	Tuition       string          `db:"tuition"`
 	DateOfBirth   string          `db:"date_of_birth"`
 	Gender        string          `db:"gender"`
 	Nationality   string          `db:"nationality"`
@@ -43,6 +44,11 @@ const (
 )
 
 const (
-	StudyTypeMorning = "morning"
-	StudyTypeEvening = "evening"
+	ShiftDay     = "day"
+	ShiftEvening = "evening"
+)
+
+const (
+	TuitionFree = "free"
+	TuitionPaid = "paid"
 )

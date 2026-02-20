@@ -383,8 +383,12 @@ func (h *Handler) parseFilters(c *gin.Context) (ApplicationFilters, error) {
 		filters.AdmissionYear = &year
 	}
 
-	if studyType := c.Query("study_type"); studyType != "" {
-		filters.StudyType = &studyType
+	if shift := c.Query("shift"); shift != "" {
+		filters.Shift = &shift
+	}
+
+	if tuition := c.Query("tuition"); tuition != "" {
+		filters.Tuition = &tuition
 	}
 
 	if nationality := c.Query("nationality"); nationality != "" {
