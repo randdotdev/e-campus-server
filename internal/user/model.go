@@ -8,17 +8,17 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID  `db:"id"`
-	Email        string     `db:"email"`
-	PasswordHash string     `db:"password_hash"`
-	FullNameEN   string     `db:"full_name_en"`
-	FullNameKU   *string    `db:"full_name_ku"`
-	AvatarURL    *string    `db:"avatar_url"`
-	Phone        *string    `db:"phone"`
-	IsActive     bool       `db:"is_active"`
-	IsVerified   bool       `db:"is_verified"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	ID           uuid.UUID `db:"id"`
+	Email        string    `db:"email"`
+	PasswordHash string    `db:"password_hash"`
+	FullNameEN   string    `db:"full_name_en"`
+	FullNameKU   *string   `db:"full_name_ku"`
+	AvatarURL    *string   `db:"avatar_url"`
+	Phone        *string   `db:"phone"`
+	IsActive     bool      `db:"is_active"`
+	IsVerified   bool      `db:"is_verified"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 type StaffProfile struct {

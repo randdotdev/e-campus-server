@@ -150,11 +150,8 @@ func CanManageRole(actorPermission, targetPermission string) bool {
 	return permissionRank[actorPermission] >= permissionRank[targetPermission]
 }
 
-// CanManageScope checks if actor can manage roles at the target scope level.
-// Actor can only assign roles at their own scope level or below.
 func CanManageScope(actorScopeType, targetScopeType string) bool {
 	actorRank := scopeRank[actorScopeType]
 	targetRank := scopeRank[targetScopeType]
 	return actorRank >= targetRank
 }
-

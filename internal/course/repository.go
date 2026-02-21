@@ -620,7 +620,6 @@ func (r *Repository) ListLessons(ctx context.Context, filters LessonFilters) ([]
 	if filters.ScheduledTo != nil {
 		query.WriteString(fmt.Sprintf(" AND scheduled_at <= $%d", argN))
 		args = append(args, *filters.ScheduledTo)
-		argN++
 	}
 
 	query.WriteString(" ORDER BY order_index")

@@ -221,4 +221,3 @@ func (s *Service) ListApplications(ctx context.Context, params pagination.PagePa
 func (s *Service) ListUserApplications(ctx context.Context, userID uuid.UUID, params pagination.PageParams) ([]Application, bool, error) {
 	return s.repo.ListByUser(ctx, userID, params)
 }
-

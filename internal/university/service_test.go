@@ -34,7 +34,7 @@ type MockRepository struct {
 	ProgramCodeExistsFunc func(ctx context.Context, departmentID uuid.UUID, code string, excludeID *uuid.UUID) (bool, error)
 
 	// Count mocks
-	CountCollegesFunc            func(ctx context.Context) (int, error)
+	CountCollegesFunc             func(ctx context.Context) (int, error)
 	CountDepartmentsByCollegeFunc func(ctx context.Context, collegeID uuid.UUID) (int, error)
 	CountProgramsByDepartmentFunc func(ctx context.Context, departmentID uuid.UUID) (int, error)
 }

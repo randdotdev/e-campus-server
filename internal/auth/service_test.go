@@ -12,10 +12,10 @@ import (
 
 // MockUserStore implements UserStore interface for testing
 type MockUserStore struct {
-	CreateFunc       func(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*UserData, error)
-	GetByEmailFunc   func(ctx context.Context, email string) (*UserData, error)
-	GetByIDFunc      func(ctx context.Context, id uuid.UUID) (*UserData, error)
-	EmailExistsFunc  func(ctx context.Context, email string) (bool, error)
+	CreateFunc      func(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*UserData, error)
+	GetByEmailFunc  func(ctx context.Context, email string) (*UserData, error)
+	GetByIDFunc     func(ctx context.Context, id uuid.UUID) (*UserData, error)
+	EmailExistsFunc func(ctx context.Context, email string) (bool, error)
 	GetUserRoleFunc func(ctx context.Context, userID uuid.UUID) (*RoleData, error)
 }
 

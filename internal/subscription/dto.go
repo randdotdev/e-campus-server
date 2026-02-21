@@ -46,13 +46,13 @@ type UpdateTierLimitsRequest struct {
 // Response DTOs
 
 type SubscriptionResponse struct {
-	ID         uuid.UUID         `json:"id"`
-	Tier       string            `json:"tier"`
-	Limits     Limits            `json:"limits"`
-	Overrides  *OverridesResponse `json:"overrides,omitempty"`
-	ExpiresAt  *time.Time        `json:"expires_at,omitempty"`
-	UpdatedBy  *uuid.UUID        `json:"updated_by,omitempty"`
-	UpdatedAt  time.Time         `json:"updated_at"`
+	ID        uuid.UUID          `json:"id"`
+	Tier      string             `json:"tier"`
+	Limits    Limits             `json:"limits"`
+	Overrides *OverridesResponse `json:"overrides,omitempty"`
+	ExpiresAt *time.Time         `json:"expires_at,omitempty"`
+	UpdatedBy *uuid.UUID         `json:"updated_by,omitempty"`
+	UpdatedAt time.Time          `json:"updated_at"`
 }
 
 type OverridesResponse struct {

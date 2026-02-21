@@ -450,4 +450,3 @@ func (s *Service) validateRoleScope(ctx context.Context, scopeType string, scope
 
 	return nil
 }
-

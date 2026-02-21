@@ -11,14 +11,14 @@ import (
 
 // MockRepository implements ApplicationRepository for testing
 type MockRepository struct {
-	CreateFunc                   func(ctx context.Context, app *Application) error
-	GetByIDFunc                  func(ctx context.Context, id uuid.UUID) (*Application, error)
-	UpdateFunc                   func(ctx context.Context, app *Application) error
-	HasPendingApplicationFunc    func(ctx context.Context, userID, programID uuid.UUID, admissionYear int) (bool, error)
-	ListFunc                     func(ctx context.Context, params pagination.PageParams, filters ApplicationFilters) ([]Application, bool, error)
-	ListByUserFunc               func(ctx context.Context, userID uuid.UUID, params pagination.PageParams) ([]Application, bool, error)
-	GetProgramHierarchyFunc      func(ctx context.Context, programID uuid.UUID) (*ProgramHierarchy, error)
-	IsProgramActiveFunc          func(ctx context.Context, programID uuid.UUID) (bool, error)
+	CreateFunc                    func(ctx context.Context, app *Application) error
+	GetByIDFunc                   func(ctx context.Context, id uuid.UUID) (*Application, error)
+	UpdateFunc                    func(ctx context.Context, app *Application) error
+	HasPendingApplicationFunc     func(ctx context.Context, userID, programID uuid.UUID, admissionYear int) (bool, error)
+	ListFunc                      func(ctx context.Context, params pagination.PageParams, filters ApplicationFilters) ([]Application, bool, error)
+	ListByUserFunc                func(ctx context.Context, userID uuid.UUID, params pagination.PageParams) ([]Application, bool, error)
+	GetProgramHierarchyFunc       func(ctx context.Context, programID uuid.UUID) (*ProgramHierarchy, error)
+	IsProgramActiveFunc           func(ctx context.Context, programID uuid.UUID) (bool, error)
 	GetProgramAgeRequirementsFunc func(ctx context.Context, programID uuid.UUID) (*ProgramAgeRequirements, error)
 }
 
@@ -527,4 +527,3 @@ func TestReviewApplication_InvalidTargetStatus(t *testing.T) {
 		t.Errorf("expected ErrInvalidStatus, got %v", err)
 	}
 }
-

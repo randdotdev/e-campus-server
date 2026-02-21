@@ -12,12 +12,12 @@ import (
 // Mock repository for testing
 type mockRepo struct {
 	// Course
-	createCourseFunc      func(ctx context.Context, c *Course) error
-	getCourseFunc         func(ctx context.Context, id uuid.UUID) (*Course, error)
-	listCoursesFunc       func(ctx context.Context, params pagination.PageParams, filters CourseFilters) ([]Course, bool, error)
-	updateCourseFunc      func(ctx context.Context, c *Course) error
-	getCoursesByCodeFunc  func(ctx context.Context, departmentID uuid.UUID, code string) ([]Course, error)
-	courseCodeExistsFunc  func(ctx context.Context, departmentID uuid.UUID, code string, groupOrder int, excludeID *uuid.UUID) (bool, error)
+	createCourseFunc     func(ctx context.Context, c *Course) error
+	getCourseFunc        func(ctx context.Context, id uuid.UUID) (*Course, error)
+	listCoursesFunc      func(ctx context.Context, params pagination.PageParams, filters CourseFilters) ([]Course, bool, error)
+	updateCourseFunc     func(ctx context.Context, c *Course) error
+	getCoursesByCodeFunc func(ctx context.Context, departmentID uuid.UUID, code string) ([]Course, error)
+	courseCodeExistsFunc func(ctx context.Context, departmentID uuid.UUID, code string, groupOrder int, excludeID *uuid.UUID) (bool, error)
 
 	// Offering
 	createOfferingFunc func(ctx context.Context, o *Offering) error
