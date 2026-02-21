@@ -16,6 +16,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
+	"github.com/ranjdotdev/e-campus-server/internal/exam"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
@@ -100,6 +101,10 @@ func run() error {
 	courseRepo := course.NewRepository(db)
 	courseService := course.NewService(courseRepo)
 	courseHandler := course.NewHandler(courseService, log)
+
+	examRepo := exam.NewRepository(db)
+	examService := exam.NewService(examRepo)
+	examHandler := exam.NewHandler(examService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -230,6 +235,9 @@ func run() error {
 			protected.GET("/lessons/:id", courseHandler.GetLesson)
 			protected.PUT("/lessons/:id", courseHandler.UpdateLesson)
 			protected.DELETE("/lessons/:id", courseHandler.DeleteLesson)
+
+			// Exam routes
+			examHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
