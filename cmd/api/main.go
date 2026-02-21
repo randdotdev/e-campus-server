@@ -18,6 +18,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
+	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
@@ -76,6 +77,19 @@ func run() error {
 		}
 	}()
 	log.Info("connected to Redis")
+
+	storageClient, err := storage.New(storage.Config{
+		Endpoint:  cfg.S3.Endpoint,
+		Bucket:    cfg.S3.Bucket,
+		AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey,
+		UseSSL:    cfg.S3.UseSSL,
+	})
+	if err != nil {
+		return fmt.Errorf("connect minio: %w", err)
+	}
+	_ = storageClient // used by material service
+	log.Info("connected to MinIO")
 
 	authRepo := auth.NewTokenRepository(rdb)
 	userRepo := user.NewRepository(db)
