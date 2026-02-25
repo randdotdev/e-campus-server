@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/ranjdotdev/e-campus-server/internal/application"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
@@ -17,6 +18,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
+	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
@@ -88,7 +90,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("connect minio: %w", err)
 	}
-	_ = storageClient // used by material service
 	log.Info("connected to MinIO")
 
 	authRepo := auth.NewTokenRepository(rdb)
@@ -119,6 +120,11 @@ func run() error {
 	examRepo := exam.NewRepository(db)
 	examService := exam.NewService(examRepo)
 	examHandler := exam.NewHandler(examService, log)
+
+	filesRepo := files.NewRepository(db)
+	filesLimits := &storageLimitsAdapter{sub: subscriptionService}
+	filesService := files.NewService(filesRepo, storageClient, filesLimits)
+	filesHandler := files.NewHandler(filesService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -252,6 +258,25 @@ func run() error {
 
 			// Exam routes
 			examHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// Files routes (user storage)
+			storage := protected.Group("/me/storage")
+			{
+				storage.GET("/folders", filesHandler.ListFolders)
+				storage.POST("/folders", filesHandler.CreateFolder)
+				storage.GET("/folders/:id", filesHandler.GetFolder)
+				storage.PUT("/folders/:id", filesHandler.UpdateFolder)
+				storage.DELETE("/folders/:id", filesHandler.DeleteFolder)
+
+				storage.GET("/files", filesHandler.ListFiles)
+				storage.POST("/files", filesHandler.UploadFile)
+				storage.GET("/files/:id", filesHandler.GetFile)
+				storage.PUT("/files/:id", filesHandler.UpdateFile)
+				storage.DELETE("/files/:id", filesHandler.DeleteFile)
+				storage.POST("/files/:id/copy", filesHandler.CopyFile)
+
+				storage.GET("/usage", filesHandler.GetStorageUsage)
+			}
 		}
 	}
 
@@ -296,4 +321,24 @@ func gracefulShutdown(srv *http.Server, log *zap.Logger) error {
 
 	log.Info("server exited")
 	return nil
+}
+
+type storageLimitsAdapter struct {
+	sub *subscription.Service
+}
+
+func (a *storageLimitsAdapter) GetFileSizeLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
+	limits, err := a.sub.GetLimits(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return limits.MaxFileSizeBytes, nil
+}
+
+func (a *storageLimitsAdapter) GetStorageLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
+	limits, err := a.sub.GetLimits(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return limits.MaxStorageBytes, nil
 }

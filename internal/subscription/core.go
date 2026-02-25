@@ -2,7 +2,6 @@ package subscription
 
 import "time"
 
-// Limits represents effective limits for the system.
 type Limits struct {
 	MaxColleges              int
 	MaxDepartmentsPerCollege int
@@ -10,9 +9,10 @@ type Limits struct {
 	MaxStudentsPerProgram    int
 	MaxApplicationsPerUser   int
 	MaxStaffUsers            int
+	MaxStorageBytes          int64
+	MaxFileSizeBytes         int64
 }
 
-// ToLimits converts TierLimits to Limits.
 func ToLimits(tl *TierLimits) Limits {
 	return Limits{
 		MaxColleges:              tl.MaxColleges,
@@ -21,10 +21,11 @@ func ToLimits(tl *TierLimits) Limits {
 		MaxStudentsPerProgram:    tl.MaxStudentsPerProgram,
 		MaxApplicationsPerUser:   tl.MaxApplicationsPerUser,
 		MaxStaffUsers:            tl.MaxStaffUsers,
+		MaxStorageBytes:          tl.MaxStorageBytes,
+		MaxFileSizeBytes:         tl.MaxFileSizeBytes,
 	}
 }
 
-// ApplyOverrides applies subscription overrides to base limits.
 func ApplyOverrides(base Limits, sub *Subscription) Limits {
 	if sub.MaxCollegesOverride != nil {
 		base.MaxColleges = *sub.MaxCollegesOverride
@@ -44,20 +45,26 @@ func ApplyOverrides(base Limits, sub *Subscription) Limits {
 	if sub.MaxStaffOverride != nil {
 		base.MaxStaffUsers = *sub.MaxStaffOverride
 	}
+	if sub.MaxStorageOverride != nil {
+		base.MaxStorageBytes = *sub.MaxStorageOverride
+	}
+	if sub.MaxFileSizeOverride != nil {
+		base.MaxFileSizeBytes = *sub.MaxFileSizeOverride
+	}
 	return base
 }
 
-// HasOverrides checks if subscription has any overrides.
 func HasOverrides(sub *Subscription) bool {
 	return sub.MaxCollegesOverride != nil ||
 		sub.MaxDepartmentsOverride != nil ||
 		sub.MaxProgramsOverride != nil ||
 		sub.MaxStudentsOverride != nil ||
 		sub.MaxApplicationsOverride != nil ||
-		sub.MaxStaffOverride != nil
+		sub.MaxStaffOverride != nil ||
+		sub.MaxStorageOverride != nil ||
+		sub.MaxFileSizeOverride != nil
 }
 
-// IsExpired checks if the subscription has expired.
 func IsExpired(expiresAt *time.Time) bool {
 	if expiresAt == nil {
 		return false
@@ -65,7 +72,6 @@ func IsExpired(expiresAt *time.Time) bool {
 	return time.Now().After(*expiresAt)
 }
 
-// IsValidTier checks if the tier is valid.
 func IsValidTier(tier string) bool {
 	switch tier {
 	case TierFree, TierBasic, TierPremium:
@@ -75,16 +81,74 @@ func IsValidTier(tier string) bool {
 	}
 }
 
-// CanCreate checks if creation is allowed based on current count and limit.
 func CanCreate(currentCount, limit int) bool {
 	return currentCount < limit
 }
 
-// Remaining returns remaining quota.
 func Remaining(currentCount, limit int) int {
 	r := limit - currentCount
 	if r < 0 {
 		return 0
 	}
 	return r
+}
+
+type Overrides struct {
+	MaxColleges     *int
+	MaxDepartments  *int
+	MaxPrograms     *int
+	MaxStudents     *int
+	MaxApplications *int
+	MaxStaff        *int
+	MaxStorage      *int64
+	MaxFileSize     *int64
+}
+
+func SetOverridesOnSubscription(sub *Subscription, overrides Overrides) *Subscription {
+	result := *sub
+	if overrides.MaxColleges != nil {
+		result.MaxCollegesOverride = overrides.MaxColleges
+	}
+	if overrides.MaxDepartments != nil {
+		result.MaxDepartmentsOverride = overrides.MaxDepartments
+	}
+	if overrides.MaxPrograms != nil {
+		result.MaxProgramsOverride = overrides.MaxPrograms
+	}
+	if overrides.MaxStudents != nil {
+		result.MaxStudentsOverride = overrides.MaxStudents
+	}
+	if overrides.MaxApplications != nil {
+		result.MaxApplicationsOverride = overrides.MaxApplications
+	}
+	if overrides.MaxStaff != nil {
+		result.MaxStaffOverride = overrides.MaxStaff
+	}
+	if overrides.MaxStorage != nil {
+		result.MaxStorageOverride = overrides.MaxStorage
+	}
+	if overrides.MaxFileSize != nil {
+		result.MaxFileSizeOverride = overrides.MaxFileSize
+	}
+	return &result
+}
+
+func ClearOverridesOnSubscription(sub *Subscription) *Subscription {
+	result := *sub
+	result.MaxCollegesOverride = nil
+	result.MaxDepartmentsOverride = nil
+	result.MaxProgramsOverride = nil
+	result.MaxStudentsOverride = nil
+	result.MaxApplicationsOverride = nil
+	result.MaxStaffOverride = nil
+	result.MaxStorageOverride = nil
+	result.MaxFileSizeOverride = nil
+	return &result
+}
+
+func DefaultHistoryLimit(limit int) int {
+	if limit <= 0 {
+		return 50
+	}
+	return limit
 }

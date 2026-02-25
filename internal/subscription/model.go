@@ -15,6 +15,8 @@ type TierLimits struct {
 	MaxStudentsPerProgram    int       `db:"max_students_per_program"`
 	MaxApplicationsPerUser   int       `db:"max_applications_per_user"`
 	MaxStaffUsers            int       `db:"max_staff_users"`
+	MaxStorageBytes          int64     `db:"max_storage_bytes"`
+	MaxFileSizeBytes         int64     `db:"max_file_size_bytes"`
 	UpdatedAt                time.Time `db:"updated_at"`
 }
 
@@ -27,6 +29,8 @@ type Subscription struct {
 	MaxStudentsOverride     *int       `db:"max_students_override"`
 	MaxApplicationsOverride *int       `db:"max_applications_override"`
 	MaxStaffOverride        *int       `db:"max_staff_override"`
+	MaxStorageOverride      *int64     `db:"max_storage_override"`
+	MaxFileSizeOverride     *int64     `db:"max_file_size_override"`
 	ExpiresAt               *time.Time `db:"expires_at"`
 	UpdatedBy               *uuid.UUID `db:"updated_by"`
 	UpdatedAt               time.Time  `db:"updated_at"`
@@ -42,6 +46,8 @@ type History struct {
 	MaxStudentsOverride     *int       `db:"max_students_override"`
 	MaxApplicationsOverride *int       `db:"max_applications_override"`
 	MaxStaffOverride        *int       `db:"max_staff_override"`
+	MaxStorageOverride      *int64     `db:"max_storage_override"`
+	MaxFileSizeOverride     *int64     `db:"max_file_size_override"`
 	ExpiresAt               *time.Time `db:"expires_at"`
 	ChangedBy               *uuid.UUID `db:"changed_by"`
 	ChangedAt               time.Time  `db:"changed_at"`

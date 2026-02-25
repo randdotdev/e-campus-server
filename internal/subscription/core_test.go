@@ -189,3 +189,107 @@ func TestRemaining(t *testing.T) {
 		})
 	}
 }
+
+func TestSetOverridesOnSubscription(t *testing.T) {
+	t.Run("applies overrides without mutating original", func(t *testing.T) {
+		original := &Subscription{Tier: TierBasic}
+		colleges := 50
+		storage := int64(1073741824)
+
+		overrides := Overrides{
+			MaxColleges: &colleges,
+			MaxStorage:  &storage,
+		}
+
+		result := SetOverridesOnSubscription(original, overrides)
+
+		// Result should have overrides
+		if result.MaxCollegesOverride == nil || *result.MaxCollegesOverride != 50 {
+			t.Errorf("MaxCollegesOverride = %v, want 50", result.MaxCollegesOverride)
+		}
+		if result.MaxStorageOverride == nil || *result.MaxStorageOverride != storage {
+			t.Errorf("MaxStorageOverride = %v, want %d", result.MaxStorageOverride, storage)
+		}
+
+		// Original should be unchanged
+		if original.MaxCollegesOverride != nil {
+			t.Error("original should not be mutated")
+		}
+	})
+
+	t.Run("preserves existing overrides if not provided", func(t *testing.T) {
+		existing := 30
+		original := &Subscription{
+			Tier:                TierBasic,
+			MaxCollegesOverride: &existing,
+		}
+
+		departments := 40
+		overrides := Overrides{
+			MaxDepartments: &departments,
+		}
+
+		result := SetOverridesOnSubscription(original, overrides)
+
+		// New override applied
+		if result.MaxDepartmentsOverride == nil || *result.MaxDepartmentsOverride != 40 {
+			t.Errorf("MaxDepartmentsOverride = %v, want 40", result.MaxDepartmentsOverride)
+		}
+
+		// Existing override preserved
+		if result.MaxCollegesOverride == nil || *result.MaxCollegesOverride != 30 {
+			t.Errorf("MaxCollegesOverride = %v, want 30 (preserved)", result.MaxCollegesOverride)
+		}
+	})
+}
+
+func TestClearOverridesOnSubscription(t *testing.T) {
+	t.Run("clears all overrides without mutating original", func(t *testing.T) {
+		c, d, s := 50, 30, int64(1073741824)
+		original := &Subscription{
+			Tier:                   TierBasic,
+			MaxCollegesOverride:    &c,
+			MaxDepartmentsOverride: &d,
+			MaxStorageOverride:     &s,
+		}
+
+		result := ClearOverridesOnSubscription(original)
+
+		// Result should have no overrides
+		if result.MaxCollegesOverride != nil {
+			t.Error("MaxCollegesOverride should be nil")
+		}
+		if result.MaxDepartmentsOverride != nil {
+			t.Error("MaxDepartmentsOverride should be nil")
+		}
+		if result.MaxStorageOverride != nil {
+			t.Error("MaxStorageOverride should be nil")
+		}
+
+		// Original should be unchanged
+		if original.MaxCollegesOverride == nil || *original.MaxCollegesOverride != 50 {
+			t.Error("original should not be mutated")
+		}
+	})
+}
+
+func TestDefaultHistoryLimit(t *testing.T) {
+	tests := []struct {
+		name  string
+		limit int
+		want  int
+	}{
+		{"zero uses default", 0, 50},
+		{"negative uses default", -5, 50},
+		{"positive passes through", 25, 25},
+		{"large value passes through", 100, 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DefaultHistoryLimit(tt.limit); got != tt.want {
+				t.Errorf("DefaultHistoryLimit(%d) = %d, want %d", tt.limit, got, tt.want)
+			}
+		})
+	}
+}

@@ -20,6 +20,8 @@ type SetOverridesRequest struct {
 	MaxStudents     *int   `json:"max_students" binding:"omitempty,min=1"`
 	MaxApplications *int   `json:"max_applications" binding:"omitempty,min=1"`
 	MaxStaff        *int   `json:"max_staff" binding:"omitempty,min=1"`
+	MaxStorage      *int64 `json:"max_storage" binding:"omitempty,min=1"`
+	MaxFileSize     *int64 `json:"max_file_size" binding:"omitempty,min=1"`
 	Reason          string `json:"reason" binding:"required,max=255"`
 }
 
@@ -31,16 +33,20 @@ func (r SetOverridesRequest) ToOverrides() Overrides {
 		MaxStudents:     r.MaxStudents,
 		MaxApplications: r.MaxApplications,
 		MaxStaff:        r.MaxStaff,
+		MaxStorage:      r.MaxStorage,
+		MaxFileSize:     r.MaxFileSize,
 	}
 }
 
 type UpdateTierLimitsRequest struct {
-	MaxColleges              int `json:"max_colleges" binding:"required,min=1"`
-	MaxDepartmentsPerCollege int `json:"max_departments_per_college" binding:"required,min=1"`
-	MaxProgramsPerDepartment int `json:"max_programs_per_department" binding:"required,min=1"`
-	MaxStudentsPerProgram    int `json:"max_students_per_program" binding:"required,min=1"`
-	MaxApplicationsPerUser   int `json:"max_applications_per_user" binding:"required,min=1"`
-	MaxStaffUsers            int `json:"max_staff_users" binding:"required,min=1"`
+	MaxColleges              int   `json:"max_colleges" binding:"required,min=1"`
+	MaxDepartmentsPerCollege int   `json:"max_departments_per_college" binding:"required,min=1"`
+	MaxProgramsPerDepartment int   `json:"max_programs_per_department" binding:"required,min=1"`
+	MaxStudentsPerProgram    int   `json:"max_students_per_program" binding:"required,min=1"`
+	MaxApplicationsPerUser   int   `json:"max_applications_per_user" binding:"required,min=1"`
+	MaxStaffUsers            int   `json:"max_staff_users" binding:"required,min=1"`
+	MaxStorageBytes          int64 `json:"max_storage_bytes" binding:"required,min=1"`
+	MaxFileSizeBytes         int64 `json:"max_file_size_bytes" binding:"required,min=1"`
 }
 
 // Response DTOs
@@ -56,12 +62,14 @@ type SubscriptionResponse struct {
 }
 
 type OverridesResponse struct {
-	MaxColleges     *int `json:"max_colleges,omitempty"`
-	MaxDepartments  *int `json:"max_departments,omitempty"`
-	MaxPrograms     *int `json:"max_programs,omitempty"`
-	MaxStudents     *int `json:"max_students,omitempty"`
-	MaxApplications *int `json:"max_applications,omitempty"`
-	MaxStaff        *int `json:"max_staff,omitempty"`
+	MaxColleges     *int   `json:"max_colleges,omitempty"`
+	MaxDepartments  *int   `json:"max_departments,omitempty"`
+	MaxPrograms     *int   `json:"max_programs,omitempty"`
+	MaxStudents     *int   `json:"max_students,omitempty"`
+	MaxApplications *int   `json:"max_applications,omitempty"`
+	MaxStaff        *int   `json:"max_staff,omitempty"`
+	MaxStorage      *int64 `json:"max_storage,omitempty"`
+	MaxFileSize     *int64 `json:"max_file_size,omitempty"`
 }
 
 type TierLimitsResponse struct {
@@ -72,6 +80,8 @@ type TierLimitsResponse struct {
 	MaxStudentsPerProgram    int       `json:"max_students_per_program"`
 	MaxApplicationsPerUser   int       `json:"max_applications_per_user"`
 	MaxStaffUsers            int       `json:"max_staff_users"`
+	MaxStorageBytes          int64     `json:"max_storage_bytes"`
+	MaxFileSizeBytes         int64     `json:"max_file_size_bytes"`
 	UpdatedAt                time.Time `json:"updated_at"`
 }
 
@@ -105,6 +115,8 @@ func ToSubscriptionResponse(sub *Subscription, limits Limits) SubscriptionRespon
 			MaxStudents:     sub.MaxStudentsOverride,
 			MaxApplications: sub.MaxApplicationsOverride,
 			MaxStaff:        sub.MaxStaffOverride,
+			MaxStorage:      sub.MaxStorageOverride,
+			MaxFileSize:     sub.MaxFileSizeOverride,
 		}
 	}
 
@@ -120,6 +132,8 @@ func ToTierLimitsResponse(tl *TierLimits) TierLimitsResponse {
 		MaxStudentsPerProgram:    tl.MaxStudentsPerProgram,
 		MaxApplicationsPerUser:   tl.MaxApplicationsPerUser,
 		MaxStaffUsers:            tl.MaxStaffUsers,
+		MaxStorageBytes:          tl.MaxStorageBytes,
+		MaxFileSizeBytes:         tl.MaxFileSizeBytes,
 		UpdatedAt:                tl.UpdatedAt,
 	}
 }
@@ -144,7 +158,8 @@ func ToHistoryResponse(h *History) HistoryResponse {
 
 	if h.MaxCollegesOverride != nil || h.MaxDepartmentsOverride != nil ||
 		h.MaxProgramsOverride != nil || h.MaxStudentsOverride != nil ||
-		h.MaxApplicationsOverride != nil || h.MaxStaffOverride != nil {
+		h.MaxApplicationsOverride != nil || h.MaxStaffOverride != nil ||
+		h.MaxStorageOverride != nil || h.MaxFileSizeOverride != nil {
 		resp.Overrides = &OverridesResponse{
 			MaxColleges:     h.MaxCollegesOverride,
 			MaxDepartments:  h.MaxDepartmentsOverride,
@@ -152,6 +167,8 @@ func ToHistoryResponse(h *History) HistoryResponse {
 			MaxStudents:     h.MaxStudentsOverride,
 			MaxApplications: h.MaxApplicationsOverride,
 			MaxStaff:        h.MaxStaffOverride,
+			MaxStorage:      h.MaxStorageOverride,
+			MaxFileSize:     h.MaxFileSizeOverride,
 		}
 	}
 
