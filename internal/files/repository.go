@@ -274,6 +274,12 @@ func (r *Repository) GetStorageUsed(ctx context.Context, ownerID uuid.UUID) (int
 	return total, nil
 }
 
+func (r *Repository) StoredFileExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM stored_files WHERE id = $1)`, id)
+	return exists, err
+}
+
 func itoa(i int) string {
 	return string(rune('0' + i))
 }

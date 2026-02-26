@@ -1,4 +1,4 @@
-// Package course handles academic courses, offerings, sections, and lessons.
+// Package course handles academic courses, offerings, enrollments, and groups.
 package course
 
 import (
@@ -75,13 +75,11 @@ type Lesson struct {
 	CreatedAt     time.Time  `db:"created_at"`
 }
 
-// Shift constants
 const (
 	ShiftDay     = "day"
 	ShiftEvening = "evening"
 )
 
-// Enrollment type constants
 const (
 	EnrollmentTypeCurriculum = "curriculum"
 	EnrollmentTypeRetake     = "retake"
@@ -89,13 +87,11 @@ const (
 	EnrollmentTypeExtra      = "extra"
 )
 
-// Teacher role constants
 const (
 	TeacherRoleTeacher   = "teacher"
 	TeacherRoleAssistant = "assistant"
 )
 
-// Enrollment status constants
 const (
 	EnrollmentStatusEnrolled  = "enrolled"
 	EnrollmentStatusDropped   = "dropped"
@@ -103,14 +99,32 @@ const (
 	EnrollmentStatusFailed    = "failed"
 )
 
-// Lesson type constants
+type Group struct {
+	ID         uuid.UUID `db:"id"`
+	OfferingID uuid.UUID `db:"offering_id"`
+	Type       string    `db:"type"`
+	Name       string    `db:"name"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
+type StudentGroup struct {
+	ID         uuid.UUID `db:"id"`
+	StudentID  uuid.UUID `db:"student_id"`
+	GroupID    uuid.UUID `db:"group_id"`
+	AssignedAt time.Time `db:"assigned_at"`
+}
+
+const (
+	GroupTypeTheory   = "theory"
+	GroupTypePractice = "practice"
+)
+
 const (
 	LessonTypeTheory   = "theory"
 	LessonTypePractice = "practice"
 	LessonTypeOther    = "other"
 )
 
-// AccessLevel for multi-semester course access
 type AccessLevel int
 
 const (

@@ -15,14 +15,15 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/application"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
+	"github.com/ranjdotdev/e-campus-server/internal/content"
 	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
-	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
 	"github.com/ranjdotdev/e-campus-server/internal/university"
 	"github.com/ranjdotdev/e-campus-server/internal/user"
@@ -125,6 +126,15 @@ func run() error {
 	filesLimits := &storageLimitsAdapter{sub: subscriptionService}
 	filesService := files.NewService(filesRepo, storageClient, filesLimits)
 	filesHandler := files.NewHandler(filesService, log)
+
+	contentRepo := content.NewRepository(db)
+	contentService := content.NewService(
+		contentRepo,
+		&offeringCheckerAdapter{repo: courseRepo},
+		&groupCheckerAdapter{repo: courseRepo},
+		&storedFileCheckerAdapter{repo: filesRepo},
+	)
+	contentHandler := content.NewHandler(contentService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -260,23 +270,46 @@ func run() error {
 			examHandler.RegisterRoutes(protected, middleware.Auth(authService))
 
 			// Files routes (user storage)
-			storage := protected.Group("/me/storage")
+			userStorage := protected.Group("/me/storage")
 			{
-				storage.GET("/folders", filesHandler.ListFolders)
-				storage.POST("/folders", filesHandler.CreateFolder)
-				storage.GET("/folders/:id", filesHandler.GetFolder)
-				storage.PUT("/folders/:id", filesHandler.UpdateFolder)
-				storage.DELETE("/folders/:id", filesHandler.DeleteFolder)
+				userStorage.GET("/folders", filesHandler.ListFolders)
+				userStorage.POST("/folders", filesHandler.CreateFolder)
+				userStorage.GET("/folders/:id", filesHandler.GetFolder)
+				userStorage.PUT("/folders/:id", filesHandler.UpdateFolder)
+				userStorage.DELETE("/folders/:id", filesHandler.DeleteFolder)
 
-				storage.GET("/files", filesHandler.ListFiles)
-				storage.POST("/files", filesHandler.UploadFile)
-				storage.GET("/files/:id", filesHandler.GetFile)
-				storage.PUT("/files/:id", filesHandler.UpdateFile)
-				storage.DELETE("/files/:id", filesHandler.DeleteFile)
-				storage.POST("/files/:id/copy", filesHandler.CopyFile)
+				userStorage.GET("/files", filesHandler.ListFiles)
+				userStorage.POST("/files", filesHandler.UploadFile)
+				userStorage.GET("/files/:id", filesHandler.GetFile)
+				userStorage.PUT("/files/:id", filesHandler.UpdateFile)
+				userStorage.DELETE("/files/:id", filesHandler.DeleteFile)
+				userStorage.POST("/files/:id/copy", filesHandler.CopyFile)
 
-				storage.GET("/usage", filesHandler.GetStorageUsage)
+				userStorage.GET("/usage", filesHandler.GetStorageUsage)
 			}
+
+			// Content routes (sections, lessons, attachments, schedules)
+			protected.GET("/offerings/:offering_id/sections", contentHandler.ListSections)
+			protected.POST("/sections", contentHandler.CreateSection)
+			protected.GET("/sections/:id", contentHandler.GetSection)
+			protected.PUT("/sections/:id", contentHandler.UpdateSection)
+			protected.DELETE("/sections/:id", contentHandler.DeleteSection)
+
+			protected.GET("/sections/:section_id/lessons", contentHandler.ListLessons)
+			protected.POST("/lessons", contentHandler.CreateLesson)
+			protected.GET("/lessons/:id", contentHandler.GetLesson)
+			protected.PUT("/lessons/:id", contentHandler.UpdateLesson)
+			protected.DELETE("/lessons/:id", contentHandler.DeleteLesson)
+
+			protected.POST("/lessons/:lesson_id/attachments", contentHandler.AddAttachment)
+			protected.DELETE("/attachments/:id", contentHandler.RemoveAttachment)
+			protected.GET("/lessons/:lesson_id/attachments/:display_name/url", contentHandler.GetAttachmentURL)
+
+			protected.POST("/lessons/:lesson_id/schedules", contentHandler.AddSchedule)
+			protected.PUT("/schedules/:id", contentHandler.UpdateSchedule)
+			protected.DELETE("/schedules/:id", contentHandler.RemoveSchedule)
+
+			protected.GET("/me/classes", contentHandler.GetMyClasses)
 		}
 	}
 
@@ -341,4 +374,32 @@ func (a *storageLimitsAdapter) GetStorageLimit(ctx context.Context, userID uuid.
 		return 0, err
 	}
 	return limits.MaxStorageBytes, nil
+}
+
+type offeringCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *offeringCheckerAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.OfferingExists(ctx, id)
+}
+
+type groupCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *groupCheckerAdapter) GroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.GroupExists(ctx, id)
+}
+
+func (a *groupCheckerAdapter) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
+	return a.repo.GetStudentGroupIDs(ctx, studentID, offeringID)
+}
+
+type storedFileCheckerAdapter struct {
+	repo *files.Repository
+}
+
+func (a *storedFileCheckerAdapter) StoredFileExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.StoredFileExists(ctx, id)
 }

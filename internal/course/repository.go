@@ -685,3 +685,64 @@ func (r *Repository) GetOfferingsByCourseCodeAndCohort(ctx context.Context, depa
 	}
 	return offerings, nil
 }
+
+func (r *Repository) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM course_offerings WHERE id = $1)`, id)
+	return exists, err
+}
+
+// Groups
+
+func (r *Repository) CreateGroup(ctx context.Context, g *Group) error {
+	query := `INSERT INTO groups (id, offering_id, type, name, created_at) VALUES ($1, $2, $3, $4, $5)`
+	_, err := r.db.ExecContext(ctx, query, g.ID, g.OfferingID, g.Type, g.Name, g.CreatedAt)
+	return err
+}
+
+func (r *Repository) GetGroupByID(ctx context.Context, id uuid.UUID) (*Group, error) {
+	var g Group
+	err := r.db.GetContext(ctx, &g, `SELECT id, offering_id, type, name, created_at FROM groups WHERE id = $1`, id)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &g, err
+}
+
+func (r *Repository) ListGroups(ctx context.Context, offeringID uuid.UUID) ([]Group, error) {
+	var groups []Group
+	query := `SELECT id, offering_id, type, name, created_at FROM groups WHERE offering_id = $1 ORDER BY type, name`
+	err := r.db.SelectContext(ctx, &groups, query, offeringID)
+	return groups, err
+}
+
+func (r *Repository) DeleteGroup(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM groups WHERE id = $1`, id)
+	return err
+}
+
+func (r *Repository) GroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM groups WHERE id = $1)`, id)
+	return exists, err
+}
+
+func (r *Repository) AssignStudentToGroup(ctx context.Context, sg *StudentGroup) error {
+	query := `INSERT INTO student_groups (id, student_id, group_id, assigned_at) VALUES ($1, $2, $3, $4)`
+	_, err := r.db.ExecContext(ctx, query, sg.ID, sg.StudentID, sg.GroupID, sg.AssignedAt)
+	return err
+}
+
+func (r *Repository) RemoveStudentFromGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM student_groups WHERE student_id = $1 AND group_id = $2`, studentID, groupID)
+	return err
+}
+
+func (r *Repository) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	query := `SELECT sg.group_id FROM student_groups sg
+		JOIN groups g ON g.id = sg.group_id
+		WHERE sg.student_id = $1 AND g.offering_id = $2`
+	err := r.db.SelectContext(ctx, &ids, query, studentID, offeringID)
+	return ids, err
+}
