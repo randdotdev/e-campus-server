@@ -24,6 +24,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
@@ -152,6 +153,22 @@ func run() error {
 		&courseCheckerAdapter{repo: courseRepo},
 	)
 	assignmentHandler := assignment.NewHandler(assignmentService, log)
+
+	postRepo := post.NewRepository(db)
+	postLikeRepo := post.NewLikeRepository(db)
+	postAttachmentRepo := post.NewAttachmentRepository(db)
+	postMentionRepo := post.NewMentionRepository(db)
+	postUserRepo := post.NewUserRepository(db)
+	postScopeRepo := post.NewScopeRepository(db)
+	postService := post.NewService(
+		postRepo,
+		postLikeRepo,
+		postAttachmentRepo,
+		postMentionRepo,
+		postUserRepo,
+		postScopeRepo,
+	)
+	postHandler := post.NewHandler(postService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -345,6 +362,9 @@ func run() error {
 
 			// Assignment routes
 			assignmentHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// Post routes
+			postHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
