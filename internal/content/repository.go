@@ -118,6 +118,13 @@ func (r *Repository) GetMaxLessonOrder(ctx context.Context, sectionID uuid.UUID)
 	return int(maxOrder.Int64), nil
 }
 
+func (r *Repository) GetLessonForAttendance(ctx context.Context, lessonID uuid.UUID) (offeringID uuid.UUID, attendanceRequired bool, err error) {
+	query := `SELECT s.offering_id, l.attendance_required FROM lessons l
+		JOIN sections s ON s.id = l.section_id WHERE l.id = $1`
+	err = r.db.QueryRowxContext(ctx, query, lessonID).Scan(&offeringID, &attendanceRequired)
+	return
+}
+
 // Attachments
 
 func (r *Repository) CreateAttachment(ctx context.Context, a *LessonAttachment) error {

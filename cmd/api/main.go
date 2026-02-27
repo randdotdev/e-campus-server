@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/ranjdotdev/e-campus-server/internal/application"
+	"github.com/ranjdotdev/e-campus-server/internal/attendance"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 	"github.com/ranjdotdev/e-campus-server/internal/content"
@@ -135,6 +136,14 @@ func run() error {
 		&storedFileCheckerAdapter{repo: filesRepo},
 	)
 	contentHandler := content.NewHandler(contentService, log)
+
+	attendanceRepo := attendance.NewRepository(db)
+	attendanceService := attendance.NewService(
+		attendanceRepo,
+		&lessonCheckerAdapter{repo: contentRepo},
+		&enrollmentCheckerAdapter{repo: courseRepo},
+	)
+	attendanceHandler := attendance.NewHandler(attendanceService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -310,6 +319,21 @@ func run() error {
 			protected.DELETE("/schedules/:id", contentHandler.RemoveSchedule)
 
 			protected.GET("/me/classes", contentHandler.GetMyClasses)
+
+			// Attendance routes - teacher/assistant
+			protected.POST("/lessons/:id/attendance", attendanceHandler.InitializeAttendance)
+			protected.GET("/lessons/:id/attendance", attendanceHandler.GetLessonAttendance)
+			protected.PUT("/lessons/:id/attendance", attendanceHandler.MarkAttendance)
+			protected.PUT("/attendance/:id", attendanceHandler.UpdateAttendance)
+			protected.GET("/offerings/:id/attendance", attendanceHandler.GetOfferingAttendance)
+			protected.GET("/offerings/:id/attendance/summary", attendanceHandler.GetAttendanceSummaries)
+			protected.GET("/offerings/:id/excuses/pending", attendanceHandler.GetPendingExcuses)
+			protected.PUT("/excuse-requests/:id", attendanceHandler.ReviewExcuse)
+
+			// Attendance routes - student
+			protected.POST("/lessons/:id/excuse", attendanceHandler.RequestExcuse)
+			protected.GET("/offerings/:id/my-attendance", attendanceHandler.GetMyOfferingAttendance)
+			protected.GET("/me/attendance", attendanceHandler.GetMyAttendance)
 		}
 	}
 
@@ -402,4 +426,24 @@ type storedFileCheckerAdapter struct {
 
 func (a *storedFileCheckerAdapter) StoredFileExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	return a.repo.StoredFileExists(ctx, id)
+}
+
+type lessonCheckerAdapter struct {
+	repo *content.Repository
+}
+
+func (a *lessonCheckerAdapter) GetLessonForAttendance(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, bool, error) {
+	return a.repo.GetLessonForAttendance(ctx, lessonID)
+}
+
+type enrollmentCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *enrollmentCheckerAdapter) IsStudentEnrolled(ctx context.Context, studentID, offeringID uuid.UUID) (bool, error) {
+	return a.repo.IsEnrolled(ctx, offeringID, studentID)
+}
+
+func (a *enrollmentCheckerAdapter) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
+	return a.repo.GetEnrolledStudentIDs(ctx, offeringID)
 }
