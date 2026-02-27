@@ -309,7 +309,7 @@ func TestService_CreateCourse(t *testing.T) {
 		req := CreateCourseRequest{
 			DepartmentID: deptID,
 			Code:         "CS101",
-			Name:         "Intro to CS",
+			NameEN:       "Intro to CS",
 			ECTS:         6,
 		}
 
@@ -336,7 +336,7 @@ func TestService_CreateCourse(t *testing.T) {
 		req := CreateCourseRequest{
 			DepartmentID: deptID,
 			Code:         "CS101",
-			Name:         "Intro to CS",
+			NameEN:       "Intro to CS",
 			ECTS:         6,
 		}
 
@@ -353,9 +353,9 @@ func TestService_UpdateCourse(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		existingCourse := &Course{
-			ID:   courseID,
-			Name: "Old Name",
-			ECTS: 6,
+			ID:     courseID,
+			NameEN: "Old Name",
+			ECTS:   6,
 		}
 		repo := &mockRepo{
 			getCourseFunc: func(ctx context.Context, id uuid.UUID) (*Course, error) {
@@ -365,14 +365,14 @@ func TestService_UpdateCourse(t *testing.T) {
 		svc := NewService(repo)
 
 		newName := "New Name"
-		req := UpdateCourseRequest{Name: &newName}
+		req := UpdateCourseRequest{NameEN: &newName}
 
 		course, err := svc.UpdateCourse(ctx, courseID, req)
 		if err != nil {
 			t.Fatalf("UpdateCourse() error = %v", err)
 		}
-		if course.Name != "New Name" {
-			t.Errorf("Name = %v, want New Name", course.Name)
+		if course.NameEN != "New Name" {
+			t.Errorf("NameEN = %v, want New Name", course.NameEN)
 		}
 	})
 
@@ -381,7 +381,7 @@ func TestService_UpdateCourse(t *testing.T) {
 		svc := NewService(repo)
 
 		newName := "New Name"
-		req := UpdateCourseRequest{Name: &newName}
+		req := UpdateCourseRequest{NameEN: &newName}
 
 		_, err := svc.UpdateCourse(ctx, courseID, req)
 		if !errors.Is(err, ErrCourseNotFound) {

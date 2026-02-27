@@ -27,7 +27,7 @@ type Post struct {
 type PostWithAuthor struct {
 	Post
 	AuthorName     string  `db:"author_name"`
-	AuthorNameKu   *string `db:"author_name_ku"`
+	AuthorNameLocal   *string `db:"author_name_local"`
 	AuthorAvatar   *string `db:"author_avatar"`
 	AuthorRoleTitle *string `db:"author_role_title"`
 }

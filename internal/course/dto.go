@@ -51,22 +51,28 @@ type LessonFilters struct {
 // Request DTOs
 
 type CreateCourseRequest struct {
-	DepartmentID uuid.UUID  `json:"department_id" binding:"required"`
-	Code         string     `json:"code" binding:"required,min=2,max=50"`
-	Name         string     `json:"name" binding:"required,min=2,max=255"`
-	Subtitle     *string    `json:"subtitle" binding:"omitempty,max=100"`
-	GroupOrder   int        `json:"group_order" binding:"omitempty,min=1"`
-	Requires     *uuid.UUID `json:"requires"`
-	ECTS         int        `json:"ects" binding:"required,min=1"`
-	Description  *string    `json:"description"`
+	DepartmentID     uuid.UUID  `json:"department_id" binding:"required"`
+	Code             string     `json:"code" binding:"required,min=2,max=50"`
+	NameEN           string     `json:"name_en" binding:"required,min=2,max=255"`
+	NameLocal        *string    `json:"name_local" binding:"omitempty,max=255"`
+	SubtitleEN       *string    `json:"subtitle_en" binding:"omitempty,max=100"`
+	SubtitleLocal    *string    `json:"subtitle_local" binding:"omitempty,max=100"`
+	GroupOrder       int        `json:"group_order" binding:"omitempty,min=1"`
+	Requires         *uuid.UUID `json:"requires"`
+	ECTS             int        `json:"ects" binding:"required,min=1"`
+	DescriptionEN    *string    `json:"description_en"`
+	DescriptionLocal *string    `json:"description_local"`
 }
 
 type UpdateCourseRequest struct {
-	Name        *string `json:"name" binding:"omitempty,min=2,max=255"`
-	Subtitle    *string `json:"subtitle" binding:"omitempty,max=100"`
-	Description *string `json:"description"`
-	IsActive    *bool   `json:"is_active"`
-	ECTS        *int    `json:"ects" binding:"omitempty,min=1"`
+	NameEN           *string `json:"name_en" binding:"omitempty,min=2,max=255"`
+	NameLocal        *string `json:"name_local" binding:"omitempty,max=255"`
+	SubtitleEN       *string `json:"subtitle_en" binding:"omitempty,max=100"`
+	SubtitleLocal    *string `json:"subtitle_local" binding:"omitempty,max=100"`
+	DescriptionEN    *string `json:"description_en"`
+	DescriptionLocal *string `json:"description_local"`
+	IsActive         *bool   `json:"is_active"`
+	ECTS             *int    `json:"ects" binding:"omitempty,min=1"`
 }
 
 type CreateOfferingRequest struct {
@@ -129,18 +135,21 @@ type EnrollStudentRequest struct {
 // Response DTOs
 
 type CourseResponse struct {
-	ID           uuid.UUID  `json:"id"`
-	DepartmentID uuid.UUID  `json:"department_id"`
-	Code         string     `json:"code"`
-	Name         string     `json:"name"`
-	Subtitle     *string    `json:"subtitle,omitempty"`
-	GroupOrder   int        `json:"group_order"`
-	Requires     *uuid.UUID `json:"requires,omitempty"`
-	ECTS         int        `json:"ects"`
-	Description  *string    `json:"description,omitempty"`
-	IsActive     bool       `json:"is_active"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID               uuid.UUID  `json:"id"`
+	DepartmentID     uuid.UUID  `json:"department_id"`
+	Code             string     `json:"code"`
+	NameEN           string     `json:"name_en"`
+	NameLocal        *string    `json:"name_local,omitempty"`
+	SubtitleEN       *string    `json:"subtitle_en,omitempty"`
+	SubtitleLocal    *string    `json:"subtitle_local,omitempty"`
+	GroupOrder       int        `json:"group_order"`
+	Requires         *uuid.UUID `json:"requires,omitempty"`
+	ECTS             int        `json:"ects"`
+	DescriptionEN    *string    `json:"description_en,omitempty"`
+	DescriptionLocal *string    `json:"description_local,omitempty"`
+	IsActive         bool       `json:"is_active"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 type OfferingResponse struct {
@@ -201,18 +210,21 @@ type LessonResponse struct {
 
 func ToCourseResponse(c *Course) CourseResponse {
 	return CourseResponse{
-		ID:           c.ID,
-		DepartmentID: c.DepartmentID,
-		Code:         c.Code,
-		Name:         c.Name,
-		Subtitle:     c.Subtitle,
-		GroupOrder:   c.GroupOrder,
-		Requires:     c.Requires,
-		ECTS:         c.ECTS,
-		Description:  c.Description,
-		IsActive:     c.IsActive,
-		CreatedAt:    c.CreatedAt,
-		UpdatedAt:    c.UpdatedAt,
+		ID:               c.ID,
+		DepartmentID:     c.DepartmentID,
+		Code:             c.Code,
+		NameEN:           c.NameEN,
+		NameLocal:        c.NameLocal,
+		SubtitleEN:       c.SubtitleEN,
+		SubtitleLocal:    c.SubtitleLocal,
+		GroupOrder:       c.GroupOrder,
+		Requires:         c.Requires,
+		ECTS:             c.ECTS,
+		DescriptionEN:    c.DescriptionEN,
+		DescriptionLocal: c.DescriptionLocal,
+		IsActive:         c.IsActive,
+		CreatedAt:        c.CreatedAt,
+		UpdatedAt:        c.UpdatedAt,
 	}
 }
 

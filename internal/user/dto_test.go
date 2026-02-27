@@ -9,16 +9,19 @@ import (
 
 func TestToUserResponse(t *testing.T) {
 	now := time.Now()
-	fullNameKU := "ناوی تەواو"
+	fullNameLocal := "ناوی تەواو"
 
 	user := &User{
-		ID:         uuid.New(),
-		Email:      "test@example.com",
-		FullNameEN: "Test User",
-		FullNameKU: &fullNameKU,
-		IsVerified: true,
-		IsActive:   true,
-		CreatedAt:  now,
+		ID:                uuid.New(),
+		Email:             "test@example.com",
+		FullNameEN:        "Test User",
+		FullNameLocal:     &fullNameLocal,
+		IsVerified:        true,
+		IsActive:          true,
+		PreferredLanguage: "en",
+		Timezone:          "Asia/Baghdad",
+		Theme:             "system",
+		CreatedAt:         now,
 	}
 
 	resp := ToUserResponse(user)
@@ -32,11 +35,14 @@ func TestToUserResponse(t *testing.T) {
 	if resp.FullNameEN != user.FullNameEN {
 		t.Error("FullNameEN should match")
 	}
-	if resp.FullNameKU == nil || *resp.FullNameKU != fullNameKU {
-		t.Error("FullNameKU should match")
+	if resp.FullNameLocal == nil || *resp.FullNameLocal != fullNameLocal {
+		t.Error("FullNameLocal should match")
 	}
 	if resp.IsVerified != user.IsVerified {
 		t.Error("IsVerified should match")
+	}
+	if resp.PreferredLanguage != "en" {
+		t.Error("PreferredLanguage should match")
 	}
 }
 

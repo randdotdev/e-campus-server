@@ -21,16 +21,17 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*auth.UserData, error) {
+func (r *Repository) Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameLocal *string) (*auth.UserData, error) {
 	var user User
 	query := `
-		INSERT INTO users (email, password_hash, full_name_en, full_name_ku)
+		INSERT INTO users (email, password_hash, full_name_en, full_name_local)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, email, password_hash, full_name_en, full_name_ku, avatar_url, is_active, is_verified, created_at`
+		RETURNING id, email, password_hash, full_name_en, full_name_local, avatar_url, is_active, is_verified, preferred_language, timezone, theme, created_at`
 
-	err := r.db.QueryRowxContext(ctx, query, email, passwordHash, fullNameEN, fullNameKU).Scan(
-		&user.ID, &user.Email, &user.PasswordHash, &user.FullNameEN, &user.FullNameKU,
-		&user.AvatarURL, &user.IsActive, &user.IsVerified, &user.CreatedAt,
+	err := r.db.QueryRowxContext(ctx, query, email, passwordHash, fullNameEN, fullNameLocal).Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.FullNameEN, &user.FullNameLocal,
+		&user.AvatarURL, &user.IsActive, &user.IsVerified, &user.PreferredLanguage,
+		&user.Timezone, &user.Theme, &user.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -93,7 +94,7 @@ func toUserData(u *User) *auth.UserData {
 		Email:        u.Email,
 		PasswordHash: u.PasswordHash,
 		FullNameEN:   u.FullNameEN,
-		FullNameKU:   u.FullNameKU,
+		FullNameLocal: u.FullNameLocal,
 		AvatarURL:    u.AvatarURL,
 		IsActive:     u.IsActive,
 		IsVerified:   u.IsVerified,
@@ -104,7 +105,8 @@ func toUserData(u *User) *auth.UserData {
 func toRoleData(r *Role) *auth.RoleData {
 	return &auth.RoleData{
 		ID:         r.ID,
-		Title:      r.Title,
+		TitleEN:    r.TitleEN,
+		TitleLocal: r.TitleLocal,
 		Permission: r.Permission,
 		ScopeType:  r.ScopeType,
 		ScopeID:    r.ScopeID,
@@ -127,17 +129,38 @@ func (r *Repository) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
 func (r *Repository) Update(ctx context.Context, user *User) error {
 	query := `
 		UPDATE users
-		SET full_name_en = $2, full_name_ku = $3, avatar_url = $4, phone = $5
+		SET full_name_en = $2, full_name_local = $3, avatar_url = $4, phone = $5
 		WHERE id = $1
 		RETURNING updated_at`
 
 	return r.db.QueryRowxContext(ctx, query,
 		user.ID,
 		user.FullNameEN,
-		user.FullNameKU,
+		user.FullNameLocal,
 		user.AvatarURL,
 		user.Phone,
 	).Scan(&user.UpdatedAt)
+}
+
+func (r *Repository) UpdatePreferences(ctx context.Context, userID uuid.UUID, lang, tz, theme string) error {
+	query := `
+		UPDATE users
+		SET preferred_language = $2, timezone = $3, theme = $4
+		WHERE id = $1`
+
+	result, err := r.db.ExecContext(ctx, query, userID, lang, tz, theme)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
 }
 
 func (r *Repository) UpdateEmail(ctx context.Context, id uuid.UUID, email string) error {
@@ -175,7 +198,7 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 	}
 
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (email ILIKE $%d OR full_name_en ILIKE $%d OR full_name_ku ILIKE $%d)", argN, argN, argN))
+		query.WriteString(fmt.Sprintf(" AND (email ILIKE $%d OR full_name_en ILIKE $%d OR full_name_local ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
@@ -354,10 +377,10 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 	}()
 
 	userQuery := `
-		INSERT INTO users (email, password_hash, full_name_en, full_name_ku)
+		INSERT INTO users (email, password_hash, full_name_en, full_name_local)
 		VALUES ($1, $2, $3, $4)
 		RETURNING *`
-	if err := tx.QueryRowxContext(ctx, userQuery, user.Email, user.PasswordHash, user.FullNameEN, user.FullNameKU).StructScan(user); err != nil {
+	if err := tx.QueryRowxContext(ctx, userQuery, user.Email, user.PasswordHash, user.FullNameEN, user.FullNameLocal).StructScan(user); err != nil {
 		return err
 	}
 
@@ -376,11 +399,11 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 	if role != nil {
 		role.UserID = user.ID
 		roleQuery := `
-			INSERT INTO roles (user_id, title, permission, scope_type, scope_id, assigned_by)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO roles (user_id, title_en, title_local, permission, scope_type, scope_id, assigned_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id, created_at`
 		if err := tx.QueryRowxContext(ctx, roleQuery,
-			role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy,
+			role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy,
 		).Scan(&role.ID, &role.CreatedAt); err != nil {
 			return err
 		}
@@ -391,12 +414,12 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 
 func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 	query := `
-		INSERT INTO roles (user_id, title, permission, scope_type, scope_id, assigned_by, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO roles (user_id, title_en, title_local, permission, scope_type, scope_id, assigned_by, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if err != nil && strings.Contains(err.Error(), "roles_user_id_key") {
@@ -408,12 +431,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 func (r *Repository) UpdateRole(ctx context.Context, role *Role) error {
 	query := `
 		UPDATE roles
-		SET title = $2, permission = $3, scope_type = $4, scope_id = $5, assigned_by = $6, expires_at = $7
+		SET title_en = $2, title_local = $3, permission = $4, scope_type = $5, scope_id = $6, assigned_by = $7, expires_at = $8
 		WHERE user_id = $1
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.Title, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {

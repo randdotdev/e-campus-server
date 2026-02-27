@@ -18,7 +18,7 @@ INSERT INTO settings (id, settings) VALUES (
     }'
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO users (id, email, password_hash, full_name_en, full_name_ku, is_active, is_verified) VALUES (
+INSERT INTO users (id, email, password_hash, full_name_en, full_name_local, is_active, is_verified) VALUES (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'president@university.edu',
     '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.qJGnV.kPZKuSy.',
@@ -28,22 +28,23 @@ INSERT INTO users (id, email, password_hash, full_name_en, full_name_ku, is_acti
     true
 ) ON CONFLICT (email) DO NOTHING;
 
-INSERT INTO roles (user_id, title, permission, scope_type, assigned_by) VALUES (
+INSERT INTO roles (user_id, title_en, title_local, permission, scope_type, assigned_by) VALUES (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'President',
+    'سەرۆک',
     'super_admin',
     'university',
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01'
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO colleges (id, name_en, name_ku, code) VALUES (
+INSERT INTO colleges (id, name_en, name_local, code) VALUES (
     'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'College of Engineering',
     'کۆلێجی ئەندازیاری',
     'ENG'
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO departments (id, college_id, name_en, name_ku, code) VALUES (
+INSERT INTO departments (id, college_id, name_en, name_local, code) VALUES (
     'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'Computer Science',
@@ -51,7 +52,7 @@ INSERT INTO departments (id, college_id, name_en, name_ku, code) VALUES (
     'CS'
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO programs (id, department_id, name_en, name_ku, code, degree_type, duration_years, total_ects) VALUES (
+INSERT INTO programs (id, department_id, name_en, name_local, code, degree_type, duration_years, total_ects) VALUES (
     'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'Bachelor of Computer Science',

@@ -50,7 +50,7 @@ func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*Post
 	query := `
 		SELECT p.*,
 			u.full_name_en AS author_name,
-			u.full_name_ku AS author_name_ku,
+			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title AS author_role_title
 		FROM posts p
@@ -90,7 +90,7 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 	query := `
 		SELECT p.*,
 			u.full_name_en AS author_name,
-			u.full_name_ku AS author_name_ku,
+			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title AS author_role_title
 		FROM posts p
@@ -148,7 +148,7 @@ func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params 
 	query := `
 		SELECT p.*,
 			u.full_name_en AS author_name,
-			u.full_name_ku AS author_name_ku,
+			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title AS author_role_title
 		FROM posts p

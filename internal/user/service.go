@@ -52,8 +52,8 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req Updat
 	if req.FullNameEN != nil {
 		user.FullNameEN = *req.FullNameEN
 	}
-	if req.FullNameKU != nil {
-		user.FullNameKU = req.FullNameKU
+	if req.FullNameLocal != nil {
+		user.FullNameLocal = req.FullNameLocal
 	}
 	if req.AvatarURL != nil {
 		user.AvatarURL = req.AvatarURL
@@ -254,7 +254,7 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 		Email:        req.Email,
 		PasswordHash: passwordHash,
 		FullNameEN:   req.FullNameEN,
-		FullNameKU:   req.FullNameKU,
+		FullNameLocal: req.FullNameLocal,
 	}
 
 	profile := &StaffProfile{
@@ -268,7 +268,8 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 	var role *Role
 	if req.Role != nil {
 		role = &Role{
-			Title:      req.Role.Title,
+			TitleEN:    req.Role.TitleEN,
+			TitleLocal: req.Role.TitleLocal,
 			Permission: req.Role.Permission,
 			ScopeType:  req.Role.ScopeType,
 			ScopeID:    req.Role.ScopeID,
@@ -362,7 +363,8 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 
 	role := &Role{
 		UserID:     targetUserID,
-		Title:      req.Title,
+		TitleEN:    req.TitleEN,
+		TitleLocal: req.TitleLocal,
 		Permission: req.Permission,
 		ScopeType:  req.ScopeType,
 		ScopeID:    req.ScopeID,

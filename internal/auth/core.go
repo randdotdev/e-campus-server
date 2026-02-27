@@ -47,8 +47,11 @@ func BuildRoleClaim(role *RoleData) map[string]any {
 		"permission": role.Permission,
 		"scope_type": role.ScopeType,
 	}
-	if role.Title != nil {
-		claim["title"] = *role.Title
+	if role.TitleEN != nil {
+		claim["title_en"] = *role.TitleEN
+	}
+	if role.TitleLocal != nil {
+		claim["title_local"] = *role.TitleLocal
 	}
 	if role.ScopeID != nil {
 		claim["scope_id"] = role.ScopeID.String()
@@ -119,7 +122,8 @@ func parseClaims(claims jwt.MapClaims) (*JWTClaims, error) {
 			ID:         roleID,
 			Permission: getString(roleMap, "permission"),
 			ScopeType:  getString(roleMap, "scope_type"),
-			Title:      getString(roleMap, "title"),
+			TitleEN:    getString(roleMap, "title_en"),
+			TitleLocal: getString(roleMap, "title_local"),
 		}
 
 		if scopeIDStr := getString(roleMap, "scope_id"); scopeIDStr != "" {

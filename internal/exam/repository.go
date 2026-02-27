@@ -436,7 +436,7 @@ func (r *Repository) ListAttempts(ctx context.Context, params pagination.PagePar
 	}
 
 	if filters.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_ku ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
+		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(filters.Query)+"%")
 		argN++
 	}

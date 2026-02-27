@@ -109,7 +109,7 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 			AND EXISTS (
 				SELECT 1 FROM users u
 				WHERE u.id = a.user_id
-				AND (u.email ILIKE $%d OR u.full_name_en ILIKE $%d OR u.full_name_ku ILIKE $%d)
+				AND (u.email ILIKE $%d OR u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d)
 			)`, argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++

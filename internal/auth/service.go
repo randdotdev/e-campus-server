@@ -10,7 +10,7 @@ import (
 )
 
 type UserStore interface {
-	Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameKU *string) (*UserData, error)
+	Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameLocal *string) (*UserData, error)
 	GetByEmail(ctx context.Context, email string) (*UserData, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*UserData, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
@@ -41,7 +41,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*UserData,
 		return nil, err
 	}
 
-	return s.users.Create(ctx, req.Email, hash, req.FullNameEN, req.FullNameKU)
+	return s.users.Create(ctx, req.Email, hash, req.FullNameEN, req.FullNameLocal)
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest, device, ip string) (*TokenPair, *UserData, error) {

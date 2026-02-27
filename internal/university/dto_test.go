@@ -8,13 +8,13 @@ import (
 )
 
 func TestToCollegeResponse(t *testing.T) {
-	nameKU := "کۆلێژی زانست"
+	nameLocal := "کۆلێژی زانست"
 	desc := "Science college"
 
 	college := &College{
 		ID:          uuid.New(),
 		NameEN:      "College of Science",
-		NameKU:      &nameKU,
+		NameLocal:      &nameLocal,
 		Code:        "SCI",
 		Description: &desc,
 		IsActive:    true,
@@ -30,8 +30,8 @@ func TestToCollegeResponse(t *testing.T) {
 	if resp.NameEN != college.NameEN {
 		t.Error("NameEN should match")
 	}
-	if resp.NameKU == nil || *resp.NameKU != nameKU {
-		t.Error("NameKU should match")
+	if resp.NameLocal == nil || *resp.NameLocal != nameLocal {
+		t.Error("NameLocal should match")
 	}
 	if resp.Code != college.Code {
 		t.Error("Code should match")
@@ -62,13 +62,13 @@ func TestToCollegesResponse(t *testing.T) {
 
 func TestToDepartmentResponse(t *testing.T) {
 	collegeID := uuid.New()
-	nameKU := "کۆمپیوتەر"
+	nameLocal := "کۆمپیوتەر"
 
 	dept := &Department{
 		ID:        uuid.New(),
 		CollegeID: collegeID,
 		NameEN:    "Computer Science",
-		NameKU:    &nameKU,
+		NameLocal:    &nameLocal,
 		Code:      "CS",
 		IsActive:  true,
 		CreatedAt: time.Now(),

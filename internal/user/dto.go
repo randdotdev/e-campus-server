@@ -18,30 +18,38 @@ type UserFilters struct {
 // Request DTOs
 
 type UpdateProfileRequest struct {
-	FullNameEN *string `json:"full_name_en" binding:"omitempty,min=2,max=255"`
-	FullNameKU *string `json:"full_name_ku" binding:"omitempty,max=255"`
-	AvatarURL  *string `json:"avatar_url" binding:"omitempty,url"`
-	Phone      *string `json:"phone" binding:"omitempty,max=50"`
+	FullNameEN    *string `json:"full_name_en" binding:"omitempty,min=2,max=255"`
+	FullNameLocal *string `json:"full_name_local" binding:"omitempty,max=255"`
+	AvatarURL     *string `json:"avatar_url" binding:"omitempty,url"`
+	Phone         *string `json:"phone" binding:"omitempty,max=50"`
+}
+
+type UpdatePreferencesRequest struct {
+	PreferredLanguage *string `json:"preferred_language" binding:"omitempty,oneof=en local"`
+	Timezone          *string `json:"timezone" binding:"omitempty,max=50"`
+	Theme             *string `json:"theme" binding:"omitempty,oneof=light dark system"`
 }
 
 type CreateStaffUserRequest struct {
-	Email        string                    `json:"email" binding:"required,email"`
-	Password     string                    `json:"password" binding:"required,min=8,max=72"`
-	FullNameEN   string                    `json:"full_name_en" binding:"required,min=2,max=255"`
-	FullNameKU   *string                   `json:"full_name_ku" binding:"omitempty,max=255"`
-	StaffProfile UpdateStaffProfileRequest `json:"staff_profile" binding:"required"`
-	Role         *CreateRoleRequest        `json:"role"`
+	Email         string                    `json:"email" binding:"required,email"`
+	Password      string                    `json:"password" binding:"required,min=8,max=72"`
+	FullNameEN    string                    `json:"full_name_en" binding:"required,min=2,max=255"`
+	FullNameLocal *string                   `json:"full_name_local" binding:"omitempty,max=255"`
+	StaffProfile  UpdateStaffProfileRequest `json:"staff_profile" binding:"required"`
+	Role          *CreateRoleRequest        `json:"role"`
 }
 
 type CreateRoleRequest struct {
-	Title      *string    `json:"title" binding:"omitempty,max=100"`
+	TitleEN    *string    `json:"title_en" binding:"omitempty,max=100"`
+	TitleLocal *string    `json:"title_local" binding:"omitempty,max=100"`
 	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
 }
 
 type AssignRoleRequest struct {
-	Title      *string    `json:"title" binding:"omitempty,max=100"`
+	TitleEN    *string    `json:"title_en" binding:"omitempty,max=100"`
+	TitleLocal *string    `json:"title_local" binding:"omitempty,max=100"`
 	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=platform university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
@@ -80,15 +88,18 @@ func (r UpdateStaffProfileRequest) SalaryString() *string {
 // Response DTOs
 
 type UserResponse struct {
-	ID         uuid.UUID `json:"id"`
-	Email      string    `json:"email"`
-	FullNameEN string    `json:"full_name_en"`
-	FullNameKU *string   `json:"full_name_ku,omitempty"`
-	AvatarURL  *string   `json:"avatar_url,omitempty"`
-	Phone      *string   `json:"phone,omitempty"`
-	IsVerified bool      `json:"is_verified"`
-	IsActive   bool      `json:"is_active"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID                uuid.UUID `json:"id"`
+	Email             string    `json:"email"`
+	FullNameEN        string    `json:"full_name_en"`
+	FullNameLocal     *string   `json:"full_name_local,omitempty"`
+	AvatarURL         *string   `json:"avatar_url,omitempty"`
+	Phone             *string   `json:"phone,omitempty"`
+	IsVerified        bool      `json:"is_verified"`
+	IsActive          bool      `json:"is_active"`
+	PreferredLanguage string    `json:"preferred_language"`
+	Timezone          string    `json:"timezone"`
+	Theme             string    `json:"theme"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type UserDetailResponse struct {
@@ -99,11 +110,18 @@ type UserDetailResponse struct {
 
 type RoleResponse struct {
 	ID         uuid.UUID  `json:"id"`
-	Title      *string    `json:"title,omitempty"`
+	TitleEN    *string    `json:"title_en,omitempty"`
+	TitleLocal *string    `json:"title_local,omitempty"`
 	Permission string     `json:"permission"`
 	ScopeType  string     `json:"scope_type"`
 	ScopeID    *uuid.UUID `json:"scope_id,omitempty"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
+}
+
+type PreferencesResponse struct {
+	PreferredLanguage string `json:"preferred_language"`
+	Timezone          string `json:"timezone"`
+	Theme             string `json:"theme"`
 }
 
 type SessionResponse struct {
@@ -130,15 +148,26 @@ type StaffProfileResponse struct {
 
 func ToUserResponse(u *User) UserResponse {
 	return UserResponse{
-		ID:         u.ID,
-		Email:      u.Email,
-		FullNameEN: u.FullNameEN,
-		FullNameKU: u.FullNameKU,
-		AvatarURL:  u.AvatarURL,
-		Phone:      u.Phone,
-		IsVerified: u.IsVerified,
-		IsActive:   u.IsActive,
-		CreatedAt:  u.CreatedAt,
+		ID:                u.ID,
+		Email:             u.Email,
+		FullNameEN:        u.FullNameEN,
+		FullNameLocal:     u.FullNameLocal,
+		AvatarURL:         u.AvatarURL,
+		Phone:             u.Phone,
+		IsVerified:        u.IsVerified,
+		IsActive:          u.IsActive,
+		PreferredLanguage: u.PreferredLanguage,
+		Timezone:          u.Timezone,
+		Theme:             u.Theme,
+		CreatedAt:         u.CreatedAt,
+	}
+}
+
+func ToPreferencesResponse(u *User) PreferencesResponse {
+	return PreferencesResponse{
+		PreferredLanguage: u.PreferredLanguage,
+		Timezone:          u.Timezone,
+		Theme:             u.Theme,
 	}
 }
 
@@ -148,7 +177,8 @@ func ToRoleResponse(r *Role) *RoleResponse {
 	}
 	return &RoleResponse{
 		ID:         r.ID,
-		Title:      r.Title,
+		TitleEN:    r.TitleEN,
+		TitleLocal: r.TitleLocal,
 		Permission: r.Permission,
 		ScopeType:  r.ScopeType,
 		ScopeID:    r.ScopeID,

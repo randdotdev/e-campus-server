@@ -13,18 +13,20 @@ func TestToCourseResponse(t *testing.T) {
 	deptID := uuid.New()
 
 	course := &Course{
-		ID:           uuid.New(),
-		DepartmentID: deptID,
-		Code:         "CS101",
-		Name:         "Intro to CS",
-		Subtitle:     ptr("Basics"),
-		GroupOrder:   1,
-		Requires:     &reqID,
-		ECTS:         6,
-		Description:  ptr("Course description"),
-		IsActive:     true,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:            uuid.New(),
+		DepartmentID:  deptID,
+		Code:          "CS101",
+		NameEN:        "Intro to CS",
+		NameLocal:     ptr("زانستی کۆمپیوتەر"),
+		SubtitleEN:    ptr("Basics"),
+		SubtitleLocal: ptr("بنەماکان"),
+		GroupOrder:    1,
+		Requires:      &reqID,
+		ECTS:          6,
+		DescriptionEN: ptr("Course description"),
+		IsActive:      true,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	resp := ToCourseResponse(course)
@@ -38,11 +40,11 @@ func TestToCourseResponse(t *testing.T) {
 	if resp.Code != course.Code {
 		t.Errorf("Code = %v, want %v", resp.Code, course.Code)
 	}
-	if resp.Name != course.Name {
-		t.Errorf("Name = %v, want %v", resp.Name, course.Name)
+	if resp.NameEN != course.NameEN {
+		t.Errorf("NameEN = %v, want %v", resp.NameEN, course.NameEN)
 	}
-	if *resp.Subtitle != *course.Subtitle {
-		t.Errorf("Subtitle = %v, want %v", *resp.Subtitle, *course.Subtitle)
+	if *resp.SubtitleEN != *course.SubtitleEN {
+		t.Errorf("SubtitleEN = %v, want %v", *resp.SubtitleEN, *course.SubtitleEN)
 	}
 	if resp.GroupOrder != course.GroupOrder {
 		t.Errorf("GroupOrder = %v, want %v", resp.GroupOrder, course.GroupOrder)
@@ -60,8 +62,8 @@ func TestToCourseResponse(t *testing.T) {
 
 func TestToCoursesResponse(t *testing.T) {
 	courses := []Course{
-		{ID: uuid.New(), Code: "CS101", Name: "Course 1"},
-		{ID: uuid.New(), Code: "CS102", Name: "Course 2"},
+		{ID: uuid.New(), Code: "CS101", NameEN: "Course 1"},
+		{ID: uuid.New(), Code: "CS102", NameEN: "Course 2"},
 	}
 
 	resp := ToCoursesResponse(courses)

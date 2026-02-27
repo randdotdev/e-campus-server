@@ -71,7 +71,7 @@ func (s *Service) CreateCollege(ctx context.Context, req CreateCollegeRequest) (
 
 	college := &College{
 		NameEN:      req.NameEN,
-		NameKU:      req.NameKU,
+		NameLocal:      req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
 	}
@@ -111,8 +111,8 @@ func (s *Service) UpdateCollege(ctx context.Context, id uuid.UUID, req UpdateCol
 	if req.NameEN != nil {
 		college.NameEN = *req.NameEN
 	}
-	if req.NameKU != nil {
-		college.NameKU = req.NameKU
+	if req.NameLocal != nil {
+		college.NameLocal = req.NameLocal
 	}
 	if req.Description != nil {
 		college.Description = req.Description
@@ -160,7 +160,7 @@ func (s *Service) CreateDepartment(ctx context.Context, req CreateDepartmentRequ
 	dept := &Department{
 		CollegeID:   req.CollegeID,
 		NameEN:      req.NameEN,
-		NameKU:      req.NameKU,
+		NameLocal:      req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
 	}
@@ -205,8 +205,8 @@ func (s *Service) UpdateDepartment(ctx context.Context, id uuid.UUID, req Update
 	if req.NameEN != nil {
 		dept.NameEN = *req.NameEN
 	}
-	if req.NameKU != nil {
-		dept.NameKU = req.NameKU
+	if req.NameLocal != nil {
+		dept.NameLocal = req.NameLocal
 	}
 	if req.Description != nil {
 		dept.Description = req.Description
@@ -254,7 +254,7 @@ func (s *Service) CreateProgram(ctx context.Context, req CreateProgramRequest) (
 	program := &Program{
 		DepartmentID:  req.DepartmentID,
 		NameEN:        req.NameEN,
-		NameKU:        req.NameKU,
+		NameLocal:        req.NameLocal,
 		Code:          req.Code,
 		DegreeType:    req.DegreeType,
 		DurationYears: req.DurationYears,
@@ -304,8 +304,8 @@ func (s *Service) UpdateProgram(ctx context.Context, id uuid.UUID, req UpdatePro
 	if req.NameEN != nil {
 		program.NameEN = *req.NameEN
 	}
-	if req.NameKU != nil {
-		program.NameKU = req.NameKU
+	if req.NameLocal != nil {
+		program.NameLocal = req.NameLocal
 	}
 	if req.Description != nil {
 		program.Description = req.Description

@@ -10,7 +10,7 @@ import (
 type College struct {
 	ID          uuid.UUID `db:"id"`
 	NameEN      string    `db:"name_en"`
-	NameKU      *string   `db:"name_ku"`
+	NameLocal      *string   `db:"name_ku"`
 	Code        string    `db:"code"`
 	Description *string   `db:"description"`
 	IsActive    bool      `db:"is_active"`
@@ -22,7 +22,7 @@ type Department struct {
 	ID          uuid.UUID `db:"id"`
 	CollegeID   uuid.UUID `db:"college_id"`
 	NameEN      string    `db:"name_en"`
-	NameKU      *string   `db:"name_ku"`
+	NameLocal      *string   `db:"name_ku"`
 	Code        string    `db:"code"`
 	Description *string   `db:"description"`
 	IsActive    bool      `db:"is_active"`
@@ -34,7 +34,7 @@ type Program struct {
 	ID            uuid.UUID `db:"id"`
 	DepartmentID  uuid.UUID `db:"department_id"`
 	NameEN        string    `db:"name_en"`
-	NameKU        *string   `db:"name_ku"`
+	NameLocal        *string   `db:"name_ku"`
 	Code          string    `db:"code"`
 	DegreeType    string    `db:"degree_type"`
 	DurationYears int       `db:"duration_years"`

@@ -8,18 +8,21 @@ import (
 )
 
 type Course struct {
-	ID           uuid.UUID  `db:"id"`
-	DepartmentID uuid.UUID  `db:"department_id"`
-	Code         string     `db:"code"`
-	Name         string     `db:"name"`
-	Subtitle     *string    `db:"subtitle"`
-	GroupOrder   int        `db:"group_order"`
-	Requires     *uuid.UUID `db:"requires"`
-	ECTS         int        `db:"ects"`
-	Description  *string    `db:"description"`
-	IsActive     bool       `db:"is_active"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	ID               uuid.UUID  `db:"id"`
+	DepartmentID     uuid.UUID  `db:"department_id"`
+	Code             string     `db:"code"`
+	NameEN           string     `db:"name_en"`
+	NameLocal        *string    `db:"name_local"`
+	SubtitleEN       *string    `db:"subtitle_en"`
+	SubtitleLocal    *string    `db:"subtitle_local"`
+	GroupOrder       int        `db:"group_order"`
+	Requires         *uuid.UUID `db:"requires"`
+	ECTS             int        `db:"ects"`
+	DescriptionEN    *string    `db:"description_en"`
+	DescriptionLocal *string    `db:"description_local"`
+	IsActive         bool       `db:"is_active"`
+	CreatedAt        time.Time  `db:"created_at"`
+	UpdatedAt        time.Time  `db:"updated_at"`
 }
 
 type Offering struct {

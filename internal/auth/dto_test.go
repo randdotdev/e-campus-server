@@ -18,7 +18,7 @@ func TestToUserResponse(t *testing.T) {
 		Email:        "test@example.com",
 		PasswordHash: "hashedpassword",
 		FullNameEN:   "Test User",
-		FullNameKU:   &fullNameKU,
+		FullNameLocal:   &fullNameKU,
 		AvatarURL:    &avatarURL,
 		IsActive:     true,
 		IsVerified:   true,
@@ -36,8 +36,8 @@ func TestToUserResponse(t *testing.T) {
 	if resp.FullNameEN != "Test User" {
 		t.Errorf("FullNameEN = %v, want Test User", resp.FullNameEN)
 	}
-	if resp.FullNameKU == nil || *resp.FullNameKU != fullNameKU {
-		t.Errorf("FullNameKU = %v, want %v", resp.FullNameKU, fullNameKU)
+	if resp.FullNameLocal == nil || *resp.FullNameLocal != fullNameKU {
+		t.Errorf("FullNameLocal = %v, want %v", resp.FullNameLocal, fullNameKU)
 	}
 	if resp.AvatarURL == nil || *resp.AvatarURL != avatarURL {
 		t.Errorf("AvatarURL = %v, want %v", resp.AvatarURL, avatarURL)
@@ -59,7 +59,7 @@ func TestToUserResponse_NilOptionalFields(t *testing.T) {
 		Email:        "minimal@example.com",
 		PasswordHash: "hash",
 		FullNameEN:   "Minimal User",
-		FullNameKU:   nil,
+		FullNameLocal:   nil,
 		AvatarURL:    nil,
 		IsActive:     true,
 		IsVerified:   false,
@@ -68,8 +68,8 @@ func TestToUserResponse_NilOptionalFields(t *testing.T) {
 
 	resp := ToUserResponse(user)
 
-	if resp.FullNameKU != nil {
-		t.Errorf("FullNameKU = %v, want nil", resp.FullNameKU)
+	if resp.FullNameLocal != nil {
+		t.Errorf("FullNameLocal = %v, want nil", resp.FullNameLocal)
 	}
 	if resp.AvatarURL != nil {
 		t.Errorf("AvatarURL = %v, want nil", resp.AvatarURL)

@@ -120,10 +120,11 @@ func TestIsTokenUsed(t *testing.T) {
 }
 
 func TestBuildRoleClaim(t *testing.T) {
-	title := "Admin"
+	titleEN := "Admin"
+	titleLocal := "بەڕێوەبەر"
 	scopeID := uuid.New()
 
-	role := &RoleData{ID: uuid.New(), Title: &title, Permission: "admin", ScopeType: "university", ScopeID: &scopeID}
+	role := &RoleData{ID: uuid.New(), TitleEN: &titleEN, TitleLocal: &titleLocal, Permission: "admin", ScopeType: "university", ScopeID: &scopeID}
 
 	claim := BuildRoleClaim(role)
 
@@ -135,8 +136,12 @@ func TestBuildRoleClaim(t *testing.T) {
 		t.Error("claim permission should be admin")
 	}
 
-	if claim["title"] != "Admin" {
-		t.Error("claim should have title")
+	if claim["title_en"] != "Admin" {
+		t.Error("claim should have title_en")
+	}
+
+	if claim["title_local"] != "بەڕێوەبەر" {
+		t.Error("claim should have title_local")
 	}
 
 	if claim["scope_id"] != scopeID.String() {

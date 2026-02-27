@@ -30,8 +30,8 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) CreateCourse(ctx context.Context, c *Course) error {
 	query := `
-		INSERT INTO courses (department_id, code, name, subtitle, group_order, requires, ects, description)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO courses (department_id, code, name_en, name_local, subtitle_en, subtitle_local, group_order, requires, ects, description_en, description_local)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, is_active, created_at, updated_at`
 
 	groupOrder := c.GroupOrder
@@ -40,7 +40,7 @@ func (r *Repository) CreateCourse(ctx context.Context, c *Course) error {
 	}
 
 	return r.db.QueryRowxContext(ctx, query,
-		c.DepartmentID, c.Code, c.Name, c.Subtitle, groupOrder, c.Requires, c.ECTS, c.Description,
+		c.DepartmentID, c.Code, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, groupOrder, c.Requires, c.ECTS, c.DescriptionEN, c.DescriptionLocal,
 	).Scan(&c.ID, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
 }
 
@@ -120,12 +120,12 @@ func (r *Repository) ListCourses(ctx context.Context, params pagination.PagePara
 func (r *Repository) UpdateCourse(ctx context.Context, c *Course) error {
 	query := `
 		UPDATE courses
-		SET name = $2, subtitle = $3, ects = $4, description = $5, is_active = $6
+		SET name_en = $2, name_local = $3, subtitle_en = $4, subtitle_local = $5, ects = $6, description_en = $7, description_local = $8, is_active = $9
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		c.ID, c.Name, c.Subtitle, c.ECTS, c.Description, c.IsActive,
+		c.ID, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, c.ECTS, c.DescriptionEN, c.DescriptionLocal, c.IsActive,
 	).Scan(&c.UpdatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -412,7 +412,7 @@ func (r *Repository) ListEnrollments(ctx context.Context, params pagination.Page
 	}
 
 	if filters.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_ku ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
+		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(filters.Query)+"%")
 		argN++
 	}

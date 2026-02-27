@@ -48,7 +48,7 @@ type PostResponse struct {
 	IsExpired       bool                 `json:"is_expired"`
 	AuthorID        uuid.UUID            `json:"author_id"`
 	AuthorName      string               `json:"author_name"`
-	AuthorNameKu    *string              `json:"author_name_ku,omitempty"`
+	AuthorNameLocal    *string              `json:"author_name_local,omitempty"`
 	AuthorAvatar    *string              `json:"author_avatar,omitempty"`
 	AuthorRoleTitle *string              `json:"author_role_title,omitempty"`
 	LikeCount       int                  `json:"like_count"`
@@ -88,7 +88,7 @@ func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []
 		IsExpired:       IsExpired(p.ExpiresAt, now),
 		AuthorID:        p.AuthorID,
 		AuthorName:      p.AuthorName,
-		AuthorNameKu:    p.AuthorNameKu,
+		AuthorNameLocal:    p.AuthorNameLocal,
 		AuthorAvatar:    p.AuthorAvatar,
 		AuthorRoleTitle: p.AuthorRoleTitle,
 		LikeCount:       p.LikeCount,

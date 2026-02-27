@@ -33,27 +33,29 @@ type JWTClaims struct {
 
 type RoleClaim struct {
 	ID         uuid.UUID  `json:"id"`
-	Title      string     `json:"title,omitempty"`
+	TitleEN    string     `json:"title_en,omitempty"`
+	TitleLocal string     `json:"title_local,omitempty"`
 	Permission string     `json:"permission"`
 	ScopeType  string     `json:"scope_type"`
 	ScopeID    *uuid.UUID `json:"scope_id,omitempty"`
 }
 
 type UserData struct {
-	ID           uuid.UUID
-	Email        string
-	PasswordHash string
-	FullNameEN   string
-	FullNameKU   *string
-	AvatarURL    *string
-	IsActive     bool
-	IsVerified   bool
-	CreatedAt    time.Time
+	ID            uuid.UUID
+	Email         string
+	PasswordHash  string
+	FullNameEN    string
+	FullNameLocal *string
+	AvatarURL     *string
+	IsActive      bool
+	IsVerified    bool
+	CreatedAt     time.Time
 }
 
 type RoleData struct {
 	ID         uuid.UUID
-	Title      *string
+	TitleEN    *string
+	TitleLocal *string
 	Permission string
 	ScopeType  string
 	ScopeID    *uuid.UUID

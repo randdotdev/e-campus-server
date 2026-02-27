@@ -81,14 +81,17 @@ func (s *Service) CreateCourse(ctx context.Context, req CreateCourseRequest) (*C
 	}
 
 	course := &Course{
-		DepartmentID: req.DepartmentID,
-		Code:         req.Code,
-		Name:         req.Name,
-		Subtitle:     req.Subtitle,
-		GroupOrder:   groupOrder,
-		Requires:     req.Requires,
-		ECTS:         req.ECTS,
-		Description:  req.Description,
+		DepartmentID:     req.DepartmentID,
+		Code:             req.Code,
+		NameEN:           req.NameEN,
+		NameLocal:        req.NameLocal,
+		SubtitleEN:       req.SubtitleEN,
+		SubtitleLocal:    req.SubtitleLocal,
+		GroupOrder:       groupOrder,
+		Requires:         req.Requires,
+		ECTS:             req.ECTS,
+		DescriptionEN:    req.DescriptionEN,
+		DescriptionLocal: req.DescriptionLocal,
 	}
 
 	if err := s.repo.CreateCourse(ctx, course); err != nil {
@@ -112,14 +115,23 @@ func (s *Service) UpdateCourse(ctx context.Context, id uuid.UUID, req UpdateCour
 		return nil, err
 	}
 
-	if req.Name != nil {
-		course.Name = *req.Name
+	if req.NameEN != nil {
+		course.NameEN = *req.NameEN
 	}
-	if req.Subtitle != nil {
-		course.Subtitle = req.Subtitle
+	if req.NameLocal != nil {
+		course.NameLocal = req.NameLocal
 	}
-	if req.Description != nil {
-		course.Description = req.Description
+	if req.SubtitleEN != nil {
+		course.SubtitleEN = req.SubtitleEN
+	}
+	if req.SubtitleLocal != nil {
+		course.SubtitleLocal = req.SubtitleLocal
+	}
+	if req.DescriptionEN != nil {
+		course.DescriptionEN = req.DescriptionEN
+	}
+	if req.DescriptionLocal != nil {
+		course.DescriptionLocal = req.DescriptionLocal
 	}
 	if req.ECTS != nil {
 		course.ECTS = *req.ECTS
