@@ -181,10 +181,7 @@ func ToExcuseRequestResponses(excuses []ExcuseRequest) []ExcuseRequestResponse {
 func ToAttendanceUpdates(records []AttendanceUpdateInput) []AttendanceUpdate {
 	result := make([]AttendanceUpdate, len(records))
 	for i, r := range records {
-		result[i] = AttendanceUpdate{
-			ID:         r.ID,
-			Percentage: r.Percentage,
-		}
+		result[i] = AttendanceUpdate(r)
 	}
 	return result
 }

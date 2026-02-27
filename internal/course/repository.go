@@ -305,6 +305,19 @@ func (r *Repository) GetTeacher(ctx context.Context, offeringID, userID uuid.UUI
 	return &teacher, nil
 }
 
+func (r *Repository) GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error) {
+	var role string
+	query := `SELECT role FROM course_teachers WHERE offering_id = $1 AND user_id = $2`
+
+	if err := r.db.GetContext(ctx, &role, query, offeringID, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return role, nil
+}
+
 func (r *Repository) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error) {
 	var teachers []Teacher
 	query := `SELECT * FROM course_teachers WHERE offering_id = $1 ORDER BY created_at`

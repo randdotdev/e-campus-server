@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/ranjdotdev/e-campus-server/internal/application"
+	"github.com/ranjdotdev/e-campus-server/internal/assignment"
 	"github.com/ranjdotdev/e-campus-server/internal/attendance"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/config"
@@ -144,6 +145,13 @@ func run() error {
 		&enrollmentCheckerAdapter{repo: courseRepo},
 	)
 	attendanceHandler := attendance.NewHandler(attendanceService)
+
+	assignmentRepo := assignment.NewRepository(db)
+	assignmentService := assignment.NewService(
+		assignmentRepo,
+		&courseCheckerAdapter{repo: courseRepo},
+	)
+	assignmentHandler := assignment.NewHandler(assignmentService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -334,6 +342,9 @@ func run() error {
 			protected.POST("/lessons/:id/excuse", attendanceHandler.RequestExcuse)
 			protected.GET("/offerings/:id/my-attendance", attendanceHandler.GetMyOfferingAttendance)
 			protected.GET("/me/attendance", attendanceHandler.GetMyAttendance)
+
+			// Assignment routes
+			assignmentHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
@@ -446,4 +457,16 @@ func (a *enrollmentCheckerAdapter) IsStudentEnrolled(ctx context.Context, studen
 
 func (a *enrollmentCheckerAdapter) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
 	return a.repo.GetEnrolledStudentIDs(ctx, offeringID)
+}
+
+type courseCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *courseCheckerAdapter) GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error) {
+	return a.repo.GetTeacherRole(ctx, offeringID, userID)
+}
+
+func (a *courseCheckerAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
+	return a.repo.IsEnrolled(ctx, offeringID, studentID)
 }
