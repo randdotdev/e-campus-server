@@ -24,6 +24,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/news"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
@@ -169,6 +170,18 @@ func run() error {
 		postScopeRepo,
 	)
 	postHandler := post.NewHandler(postService, log)
+
+	newsRepo := news.NewRepository(db)
+	newsAttachmentRepo := news.NewAttachmentRepository(db)
+	newsPublisherRepo := news.NewPublisherRepository(db)
+	newsSettingsRepo := news.NewSettingsRepository(db)
+	newsService := news.NewService(
+		newsRepo,
+		newsAttachmentRepo,
+		newsPublisherRepo,
+		newsSettingsRepo,
+	)
+	newsHandler := news.NewHandler(newsService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -365,6 +378,9 @@ func run() error {
 
 			// Post routes
 			postHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// News routes
+			newsHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
