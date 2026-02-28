@@ -14,8 +14,9 @@ type PostRepository interface {
 	GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*PostWithAuthor, error)
 	Update(ctx context.Context, p *Post) error
 	SoftDelete(ctx context.Context, id uuid.UUID, deletedAt time.Time) error
+	HardDelete(ctx context.Context, id uuid.UUID) error
 
-	ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, includeExpired bool, params pagination.PageParams) ([]PostWithAuthor, bool, error)
+	ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error)
 	ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]PostWithAuthor, bool, error)
 
 	IncrementLikeCount(ctx context.Context, id uuid.UUID) error
@@ -82,7 +83,7 @@ func NewService(
 	}
 }
 
-func (s *Service) CreatePost(ctx context.Context, authorID uuid.UUID, scopeType string, scopeID *uuid.UUID, body string, expiresAt *time.Time) (*Post, error) {
+func (s *Service) CreatePost(ctx context.Context, authorID uuid.UUID, scopeType string, scopeID *uuid.UUID, body string, publishAt, expiresAt *time.Time) (*Post, error) {
 	if !ValidateScopeType(scopeType) {
 		return nil, ErrInvalidScope
 	}
@@ -100,7 +101,7 @@ func (s *Service) CreatePost(ctx context.Context, authorID uuid.UUID, scopeType 
 		}
 	}
 
-	post := BuildPost(authorID, scopeType, scopeID, body, expiresAt)
+	post := BuildPost(authorID, scopeType, scopeID, body, publishAt, expiresAt)
 
 	if err := s.posts.Create(ctx, post); err != nil {
 		return nil, err
@@ -121,8 +122,10 @@ func (s *Service) CreateComment(ctx context.Context, authorID, parentID uuid.UUI
 	if parent == nil {
 		return nil, ErrPostNotFound
 	}
-	if IsDeleted(parent.DeletedAt) {
-		return nil, ErrCannotCommentOnComment
+
+	now := time.Now()
+	if !IsVisible(parent, now) {
+		return nil, ErrPostNotFound
 	}
 
 	comment := BuildComment(authorID, parent, body)
@@ -161,6 +164,9 @@ func (s *Service) GetPost(ctx context.Context, id uuid.UUID, userID uuid.UUID, i
 		if IsDeleted(post.DeletedAt) {
 			return nil, nil, nil, false, ErrPostDeleted
 		}
+		if IsScheduled(post.PublishAt, now) {
+			return nil, nil, nil, false, ErrPostScheduled
+		}
 		return nil, nil, nil, false, ErrPostExpired
 	}
 
@@ -190,7 +196,7 @@ func (s *Service) ListComments(ctx context.Context, rootID uuid.UUID, params pag
 	return s.posts.ListComments(ctx, rootID, params)
 }
 
-func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin bool, body *string, expiresAt *time.Time) (*Post, error) {
+func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin bool, body *string, publishAt, expiresAt *time.Time) (*Post, error) {
 	post, err := s.posts.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -211,6 +217,9 @@ func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin 
 		if err := s.processMentions(ctx, id, *body); err != nil {
 			return nil, err
 		}
+	}
+	if publishAt != nil {
+		post.PublishAt = publishAt
 	}
 	if expiresAt != nil {
 		post.ExpiresAt = expiresAt
@@ -239,13 +248,19 @@ func (s *Service) DeletePost(ctx context.Context, id, userID uuid.UUID, isAdmin 
 		return ErrNotAuthorized
 	}
 
-	now := time.Now()
-	if err := s.posts.SoftDelete(ctx, id, now); err != nil {
-		return err
-	}
-
-	if post.RootID != nil {
+	if IsComment(post) {
+		if err := s.mentions.DeleteByPostID(ctx, id); err != nil {
+			return err
+		}
+		if err := s.posts.HardDelete(ctx, id); err != nil {
+			return err
+		}
 		if err := s.posts.DecrementCommentCount(ctx, *post.RootID); err != nil {
+			return err
+		}
+	} else {
+		now := time.Now()
+		if err := s.posts.SoftDelete(ctx, id, now); err != nil {
 			return err
 		}
 	}
@@ -283,6 +298,11 @@ func (s *Service) LikePost(ctx context.Context, postID, userID uuid.UUID) error 
 		return err
 	}
 	if post == nil {
+		return ErrPostNotFound
+	}
+
+	now := time.Now()
+	if !IsVisible(post, now) {
 		return ErrPostNotFound
 	}
 

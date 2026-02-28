@@ -49,6 +49,30 @@ func TestIsComment(t *testing.T) {
 	}
 }
 
+func TestIsScheduled(t *testing.T) {
+	now := time.Now()
+	past := now.Add(-time.Hour)
+	future := now.Add(time.Hour)
+
+	tests := []struct {
+		name      string
+		publishAt *time.Time
+		want      bool
+	}{
+		{"no publish time", nil, false},
+		{"past publish time", &past, false},
+		{"future publish time", &future, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsScheduled(tt.publishAt, now); got != tt.want {
+				t.Errorf("IsScheduled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIsExpired(t *testing.T) {
 	now := time.Now()
 	past := now.Add(-time.Hour)
@@ -102,23 +126,56 @@ func TestCanView(t *testing.T) {
 	tests := []struct {
 		name      string
 		deletedAt *time.Time
+		publishAt *time.Time
 		expiresAt *time.Time
 		isAdmin   bool
 		want      bool
 	}{
-		{"normal post", nil, nil, false, true},
-		{"deleted post member", &now, nil, false, false},
-		{"deleted post admin", &now, nil, true, true},
-		{"expired post member", nil, &past, false, false},
-		{"expired post admin", nil, &past, true, true},
-		{"not expired", nil, &future, false, true},
+		{"normal post", nil, nil, nil, false, true},
+		{"deleted post member", &now, nil, nil, false, false},
+		{"deleted post admin", &now, nil, nil, true, true},
+		{"scheduled post member", nil, &future, nil, false, false},
+		{"scheduled post admin", nil, &future, nil, true, true},
+		{"published scheduled post", nil, &past, nil, false, true},
+		{"expired post member", nil, nil, &past, false, false},
+		{"expired post admin", nil, nil, &past, true, true},
+		{"not expired", nil, nil, &future, false, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Post{DeletedAt: tt.deletedAt, ExpiresAt: tt.expiresAt}
+			p := &Post{DeletedAt: tt.deletedAt, PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
 			if got := CanView(p, tt.isAdmin, now); got != tt.want {
 				t.Errorf("CanView() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetStatus(t *testing.T) {
+	now := time.Now()
+	past := now.Add(-time.Hour)
+	future := now.Add(time.Hour)
+
+	tests := []struct {
+		name      string
+		publishAt *time.Time
+		expiresAt *time.Time
+		want      string
+	}{
+		{"published no times", nil, nil, StatusPublished},
+		{"scheduled", &future, nil, StatusScheduled},
+		{"published past schedule", &past, nil, StatusPublished},
+		{"expired", nil, &past, StatusExpired},
+		{"not expired", nil, &future, StatusPublished},
+		{"scheduled takes priority over expired", &future, &past, StatusScheduled},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Post{PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
+			if got := GetStatus(p, now); got != tt.want {
+				t.Errorf("GetStatus() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -283,9 +340,10 @@ func TestParseMentions(t *testing.T) {
 func TestBuildPost(t *testing.T) {
 	authorID := uuid.New()
 	scopeID := uuid.New()
+	publishAt := time.Now().Add(time.Hour)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	p := BuildPost(authorID, ScopeCollege, &scopeID, "Test body", &expiresAt)
+	p := BuildPost(authorID, ScopeCollege, &scopeID, "Test body", &publishAt, &expiresAt)
 
 	if p.ID == uuid.Nil {
 		t.Error("ID should be generated")

@@ -11,6 +11,7 @@ type CreatePostRequest struct {
 	ScopeType string     `json:"scope_type" binding:"required,oneof=university college department program"`
 	ScopeID   *uuid.UUID `json:"scope_id"`
 	Body      string     `json:"body" binding:"required,min=1,max=10000"`
+	PublishAt *time.Time `json:"publish_at"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 
@@ -20,6 +21,7 @@ type CreateCommentRequest struct {
 
 type UpdatePostRequest struct {
 	Body      *string    `json:"body" binding:"omitempty,min=1,max=10000"`
+	PublishAt *time.Time `json:"publish_at"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 
@@ -44,11 +46,12 @@ type PostResponse struct {
 	RootID          *uuid.UUID           `json:"root_id,omitempty"`
 	Body            string               `json:"body"`
 	IsPinned        bool                 `json:"is_pinned"`
+	PublishAt       *time.Time           `json:"publish_at,omitempty"`
 	ExpiresAt       *time.Time           `json:"expires_at,omitempty"`
-	IsExpired       bool                 `json:"is_expired"`
+	Status          string               `json:"status"`
 	AuthorID        uuid.UUID            `json:"author_id"`
 	AuthorName      string               `json:"author_name"`
-	AuthorNameLocal    *string              `json:"author_name_local,omitempty"`
+	AuthorNameLocal *string              `json:"author_name_local,omitempty"`
 	AuthorAvatar    *string              `json:"author_avatar,omitempty"`
 	AuthorRoleTitle *string              `json:"author_role_title,omitempty"`
 	LikeCount       int                  `json:"like_count"`
@@ -84,11 +87,12 @@ func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []
 		RootID:          p.RootID,
 		Body:            p.Body,
 		IsPinned:        p.IsPinned,
+		PublishAt:       p.PublishAt,
 		ExpiresAt:       p.ExpiresAt,
-		IsExpired:       IsExpired(p.ExpiresAt, now),
+		Status:          GetStatus(&p.Post, now),
 		AuthorID:        p.AuthorID,
 		AuthorName:      p.AuthorName,
-		AuthorNameLocal:    p.AuthorNameLocal,
+		AuthorNameLocal: p.AuthorNameLocal,
 		AuthorAvatar:    p.AuthorAvatar,
 		AuthorRoleTitle: p.AuthorRoleTitle,
 		LikeCount:       p.LikeCount,

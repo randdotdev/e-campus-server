@@ -18,6 +18,10 @@ func IsComment(p *Post) bool {
 	return p.ParentID != nil && p.RootID != nil
 }
 
+func IsScheduled(publishAt *time.Time, now time.Time) bool {
+	return publishAt != nil && publishAt.After(now)
+}
+
 func IsExpired(expiresAt *time.Time, now time.Time) bool {
 	return expiresAt != nil && expiresAt.Before(now)
 }
@@ -26,14 +30,40 @@ func IsDeleted(deletedAt *time.Time) bool {
 	return deletedAt != nil
 }
 
+func IsVisible(p *Post, now time.Time) bool {
+	if IsDeleted(p.DeletedAt) {
+		return false
+	}
+	if IsScheduled(p.PublishAt, now) {
+		return false
+	}
+	if IsExpired(p.ExpiresAt, now) {
+		return false
+	}
+	return true
+}
+
 func CanView(p *Post, isAdmin bool, now time.Time) bool {
 	if IsDeleted(p.DeletedAt) {
+		return isAdmin
+	}
+	if IsScheduled(p.PublishAt, now) {
 		return isAdmin
 	}
 	if IsExpired(p.ExpiresAt, now) {
 		return isAdmin
 	}
 	return true
+}
+
+func GetStatus(p *Post, now time.Time) string {
+	if IsScheduled(p.PublishAt, now) {
+		return StatusScheduled
+	}
+	if IsExpired(p.ExpiresAt, now) {
+		return StatusExpired
+	}
+	return StatusPublished
 }
 
 func CanEdit(p *Post, userID uuid.UUID, isAdmin bool) bool {
@@ -105,12 +135,13 @@ func ParseMentions(body string) []string {
 	return mentions
 }
 
-func BuildPost(authorID uuid.UUID, scopeType string, scopeID *uuid.UUID, body string, expiresAt *time.Time) *Post {
+func BuildPost(authorID uuid.UUID, scopeType string, scopeID *uuid.UUID, body string, publishAt, expiresAt *time.Time) *Post {
 	return &Post{
 		ID:        uuid.New(),
 		ScopeType: scopeType,
 		ScopeID:   scopeID,
 		Body:      body,
+		PublishAt: publishAt,
 		ExpiresAt: expiresAt,
 		AuthorID:  authorID,
 		CreatedAt: time.Now(),

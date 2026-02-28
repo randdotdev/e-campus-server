@@ -48,7 +48,12 @@ func (m *mockPostRepo) SoftDelete(ctx context.Context, id uuid.UUID, deletedAt t
 	return nil
 }
 
-func (m *mockPostRepo) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, includeExpired bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (m *mockPostRepo) HardDelete(ctx context.Context, id uuid.UUID) error {
+	delete(m.posts, id)
+	return nil
+}
+
+func (m *mockPostRepo) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
 	var result []PostWithAuthor
 	for _, p := range m.posts {
 		if p.ScopeType == scopeType && p.ParentID == nil {
@@ -284,7 +289,7 @@ func TestCreatePost(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			post, err := s.CreatePost(ctx, authorID, tt.scopeType, tt.scopeID, tt.body, nil)
+			post, err := s.CreatePost(ctx, authorID, tt.scopeType, tt.scopeID, tt.body, nil, nil)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
@@ -312,7 +317,7 @@ func TestCreateComment(t *testing.T) {
 	authorID := uuid.New()
 
 	// Create parent post
-	parent, err := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Parent post", nil)
+	parent, err := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Parent post", nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to create parent: %v", err)
 	}
@@ -337,7 +342,7 @@ func TestCreateNestedComment(t *testing.T) {
 	authorID := uuid.New()
 
 	// Create parent post
-	parent, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Parent post", nil)
+	parent, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Parent post", nil, nil)
 
 	// Create first-level comment
 	comment1, _ := s.CreateComment(ctx, authorID, parent.ID, "First comment")
@@ -363,7 +368,7 @@ func TestUpdatePost(t *testing.T) {
 	authorID := uuid.New()
 	otherID := uuid.New()
 
-	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Original", nil)
+	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Original", nil, nil)
 
 	tests := []struct {
 		name    string
@@ -380,7 +385,7 @@ func TestUpdatePost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newBody := tt.body
-			_, err := s.UpdatePost(ctx, post.ID, tt.userID, tt.isAdmin, &newBody, nil)
+			_, err := s.UpdatePost(ctx, post.ID, tt.userID, tt.isAdmin, &newBody, nil, nil)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
@@ -415,7 +420,7 @@ func TestDeletePost(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "To delete", nil)
+			post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "To delete", nil, nil)
 			err := s.DeletePost(ctx, post.ID, tt.userID, tt.isAdmin)
 
 			if tt.wantErr != nil {
@@ -438,7 +443,7 @@ func TestLikePost(t *testing.T) {
 	authorID := uuid.New()
 	userID := uuid.New()
 
-	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Likeable", nil)
+	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Likeable", nil, nil)
 
 	// First like should succeed
 	if err := s.LikePost(ctx, post.ID, userID); err != nil {
@@ -457,7 +462,7 @@ func TestUnlikePost(t *testing.T) {
 	authorID := uuid.New()
 	userID := uuid.New()
 
-	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Unlikeable", nil)
+	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Unlikeable", nil, nil)
 
 	// Unlike without like should fail
 	if err := s.UnlikePost(ctx, post.ID, userID); err != ErrNotLiked {
@@ -476,7 +481,7 @@ func TestPinPost(t *testing.T) {
 	ctx := context.Background()
 	authorID := uuid.New()
 
-	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Pinnable", nil)
+	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "Pinnable", nil, nil)
 	comment, _ := s.CreateComment(ctx, authorID, post.ID, "Comment")
 
 	tests := []struct {
@@ -514,7 +519,7 @@ func TestAddAttachment(t *testing.T) {
 	authorID := uuid.New()
 	otherID := uuid.New()
 
-	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "With attachment", nil)
+	post, _ := s.CreatePost(ctx, authorID, ScopeUniversity, nil, "With attachment", nil, nil)
 
 	tests := []struct {
 		name      string

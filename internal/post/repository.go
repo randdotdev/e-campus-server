@@ -23,12 +23,12 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) Create(ctx context.Context, p *Post) error {
 	query := `
-		INSERT INTO posts (id, scope_type, scope_id, parent_id, root_id, body, is_pinned, expires_at, author_id, like_count, comment_count, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		INSERT INTO posts (id, scope_type, scope_id, parent_id, root_id, body, is_pinned, publish_at, expires_at, author_id, like_count, comment_count, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		p.ID, p.ScopeType, p.ScopeID, p.ParentID, p.RootID, p.Body,
-		p.IsPinned, p.ExpiresAt, p.AuthorID, p.LikeCount, p.CommentCount, p.CreatedAt)
+		p.IsPinned, p.PublishAt, p.ExpiresAt, p.AuthorID, p.LikeCount, p.CommentCount, p.CreatedAt)
 	return err
 }
 
@@ -52,7 +52,7 @@ func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*Post
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title AS author_role_title
+			r.title_en AS author_role_title
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
@@ -70,10 +70,10 @@ func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*Post
 func (r *Repository) Update(ctx context.Context, p *Post) error {
 	query := `
 		UPDATE posts
-		SET body = $2, is_pinned = $3, expires_at = $4, updated_at = $5
+		SET body = $2, is_pinned = $3, publish_at = $4, expires_at = $5, updated_at = $6
 		WHERE id = $1`
 
-	_, err := r.db.ExecContext(ctx, query, p.ID, p.Body, p.IsPinned, p.ExpiresAt, p.UpdatedAt)
+	_, err := r.db.ExecContext(ctx, query, p.ID, p.Body, p.IsPinned, p.PublishAt, p.ExpiresAt, p.UpdatedAt)
 	return err
 }
 
@@ -83,7 +83,13 @@ func (r *Repository) SoftDelete(ctx context.Context, id uuid.UUID, deletedAt tim
 	return err
 }
 
-func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, includeExpired bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (r *Repository) HardDelete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM posts WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
 	var args []interface{}
 	argIndex := 1
 
@@ -92,7 +98,7 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title AS author_role_title
+			r.title_en AS author_role_title
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
@@ -108,9 +114,13 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 		query += " AND p.scope_id IS NULL"
 	}
 
-	if !includeExpired {
+	if !isAdmin {
+		now := time.Now()
+		query += fmt.Sprintf(" AND (p.publish_at IS NULL OR p.publish_at <= $%d)", argIndex)
+		args = append(args, now)
+		argIndex++
 		query += fmt.Sprintf(" AND (p.expires_at IS NULL OR p.expires_at > $%d)", argIndex)
-		args = append(args, time.Now())
+		args = append(args, now)
 		argIndex++
 	}
 
@@ -150,7 +160,7 @@ func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params 
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title AS author_role_title
+			r.title_en AS author_role_title
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id

@@ -76,7 +76,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 		}
 	}
 
-	post, err := h.service.CreatePost(c.Request.Context(), userID, req.ScopeType, req.ScopeID, req.Body, req.ExpiresAt)
+	post, err := h.service.CreatePost(c.Request.Context(), userID, req.ScopeType, req.ScopeID, req.Body, req.PublishAt, req.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, ErrInvalidScope) {
 			response.BadRequest(c, err.Error())
@@ -92,7 +92,9 @@ func (h *Handler) CreatePost(c *gin.Context) {
 		ScopeType:    post.ScopeType,
 		ScopeID:      post.ScopeID,
 		Body:         post.Body,
+		PublishAt:    post.PublishAt,
 		ExpiresAt:    post.ExpiresAt,
+		Status:       GetStatus(post, time.Now()),
 		AuthorID:     post.AuthorID,
 		LikeCount:    0,
 		CommentCount: 0,
@@ -117,7 +119,7 @@ func (h *Handler) GetPost(c *gin.Context) {
 			response.NotFound(c, "post not found")
 			return
 		}
-		if errors.Is(err, ErrPostDeleted) || errors.Is(err, ErrPostExpired) {
+		if errors.Is(err, ErrPostDeleted) || errors.Is(err, ErrPostExpired) || errors.Is(err, ErrPostScheduled) {
 			response.NotFound(c, "post not found")
 			return
 		}
@@ -127,9 +129,10 @@ func (h *Handler) GetPost(c *gin.Context) {
 	}
 
 	isAdmin := h.isAdminForScope(c, post.ScopeType, post.ScopeID)
+	isAuthor := post.AuthorID == userID
 
-	// Re-check visibility if not admin
-	if !isAdmin && !CanView(&post.Post, false, time.Now()) {
+	// Re-check visibility if not admin or author
+	if !isAdmin && !isAuthor && !CanView(&post.Post, false, time.Now()) {
 		response.NotFound(c, "post not found")
 		return
 	}
@@ -253,7 +256,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 
 	isAdmin := h.isAdminForScope(c, existingPost.ScopeType, existingPost.ScopeID)
 
-	post, err := h.service.UpdatePost(c.Request.Context(), postID, userID, isAdmin, req.Body, req.ExpiresAt)
+	post, err := h.service.UpdatePost(c.Request.Context(), postID, userID, isAdmin, req.Body, req.PublishAt, req.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, ErrPostNotFound) {
 			response.NotFound(c, "post not found")
@@ -274,7 +277,9 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 		ScopeID:   post.ScopeID,
 		Body:      post.Body,
 		IsPinned:  post.IsPinned,
+		PublishAt: post.PublishAt,
 		ExpiresAt: post.ExpiresAt,
+		Status:    GetStatus(post, time.Now()),
 		AuthorID:  post.AuthorID,
 		CreatedAt: post.CreatedAt,
 		UpdatedAt: post.UpdatedAt,
@@ -373,6 +378,26 @@ func (h *Handler) ListComments(c *gin.Context) {
 	}
 
 	userID := middleware.GetUserID(c)
+
+	rootPost, err := h.service.GetPostByID(c.Request.Context(), rootID)
+	if err != nil {
+		h.log.Error("get root post failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if rootPost == nil {
+		response.NotFound(c, "post not found")
+		return
+	}
+
+	isAdmin := h.isAdminForScope(c, rootPost.ScopeType, rootPost.ScopeID)
+	isAuthor := rootPost.AuthorID == userID
+
+	if !isAdmin && !isAuthor && !IsVisible(rootPost, time.Now()) {
+		response.NotFound(c, "post not found")
+		return
+	}
+
 	params := pagination.ParsePageParams(c)
 
 	comments, hasMore, err := h.service.ListComments(c.Request.Context(), rootID, params)

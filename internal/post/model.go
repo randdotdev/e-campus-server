@@ -15,6 +15,7 @@ type Post struct {
 	RootID       *uuid.UUID `db:"root_id"`
 	Body         string     `db:"body"`
 	IsPinned     bool       `db:"is_pinned"`
+	PublishAt    *time.Time `db:"publish_at"`
 	ExpiresAt    *time.Time `db:"expires_at"`
 	AuthorID     uuid.UUID  `db:"author_id"`
 	LikeCount    int        `db:"like_count"`
@@ -64,6 +65,13 @@ const (
 	ScopeCollege    = "college"
 	ScopeDepartment = "department"
 	ScopeProgram    = "program"
+)
+
+// Post status
+const (
+	StatusScheduled = "scheduled"
+	StatusPublished = "published"
+	StatusExpired   = "expired"
 )
 
 // File types for attachments
