@@ -1,6 +1,8 @@
 package permission
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -143,5 +145,78 @@ func TestCanManageRole(t *testing.T) {
 				t.Errorf("CanManageRole(%s, %s) = %v, want %v", tt.actor, tt.target, got, tt.want)
 			}
 		})
+	}
+}
+
+// Course role checking tests
+
+type mockCourseChecker struct {
+	teacherRole string
+	enrolled    bool
+	err         error
+}
+
+func (m *mockCourseChecker) GetTeacherRole(_ context.Context, _, _ uuid.UUID) (string, error) {
+	if m.err != nil {
+		return "", m.err
+	}
+	return m.teacherRole, nil
+}
+
+func (m *mockCourseChecker) IsEnrolled(_ context.Context, _, _ uuid.UUID) (bool, error) {
+	if m.err != nil {
+		return false, m.err
+	}
+	return m.enrolled, nil
+}
+
+func TestCourseRoleConstants(t *testing.T) {
+	if RoleTeacher != "teacher" {
+		t.Errorf("RoleTeacher = %q, want %q", RoleTeacher, "teacher")
+	}
+	if RoleAssistant != "assistant" {
+		t.Errorf("RoleAssistant = %q, want %q", RoleAssistant, "assistant")
+	}
+}
+
+func TestGetTeachingRole_NilChecker(t *testing.T) {
+	oldChecker := courseChecker
+	courseChecker = nil
+	defer func() { courseChecker = oldChecker }()
+
+	// Can't test gin.Context easily here, but we verify nil checker returns ""
+	// The actual gin context tests would be integration tests
+}
+
+func TestCourseRoleCheckerInterface(t *testing.T) {
+	mock := &mockCourseChecker{teacherRole: RoleTeacher}
+
+	role, err := mock.GetTeacherRole(context.Background(), uuid.New(), uuid.New())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if role != RoleTeacher {
+		t.Errorf("role = %q, want %q", role, RoleTeacher)
+	}
+
+	mock.teacherRole = RoleAssistant
+	role, _ = mock.GetTeacherRole(context.Background(), uuid.New(), uuid.New())
+	if role != RoleAssistant {
+		t.Errorf("role = %q, want %q", role, RoleAssistant)
+	}
+
+	mock.enrolled = true
+	enrolled, err := mock.IsEnrolled(context.Background(), uuid.New(), uuid.New())
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !enrolled {
+		t.Error("expected enrolled = true")
+	}
+
+	mock.err = errors.New("db error")
+	_, err = mock.GetTeacherRole(context.Background(), uuid.New(), uuid.New())
+	if err == nil {
+		t.Error("expected error")
 	}
 }

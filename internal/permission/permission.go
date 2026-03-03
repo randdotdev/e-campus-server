@@ -2,6 +2,8 @@
 package permission
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
@@ -21,6 +23,11 @@ const (
 	ScopeCollege    = "college"
 	ScopeDepartment = "department"
 	ScopeProgram    = "program"
+)
+
+const (
+	RoleTeacher   = "teacher"
+	RoleAssistant = "assistant"
 )
 
 var permissionRank = map[string]int{
@@ -154,4 +161,55 @@ func CanManageScope(actorScopeType, targetScopeType string) bool {
 	actorRank := scopeRank[actorScopeType]
 	targetRank := scopeRank[targetScopeType]
 	return actorRank >= targetRank
+}
+
+// Course role checking
+
+type CourseRoleChecker interface {
+	GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error)
+	IsEnrolled(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
+}
+
+var courseChecker CourseRoleChecker
+
+func SetCourseChecker(cc CourseRoleChecker) {
+	courseChecker = cc
+}
+
+func getTeachingRole(c *gin.Context, offeringID uuid.UUID) string {
+	if courseChecker == nil {
+		return ""
+	}
+	userID := middleware.GetUserID(c)
+	role, err := courseChecker.GetTeacherRole(c.Request.Context(), offeringID, userID)
+	if err != nil {
+		return ""
+	}
+	return role
+}
+
+func IsOfferingTeacher(c *gin.Context, offeringID uuid.UUID) bool {
+	return getTeachingRole(c, offeringID) == RoleTeacher
+}
+
+func IsOfferingAssistant(c *gin.Context, offeringID uuid.UUID) bool {
+	return getTeachingRole(c, offeringID) == RoleAssistant
+}
+
+func IsOfferingStaff(c *gin.Context, offeringID uuid.UUID) bool {
+	role := getTeachingRole(c, offeringID)
+	return role == RoleTeacher || role == RoleAssistant
+}
+
+func IsOfferingStudent(c *gin.Context, offeringID uuid.UUID) bool {
+	if courseChecker == nil {
+		return false
+	}
+	userID := middleware.GetUserID(c)
+	enrolled, err := courseChecker.IsEnrolled(c.Request.Context(), offeringID, userID)
+	return err == nil && enrolled
+}
+
+func IsOfferingMember(c *gin.Context, offeringID uuid.UUID) bool {
+	return IsOfferingStaff(c, offeringID) || IsOfferingStudent(c, offeringID)
 }
