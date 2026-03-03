@@ -20,11 +20,13 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/content"
 	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
+	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/news"
+	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
@@ -122,6 +124,9 @@ func run() error {
 	courseService := course.NewService(courseRepo)
 	courseHandler := course.NewHandler(courseService, log)
 
+	permissionRepo := permission.NewRepository(db)
+	permission.SetCourseChecker(permissionRepo)
+
 	examRepo := exam.NewRepository(db)
 	examService := exam.NewService(examRepo)
 	examHandler := exam.NewHandler(examService, log)
@@ -182,6 +187,13 @@ func run() error {
 		newsSettingsRepo,
 	)
 	newsHandler := news.NewHandler(newsService, log)
+
+	// Mute
+	muteRepo := mute.NewMuteRepository(db)
+	muteOfferingChecker := mute.NewOfferingChecker(db)
+	muteUserChecker := mute.NewUserChecker(db)
+	muteService := mute.NewService(muteRepo, muteOfferingChecker, muteUserChecker)
+	muteHandler := mute.NewHandler(muteService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -381,6 +393,9 @@ func run() error {
 
 			// News routes
 			newsHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// Mute routes
+			muteHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
