@@ -352,6 +352,10 @@ func (h *Handler) CreateComment(c *gin.Context) {
 			response.BadRequest(c, "cannot comment on deleted post")
 			return
 		}
+		if errors.Is(err, ErrUserMuted) {
+			response.Forbidden(c, "user is muted")
+			return
+		}
 		h.log.Error("create comment failed", zap.Error(err))
 		response.InternalError(c)
 		return
@@ -451,6 +455,10 @@ func (h *Handler) LikePost(c *gin.Context) {
 		}
 		if errors.Is(err, ErrAlreadyLiked) {
 			response.Conflict(c, "already liked")
+			return
+		}
+		if errors.Is(err, ErrUserMuted) {
+			response.Forbidden(c, "user is muted")
 			return
 		}
 		h.log.Error("like post failed", zap.Error(err))

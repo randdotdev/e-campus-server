@@ -47,7 +47,7 @@ func (m *mockMuteRepo) GetActiveMute(ctx context.Context, userID uuid.UUID, scop
 	return nil, nil
 }
 
-func (m *mockMuteRepo) IsUserMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
+func (m *mockMuteRepo) IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
 	for _, mute := range m.mutes {
 		if mute.UserID != userID || mute.UnmutedAt != nil {
 			continue
@@ -313,7 +313,7 @@ func TestUnmuteAll(t *testing.T) {
 	}
 }
 
-func TestIsUserMuted(t *testing.T) {
+func TestIsMuted(t *testing.T) {
 	muteRepo := newMockMuteRepo()
 	offeringChecker := newMockOfferingChecker()
 	userChecker := newMockUserChecker()
@@ -327,7 +327,7 @@ func TestIsUserMuted(t *testing.T) {
 	offeringChecker.offerings[offeringID] = true
 
 	// Not muted initially
-	muted, _ := service.IsUserMuted(context.Background(), userID, &offeringID)
+	muted, _ := service.IsMuted(context.Background(), userID, &offeringID)
 	if muted {
 		t.Error("should not be muted initially")
 	}
@@ -335,20 +335,20 @@ func TestIsUserMuted(t *testing.T) {
 	// Mute in course
 	_, _ = service.MuteInCourse(context.Background(), userID, offeringID, mutedBy, nil, nil)
 
-	muted, _ = service.IsUserMuted(context.Background(), userID, &offeringID)
+	muted, _ = service.IsMuted(context.Background(), userID, &offeringID)
 	if !muted {
 		t.Error("should be muted after MuteInCourse")
 	}
 
 	// Different offering should not be muted
 	otherOffering := uuid.New()
-	muted, _ = service.IsUserMuted(context.Background(), userID, &otherOffering)
+	muted, _ = service.IsMuted(context.Background(), userID, &otherOffering)
 	if muted {
 		t.Error("should not be muted in different offering")
 	}
 }
 
-func TestIsUserMuted_UniversityWide(t *testing.T) {
+func TestIsMuted_UniversityWide(t *testing.T) {
 	muteRepo := newMockMuteRepo()
 	offeringChecker := newMockOfferingChecker()
 	userChecker := newMockUserChecker()
@@ -364,7 +364,7 @@ func TestIsUserMuted_UniversityWide(t *testing.T) {
 	_, _ = service.MuteUniversityWide(context.Background(), userID, mutedBy, nil, nil)
 
 	// Should be muted in any offering
-	muted, _ := service.IsUserMuted(context.Background(), userID, &offeringID)
+	muted, _ := service.IsMuted(context.Background(), userID, &offeringID)
 	if !muted {
 		t.Error("should be muted university-wide")
 	}

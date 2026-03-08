@@ -160,6 +160,12 @@ func run() error {
 	)
 	assignmentHandler := assignment.NewHandler(assignmentService, log)
 
+	muteRepo := mute.NewMuteRepository(db)
+	muteOfferingChecker := mute.NewOfferingChecker(db)
+	muteUserChecker := mute.NewUserChecker(db)
+	muteService := mute.NewService(muteRepo, muteOfferingChecker, muteUserChecker)
+	muteHandler := mute.NewHandler(muteService, log)
+
 	postRepo := post.NewRepository(db)
 	postLikeRepo := post.NewLikeRepository(db)
 	postAttachmentRepo := post.NewAttachmentRepository(db)
@@ -173,6 +179,7 @@ func run() error {
 		postMentionRepo,
 		postUserRepo,
 		postScopeRepo,
+		muteRepo,
 	)
 	postHandler := post.NewHandler(postService, log)
 
@@ -187,13 +194,6 @@ func run() error {
 		newsSettingsRepo,
 	)
 	newsHandler := news.NewHandler(newsService, log)
-
-	// Mute
-	muteRepo := mute.NewMuteRepository(db)
-	muteOfferingChecker := mute.NewOfferingChecker(db)
-	muteUserChecker := mute.NewUserChecker(db)
-	muteService := mute.NewService(muteRepo, muteOfferingChecker, muteUserChecker)
-	muteHandler := mute.NewHandler(muteService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())

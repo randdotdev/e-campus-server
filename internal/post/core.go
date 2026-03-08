@@ -83,7 +83,7 @@ func CanPin(isAdmin bool) bool {
 
 func ValidateScopeType(scopeType string) bool {
 	switch scopeType {
-	case ScopeUniversity, ScopeCollege, ScopeDepartment, ScopeProgram:
+	case ScopeUniversity, ScopeCollege, ScopeDepartment, ScopeProgram, ScopeCourse:
 		return true
 	}
 	return false

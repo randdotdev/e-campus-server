@@ -74,7 +74,30 @@ func (r *MuteRepository) GetActiveMute(ctx context.Context, userID uuid.UUID, sc
 	return &m, nil
 }
 
-func (r *MuteRepository) IsUserMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
+func (r *MuteRepository) IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
+	if offeringID != nil {
+		return r.isMutedInOffering(ctx, userID, *offeringID)
+	}
+	return r.isMutedGlobally(ctx, userID)
+}
+
+func (r *MuteRepository) isMutedGlobally(ctx context.Context, userID uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM user_mutes
+			WHERE user_id = $1
+			  AND scope_type = 'university'
+			  AND unmuted_at IS NULL
+			  AND (expires_at IS NULL OR expires_at > NOW())
+		)`
+	var exists bool
+	if err := r.db.GetContext(ctx, &exists, query, userID); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (r *MuteRepository) isMutedInOffering(ctx context.Context, userID, offeringID uuid.UUID) (bool, error) {
 	query := `
 		SELECT EXISTS (
 			SELECT 1 FROM user_mutes

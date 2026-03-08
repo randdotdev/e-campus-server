@@ -59,12 +59,12 @@ type MentionedUser struct {
 	FullName string    `db:"full_name"`
 }
 
-// Scope types
 const (
 	ScopeUniversity = "university"
 	ScopeCollege    = "college"
 	ScopeDepartment = "department"
 	ScopeProgram    = "program"
+	ScopeCourse     = "course"
 )
 
 // Post status

@@ -216,6 +216,7 @@ func TestValidateScopeType(t *testing.T) {
 		{"college", ScopeCollege, true},
 		{"department", ScopeDepartment, true},
 		{"program", ScopeProgram, true},
+		{"course", ScopeCourse, true},
 		{"invalid", "invalid", false},
 		{"empty", "", false},
 	}
@@ -244,6 +245,8 @@ func TestValidateScopeID(t *testing.T) {
 		{"college nil", ScopeCollege, nil, false},
 		{"department with id", ScopeDepartment, &id, true},
 		{"program with id", ScopeProgram, &id, true},
+		{"course with id", ScopeCourse, &id, true},
+		{"course nil", ScopeCourse, nil, false},
 	}
 
 	for _, tt := range tests {

@@ -8,7 +8,7 @@ import (
 
 
 type CreatePostRequest struct {
-	ScopeType string     `json:"scope_type" binding:"required,oneof=university college department program"`
+	ScopeType string     `json:"scope_type" binding:"required,oneof=university college department program course"`
 	ScopeID   *uuid.UUID `json:"scope_id"`
 	Body      string     `json:"body" binding:"required,min=1,max=10000"`
 	PublishAt *time.Time `json:"publish_at"`

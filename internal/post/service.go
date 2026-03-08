@@ -56,6 +56,10 @@ type ScopeChecker interface {
 	ScopeExists(ctx context.Context, scopeType string, scopeID uuid.UUID) (bool, error)
 }
 
+type MuteChecker interface {
+	IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error)
+}
+
 type Service struct {
 	posts       PostRepository
 	likes       LikeRepository
@@ -63,6 +67,7 @@ type Service struct {
 	mentions    MentionRepository
 	users       UserLookup
 	scopes      ScopeChecker
+	mutes       MuteChecker
 }
 
 func NewService(
@@ -72,6 +77,7 @@ func NewService(
 	mentions MentionRepository,
 	users UserLookup,
 	scopes ScopeChecker,
+	mutes MuteChecker,
 ) *Service {
 	return &Service{
 		posts:       posts,
@@ -80,6 +86,7 @@ func NewService(
 		mentions:    mentions,
 		users:       users,
 		scopes:      scopes,
+		mutes:       mutes,
 	}
 }
 
@@ -126,6 +133,10 @@ func (s *Service) CreateComment(ctx context.Context, authorID, parentID uuid.UUI
 	now := time.Now()
 	if !IsVisible(parent, now) {
 		return nil, ErrPostNotFound
+	}
+
+	if err := s.checkMuted(ctx, authorID, parent.ScopeType, parent.ScopeID); err != nil {
+		return nil, err
 	}
 
 	comment := BuildComment(authorID, parent, body)
@@ -306,6 +317,10 @@ func (s *Service) LikePost(ctx context.Context, postID, userID uuid.UUID) error 
 		return ErrPostNotFound
 	}
 
+	if err := s.checkMuted(ctx, userID, post.ScopeType, post.ScopeID); err != nil {
+		return err
+	}
+
 	exists, err := s.likes.Exists(ctx, postID, userID)
 	if err != nil {
 		return err
@@ -436,4 +451,24 @@ func (s *Service) processMentions(ctx context.Context, postID uuid.UUID, body st
 	}
 
 	return s.mentions.CreateBatch(ctx, postID, userIDs)
+}
+
+func (s *Service) checkMuted(ctx context.Context, userID uuid.UUID, scopeType string, scopeID *uuid.UUID) error {
+	if s.mutes == nil {
+		return nil
+	}
+
+	var offeringID *uuid.UUID
+	if scopeType == ScopeCourse {
+		offeringID = scopeID
+	}
+
+	muted, err := s.mutes.IsMuted(ctx, userID, offeringID)
+	if err != nil {
+		return err
+	}
+	if muted {
+		return ErrUserMuted
+	}
+	return nil
 }

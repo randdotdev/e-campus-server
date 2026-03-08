@@ -12,7 +12,7 @@ type MuteRepo interface {
 	Create(ctx context.Context, m *Mute) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Mute, error)
 	GetActiveMute(ctx context.Context, userID uuid.UUID, scopeType string, scopeID *uuid.UUID) (*Mute, error)
-	IsUserMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error)
+	IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error)
 	Unmute(ctx context.Context, id uuid.UUID, unmutedBy uuid.UUID) error
 	UnmuteAll(ctx context.Context, userID uuid.UUID, unmutedBy uuid.UUID) (int64, error)
 	ListByOffering(ctx context.Context, offeringID uuid.UUID, params pagination.PageParams, filters MuteFilters) ([]MuteWithUser, bool, error)
@@ -142,8 +142,8 @@ func (s *Service) GetMute(ctx context.Context, id uuid.UUID) (*Mute, error) {
 	return mute, nil
 }
 
-func (s *Service) IsUserMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
-	return s.muteRepo.IsUserMuted(ctx, userID, offeringID)
+func (s *Service) IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
+	return s.muteRepo.IsMuted(ctx, userID, offeringID)
 }
 
 func (s *Service) ListMutesByOffering(ctx context.Context, offeringID uuid.UUID, params pagination.PageParams, filters MuteFilters) ([]MuteWithUser, bool, error) {

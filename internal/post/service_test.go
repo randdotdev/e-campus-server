@@ -255,6 +255,22 @@ func (m *mockScopeChecker) ScopeExists(ctx context.Context, scopeType string, sc
 	return true, nil
 }
 
+type mockMuteChecker struct {
+	muted map[string]bool
+}
+
+func newMockMuteChecker() *mockMuteChecker {
+	return &mockMuteChecker{muted: make(map[string]bool)}
+}
+
+func (m *mockMuteChecker) IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error) {
+	key := userID.String()
+	if offeringID != nil {
+		key += ":" + offeringID.String()
+	}
+	return m.muted[key], nil
+}
+
 func newTestService() *Service {
 	return NewService(
 		newMockPostRepo(),
@@ -263,6 +279,7 @@ func newTestService() *Service {
 		newMockMentionRepo(),
 		newMockUserLookup(),
 		newMockScopeChecker(),
+		newMockMuteChecker(),
 	)
 }
 
