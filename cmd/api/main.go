@@ -28,6 +28,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/news"
 	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
+	"github.com/ranjdotdev/e-campus-server/internal/qa"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
@@ -194,6 +195,22 @@ func run() error {
 		newsSettingsRepo,
 	)
 	newsHandler := news.NewHandler(newsService, log)
+
+	qaQuestionRepo := qa.NewQuestionRepository(db)
+	qaAnswerRepo := qa.NewAnswerRepository(db)
+	qaRejectionRepo := qa.NewRejectionRepository(db)
+	qaQuestionAttachmentRepo := qa.NewQuestionAttachmentRepository(db)
+	qaAnswerAttachmentRepo := qa.NewAnswerAttachmentRepository(db)
+	qaService := qa.NewService(
+		qaQuestionRepo,
+		qaAnswerRepo,
+		qaRejectionRepo,
+		qaQuestionAttachmentRepo,
+		qaAnswerAttachmentRepo,
+		&qaOfferingCheckerAdapter{repo: courseRepo},
+		muteRepo,
+	)
+	qaHandler := qa.NewHandler(qaService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -396,6 +413,9 @@ func run() error {
 
 			// Mute routes
 			muteHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// Q&A routes
+			qaHandler.RegisterRoutes(protected, middleware.Auth(authService))
 		}
 	}
 
@@ -520,4 +540,12 @@ func (a *courseCheckerAdapter) GetTeacherRole(ctx context.Context, offeringID, u
 
 func (a *courseCheckerAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
 	return a.repo.IsEnrolled(ctx, offeringID, studentID)
+}
+
+type qaOfferingCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *qaOfferingCheckerAdapter) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.OfferingExists(ctx, id)
 }
