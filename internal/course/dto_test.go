@@ -22,7 +22,7 @@ func TestToCourseResponse(t *testing.T) {
 		SubtitleLocal: ptr("بنەماکان"),
 		GroupOrder:    1,
 		Requires:      &reqID,
-		ECTS:          6,
+		Credits:       6,
 		DescriptionEN: ptr("Course description"),
 		IsActive:      true,
 		CreatedAt:     now,
@@ -52,8 +52,8 @@ func TestToCourseResponse(t *testing.T) {
 	if *resp.Requires != *course.Requires {
 		t.Errorf("Requires = %v, want %v", *resp.Requires, *course.Requires)
 	}
-	if resp.ECTS != course.ECTS {
-		t.Errorf("ECTS = %v, want %v", resp.ECTS, course.ECTS)
+	if resp.Credits != course.Credits {
+		t.Errorf("Credits = %v, want %v", resp.Credits, course.Credits)
 	}
 	if resp.IsActive != course.IsActive {
 		t.Errorf("IsActive = %v, want %v", resp.IsActive, course.IsActive)

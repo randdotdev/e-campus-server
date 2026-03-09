@@ -469,7 +469,7 @@ func TestCreateProgram_Success(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalECTS:     240,
+		TotalCredits:     240,
 	}
 
 	program, err := svc.CreateProgram(context.Background(), req)
@@ -498,7 +498,7 @@ func TestCreateProgram_DepartmentNotFound(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalECTS:     240,
+		TotalCredits:     240,
 	}
 
 	_, err := svc.CreateProgram(context.Background(), req)
@@ -525,7 +525,7 @@ func TestCreateProgram_CodeExists(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalECTS:     240,
+		TotalCredits:     240,
 	}
 
 	_, err := svc.CreateProgram(context.Background(), req)
@@ -539,7 +539,7 @@ func TestUpdateProgram_Success(t *testing.T) {
 	deptID := uuid.New()
 	mock := &MockRepository{
 		GetProgramFunc: func(ctx context.Context, id uuid.UUID) (*Program, error) {
-			return &Program{ID: id, DepartmentID: deptID, NameEN: "Old", Code: "OLD", DegreeType: "bachelor", DurationYears: 4, TotalECTS: 240}, nil
+			return &Program{ID: id, DepartmentID: deptID, NameEN: "Old", Code: "OLD", DegreeType: "bachelor", DurationYears: 4, TotalCredits: 240}, nil
 		},
 		ProgramCodeExistsFunc: func(ctx context.Context, dID uuid.UUID, code string, excludeID *uuid.UUID) (bool, error) {
 			return false, nil

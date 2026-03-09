@@ -38,7 +38,7 @@ type Program struct {
 	Code          string    `db:"code"`
 	DegreeType    string    `db:"degree_type"`
 	DurationYears int       `db:"duration_years"`
-	TotalECTS     int       `db:"total_ects"`
+	TotalCredits     int       `db:"total_credits"`
 	MinAge        *int      `db:"min_age"`
 	MaxAge        *int      `db:"max_age"`
 	Description   *string   `db:"description"`

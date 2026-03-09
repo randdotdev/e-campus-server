@@ -30,7 +30,7 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) CreateCourse(ctx context.Context, c *Course) error {
 	query := `
-		INSERT INTO courses (department_id, code, name_en, name_local, subtitle_en, subtitle_local, group_order, requires, ects, description_en, description_local)
+		INSERT INTO courses (department_id, code, name_en, name_local, subtitle_en, subtitle_local, group_order, requires, credits, description_en, description_local)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, is_active, created_at, updated_at`
 
@@ -40,7 +40,7 @@ func (r *Repository) CreateCourse(ctx context.Context, c *Course) error {
 	}
 
 	return r.db.QueryRowxContext(ctx, query,
-		c.DepartmentID, c.Code, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, groupOrder, c.Requires, c.ECTS, c.DescriptionEN, c.DescriptionLocal,
+		c.DepartmentID, c.Code, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, groupOrder, c.Requires, c.Credits, c.DescriptionEN, c.DescriptionLocal,
 	).Scan(&c.ID, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
 }
 
@@ -120,12 +120,12 @@ func (r *Repository) ListCourses(ctx context.Context, params pagination.PagePara
 func (r *Repository) UpdateCourse(ctx context.Context, c *Course) error {
 	query := `
 		UPDATE courses
-		SET name_en = $2, name_local = $3, subtitle_en = $4, subtitle_local = $5, ects = $6, description_en = $7, description_local = $8, is_active = $9
+		SET name_en = $2, name_local = $3, subtitle_en = $4, subtitle_local = $5, credits = $6, description_en = $7, description_local = $8, is_active = $9
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		c.ID, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, c.ECTS, c.DescriptionEN, c.DescriptionLocal, c.IsActive,
+		c.ID, c.NameEN, c.NameLocal, c.SubtitleEN, c.SubtitleLocal, c.Credits, c.DescriptionEN, c.DescriptionLocal, c.IsActive,
 	).Scan(&c.UpdatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {

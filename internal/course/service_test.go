@@ -310,7 +310,7 @@ func TestService_CreateCourse(t *testing.T) {
 			DepartmentID: deptID,
 			Code:         "CS101",
 			NameEN:       "Intro to CS",
-			ECTS:         6,
+			Credits:      6,
 		}
 
 		course, err := svc.CreateCourse(ctx, req)
@@ -337,7 +337,7 @@ func TestService_CreateCourse(t *testing.T) {
 			DepartmentID: deptID,
 			Code:         "CS101",
 			NameEN:       "Intro to CS",
-			ECTS:         6,
+			Credits:      6,
 		}
 
 		_, err := svc.CreateCourse(ctx, req)
@@ -353,9 +353,9 @@ func TestService_UpdateCourse(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		existingCourse := &Course{
-			ID:     courseID,
-			NameEN: "Old Name",
-			ECTS:   6,
+			ID:      courseID,
+			NameEN:  "Old Name",
+			Credits: 6,
 		}
 		repo := &mockRepo{
 			getCourseFunc: func(ctx context.Context, id uuid.UUID) (*Course, error) {

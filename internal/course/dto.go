@@ -59,7 +59,7 @@ type CreateCourseRequest struct {
 	SubtitleLocal    *string    `json:"subtitle_local" binding:"omitempty,max=100"`
 	GroupOrder       int        `json:"group_order" binding:"omitempty,min=1"`
 	Requires         *uuid.UUID `json:"requires"`
-	ECTS             int        `json:"ects" binding:"required,min=1"`
+	Credits          int        `json:"credits" binding:"required,min=1"`
 	DescriptionEN    *string    `json:"description_en"`
 	DescriptionLocal *string    `json:"description_local"`
 }
@@ -72,7 +72,7 @@ type UpdateCourseRequest struct {
 	DescriptionEN    *string `json:"description_en"`
 	DescriptionLocal *string `json:"description_local"`
 	IsActive         *bool   `json:"is_active"`
-	ECTS             *int    `json:"ects" binding:"omitempty,min=1"`
+	Credits          *int    `json:"credits" binding:"omitempty,min=1"`
 }
 
 type CreateOfferingRequest struct {
@@ -144,7 +144,7 @@ type CourseResponse struct {
 	SubtitleLocal    *string    `json:"subtitle_local,omitempty"`
 	GroupOrder       int        `json:"group_order"`
 	Requires         *uuid.UUID `json:"requires,omitempty"`
-	ECTS             int        `json:"ects"`
+	Credits          int        `json:"credits"`
 	DescriptionEN    *string    `json:"description_en,omitempty"`
 	DescriptionLocal *string    `json:"description_local,omitempty"`
 	IsActive         bool       `json:"is_active"`
@@ -219,7 +219,7 @@ func ToCourseResponse(c *Course) CourseResponse {
 		SubtitleLocal:    c.SubtitleLocal,
 		GroupOrder:       c.GroupOrder,
 		Requires:         c.Requires,
-		ECTS:             c.ECTS,
+		Credits:          c.Credits,
 		DescriptionEN:    c.DescriptionEN,
 		DescriptionLocal: c.DescriptionLocal,
 		IsActive:         c.IsActive,

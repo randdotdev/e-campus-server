@@ -89,7 +89,7 @@ func (s *Service) CreateCourse(ctx context.Context, req CreateCourseRequest) (*C
 		SubtitleLocal:    req.SubtitleLocal,
 		GroupOrder:       groupOrder,
 		Requires:         req.Requires,
-		ECTS:             req.ECTS,
+		Credits:          req.Credits,
 		DescriptionEN:    req.DescriptionEN,
 		DescriptionLocal: req.DescriptionLocal,
 	}
@@ -133,8 +133,8 @@ func (s *Service) UpdateCourse(ctx context.Context, id uuid.UUID, req UpdateCour
 	if req.DescriptionLocal != nil {
 		course.DescriptionLocal = req.DescriptionLocal
 	}
-	if req.ECTS != nil {
-		course.ECTS = *req.ECTS
+	if req.Credits != nil {
+		course.Credits = *req.Credits
 	}
 	if req.IsActive != nil {
 		course.IsActive = *req.IsActive

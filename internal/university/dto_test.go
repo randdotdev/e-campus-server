@@ -116,7 +116,7 @@ func TestToProgramResponse(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalECTS:     240,
+		TotalCredits:     240,
 		Description:   &desc,
 		IsActive:      true,
 		CreatedAt:     time.Now(),
@@ -137,16 +137,16 @@ func TestToProgramResponse(t *testing.T) {
 	if resp.DurationYears != 4 {
 		t.Error("DurationYears should be 4")
 	}
-	if resp.TotalECTS != 240 {
-		t.Error("TotalECTS should be 240")
+	if resp.TotalCredits != 240 {
+		t.Error("TotalCredits should be 240")
 	}
 }
 
 func TestToProgramsResponse(t *testing.T) {
 	deptID := uuid.New()
 	programs := []Program{
-		{ID: uuid.New(), DepartmentID: deptID, NameEN: "Program A", Code: "A", DegreeType: "bachelor", DurationYears: 4, TotalECTS: 240},
-		{ID: uuid.New(), DepartmentID: deptID, NameEN: "Program B", Code: "B", DegreeType: "master", DurationYears: 2, TotalECTS: 120},
+		{ID: uuid.New(), DepartmentID: deptID, NameEN: "Program A", Code: "A", DegreeType: "bachelor", DurationYears: 4, TotalCredits: 240},
+		{ID: uuid.New(), DepartmentID: deptID, NameEN: "Program B", Code: "B", DegreeType: "master", DurationYears: 2, TotalCredits: 120},
 	}
 
 	resp := ToProgramsResponse(programs)
@@ -197,7 +197,7 @@ func TestCreateProgramRequest_Validation(t *testing.T) {
 		Code:          "TP",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalECTS:     240,
+		TotalCredits:     240,
 	}
 
 	if req.DepartmentID != deptID {

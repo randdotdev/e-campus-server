@@ -258,7 +258,7 @@ func (s *Service) CreateProgram(ctx context.Context, req CreateProgramRequest) (
 		Code:          req.Code,
 		DegreeType:    req.DegreeType,
 		DurationYears: req.DurationYears,
-		TotalECTS:     req.TotalECTS,
+		TotalCredits:     req.TotalCredits,
 		MinAge:        req.MinAge,
 		MaxAge:        req.MaxAge,
 		Description:   req.Description,
@@ -316,8 +316,8 @@ func (s *Service) UpdateProgram(ctx context.Context, id uuid.UUID, req UpdatePro
 	if req.DurationYears != nil {
 		program.DurationYears = *req.DurationYears
 	}
-	if req.TotalECTS != nil {
-		program.TotalECTS = *req.TotalECTS
+	if req.TotalCredits != nil {
+		program.TotalCredits = *req.TotalCredits
 	}
 	if req.MinAge != nil {
 		program.MinAge = req.MinAge

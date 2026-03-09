@@ -133,7 +133,7 @@ type CreateProgramRequest struct {
 	Code          string    `json:"code" binding:"required,min=2,max=20"`
 	DegreeType    string    `json:"degree_type" binding:"required,oneof=bachelor master phd"`
 	DurationYears int       `json:"duration_years" binding:"required,min=1,max=8"`
-	TotalECTS     int       `json:"total_ects" binding:"required,min=1"`
+	TotalCredits     int       `json:"total_credits" binding:"required,min=1"`
 	MinAge        *int      `json:"min_age" binding:"omitempty,min=0"`
 	MaxAge        *int      `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string   `json:"description"`
@@ -145,7 +145,7 @@ type UpdateProgramRequest struct {
 	Code          *string `json:"code" binding:"omitempty,min=2,max=20"`
 	DegreeType    *string `json:"degree_type" binding:"omitempty,oneof=bachelor master phd"`
 	DurationYears *int    `json:"duration_years" binding:"omitempty,min=1,max=8"`
-	TotalECTS     *int    `json:"total_ects" binding:"omitempty,min=1"`
+	TotalCredits     *int    `json:"total_credits" binding:"omitempty,min=1"`
 	MinAge        *int    `json:"min_age" binding:"omitempty,min=0"`
 	MaxAge        *int    `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string `json:"description"`
@@ -160,7 +160,7 @@ type ProgramResponse struct {
 	Code          string    `json:"code"`
 	DegreeType    string    `json:"degree_type"`
 	DurationYears int       `json:"duration_years"`
-	TotalECTS     int       `json:"total_ects"`
+	TotalCredits     int       `json:"total_credits"`
 	MinAge        *int      `json:"min_age,omitempty"`
 	MaxAge        *int      `json:"max_age,omitempty"`
 	Description   *string   `json:"description,omitempty"`
@@ -178,7 +178,7 @@ func ToProgramResponse(p *Program) ProgramResponse {
 		Code:          p.Code,
 		DegreeType:    p.DegreeType,
 		DurationYears: p.DurationYears,
-		TotalECTS:     p.TotalECTS,
+		TotalCredits:     p.TotalCredits,
 		MinAge:        p.MinAge,
 		MaxAge:        p.MaxAge,
 		Description:   p.Description,

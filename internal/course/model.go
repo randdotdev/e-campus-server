@@ -17,7 +17,7 @@ type Course struct {
 	SubtitleLocal    *string    `db:"subtitle_local"`
 	GroupOrder       int        `db:"group_order"`
 	Requires         *uuid.UUID `db:"requires"`
-	ECTS             int        `db:"ects"`
+	Credits          int        `db:"credits"`
 	DescriptionEN    *string    `db:"description_en"`
 	DescriptionLocal *string    `db:"description_local"`
 	IsActive         bool       `db:"is_active"`
