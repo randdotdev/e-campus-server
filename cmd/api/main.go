@@ -20,8 +20,9 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/content"
 	"github.com/ranjdotdev/e-campus-server/internal/course"
 	"github.com/ranjdotdev/e-campus-server/internal/database"
-	"github.com/ranjdotdev/e-campus-server/internal/mute"
+	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
+	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
@@ -211,6 +212,10 @@ func run() error {
 		muteRepo,
 	)
 	qaHandler := qa.NewHandler(qaService, log)
+
+	enrollmentRepo := enrollment.NewRepository(db)
+	enrollmentService := enrollment.NewService(enrollmentRepo)
+	enrollmentHandler := enrollment.NewHandler(enrollmentService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -416,6 +421,17 @@ func run() error {
 
 			// Q&A routes
 			qaHandler.RegisterRoutes(protected, middleware.Auth(authService))
+
+			// Enrollment request routes - student
+			protected.POST("/enrollment-requests/pretake", enrollmentHandler.CreatePretake)
+			protected.POST("/enrollment-requests/retake", enrollmentHandler.CreateRetake)
+			protected.GET("/me/enrollment-requests", enrollmentHandler.GetMyRequests)
+
+			// Enrollment request routes - admin
+			protected.GET("/enrollment-requests", enrollmentHandler.List)
+			protected.GET("/enrollment-requests/:id", enrollmentHandler.GetByID)
+			protected.PUT("/enrollment-requests/:id/approve", enrollmentHandler.Approve)
+			protected.PUT("/enrollment-requests/:id/reject", enrollmentHandler.Reject)
 		}
 	}
 
