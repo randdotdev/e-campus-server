@@ -8,6 +8,34 @@ func CanRequestRetake(courseStatus string, isNaturalCohort bool) bool {
 	return courseStatus == CourseFailed && isNaturalCohort
 }
 
+func GetAccessLevelFromEnrollment(isEnrolled bool, hasSiblingEnrollment bool) AccessLevel {
+	if isEnrolled {
+		return FullAccess
+	}
+	if hasSiblingEnrollment {
+		return ViewOnly
+	}
+	return NoAccess
+}
+
+func IsValidEnrollmentType(enrollmentType string) bool {
+	return enrollmentType == EnrollmentTypeCurriculum ||
+		enrollmentType == EnrollmentTypeRetake ||
+		enrollmentType == EnrollmentTypePretake ||
+		enrollmentType == EnrollmentTypeExtra
+}
+
+func IsValidEnrollmentStatus(status string) bool {
+	return status == EnrollmentStatusEnrolled ||
+		status == EnrollmentStatusDropped ||
+		status == EnrollmentStatusCompleted ||
+		status == EnrollmentStatusFailed
+}
+
+func IsValidGroupType(groupType string) bool {
+	return groupType == GroupTypeTheory || groupType == GroupTypePractice
+}
+
 func BuildWarning(reqType string, prereq *PrereqStatus, course *CourseStatus) *Warning {
 	return BuildWarningWithName(reqType, prereq, course, "You")
 }

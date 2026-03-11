@@ -352,151 +352,6 @@ func (r *Repository) TeacherExists(ctx context.Context, offeringID, userID uuid.
 	return exists, err
 }
 
-// Enrollment operations
-
-func (r *Repository) CreateEnrollment(ctx context.Context, e *Enrollment) error {
-	query := `
-		INSERT INTO course_enrollments (offering_id, student_id, enrollment_type, status)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, enrolled_at`
-
-	enrollmentType := e.EnrollmentType
-	if enrollmentType == "" {
-		enrollmentType = EnrollmentTypeCurriculum
-	}
-
-	status := e.Status
-	if status == "" {
-		status = EnrollmentStatusEnrolled
-	}
-
-	return r.db.QueryRowxContext(ctx, query,
-		e.OfferingID, e.StudentID, enrollmentType, status,
-	).Scan(&e.ID, &e.EnrolledAt)
-}
-
-func (r *Repository) GetEnrollment(ctx context.Context, offeringID, studentID uuid.UUID) (*Enrollment, error) {
-	var enrollment Enrollment
-	query := `SELECT * FROM course_enrollments WHERE offering_id = $1 AND student_id = $2`
-
-	if err := r.db.GetContext(ctx, &enrollment, query, offeringID, studentID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrEnrollmentNotFound
-		}
-		return nil, err
-	}
-	return &enrollment, nil
-}
-
-func (r *Repository) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
-	argN := 1
-
-	query.WriteString("SELECT e.* FROM course_enrollments e")
-
-	if filters.Query != "" {
-		query.WriteString(" JOIN users u ON e.student_id = u.id")
-	}
-
-	query.WriteString(" WHERE 1=1")
-
-	if params.Cursor != "" {
-		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
-		if err != nil {
-			return nil, false, err
-		}
-		query.WriteString(fmt.Sprintf(" AND (e.enrolled_at, e.id) < ($%d, $%d)", argN, argN+1))
-		args = append(args, createdAt, id)
-		argN += 2
-	}
-
-	if filters.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
-		args = append(args, "%"+pagination.EscapeLike(filters.Query)+"%")
-		argN++
-	}
-
-	if filters.OfferingID != nil {
-		query.WriteString(fmt.Sprintf(" AND e.offering_id = $%d", argN))
-		args = append(args, *filters.OfferingID)
-		argN++
-	}
-
-	if filters.EnrollmentType != nil {
-		query.WriteString(fmt.Sprintf(" AND e.enrollment_type = $%d", argN))
-		args = append(args, *filters.EnrollmentType)
-		argN++
-	}
-
-	if filters.Status != nil {
-		query.WriteString(fmt.Sprintf(" AND e.status = $%d", argN))
-		args = append(args, *filters.Status)
-		argN++
-	}
-
-	query.WriteString(" ORDER BY e.enrolled_at DESC, e.id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
-	args = append(args, params.Limit+1)
-
-	var enrollments []Enrollment
-	if err := r.db.SelectContext(ctx, &enrollments, query.String(), args...); err != nil {
-		return nil, false, err
-	}
-
-	hasMore := len(enrollments) > params.Limit
-	if hasMore {
-		enrollments = enrollments[:params.Limit]
-	}
-
-	return enrollments, hasMore, nil
-}
-
-func (r *Repository) UpdateEnrollment(ctx context.Context, e *Enrollment) error {
-	query := `
-		UPDATE course_enrollments
-		SET status = $2, completed_at = $3, final_grade = $4
-		WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, e.ID, e.Status, e.CompletedAt, e.FinalGrade)
-	if err != nil {
-		return err
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return ErrEnrollmentNotFound
-	}
-	return nil
-}
-
-func (r *Repository) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM course_enrollments WHERE offering_id = $1 AND student_id = $2 AND status = 'enrolled')`
-	err := r.db.GetContext(ctx, &exists, query, offeringID, studentID)
-	return exists, err
-}
-
-func (r *Repository) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
-	var ids []uuid.UUID
-	query := `SELECT student_id FROM course_enrollments WHERE offering_id = $1 AND status = 'enrolled'`
-	err := r.db.SelectContext(ctx, &ids, query, offeringID)
-	return ids, err
-}
-
-func (r *Repository) GetStudentEnrollments(ctx context.Context, studentID uuid.UUID) ([]Enrollment, error) {
-	var enrollments []Enrollment
-	query := `SELECT * FROM course_enrollments WHERE student_id = $1 ORDER BY enrolled_at DESC`
-
-	if err := r.db.SelectContext(ctx, &enrollments, query, studentID); err != nil {
-		return nil, err
-	}
-	return enrollments, nil
-}
-
 // Section operations
 
 func (r *Repository) CreateSection(ctx context.Context, s *Section) error {
@@ -715,14 +570,14 @@ func (r *Repository) OfferingExists(ctx context.Context, id uuid.UUID) (bool, er
 // Groups
 
 func (r *Repository) CreateGroup(ctx context.Context, g *Group) error {
-	query := `INSERT INTO groups (id, offering_id, type, name, created_at) VALUES ($1, $2, $3, $4, $5)`
+	query := `INSERT INTO project_groups (id, offering_id, type, name, created_at) VALUES ($1, $2, $3, $4, $5)`
 	_, err := r.db.ExecContext(ctx, query, g.ID, g.OfferingID, g.Type, g.Name, g.CreatedAt)
 	return err
 }
 
 func (r *Repository) GetGroupByID(ctx context.Context, id uuid.UUID) (*Group, error) {
 	var g Group
-	err := r.db.GetContext(ctx, &g, `SELECT id, offering_id, type, name, created_at FROM groups WHERE id = $1`, id)
+	err := r.db.GetContext(ctx, &g, `SELECT id, offering_id, type, name, created_at FROM project_groups WHERE id = $1`, id)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -731,38 +586,38 @@ func (r *Repository) GetGroupByID(ctx context.Context, id uuid.UUID) (*Group, er
 
 func (r *Repository) ListGroups(ctx context.Context, offeringID uuid.UUID) ([]Group, error) {
 	var groups []Group
-	query := `SELECT id, offering_id, type, name, created_at FROM groups WHERE offering_id = $1 ORDER BY type, name`
+	query := `SELECT id, offering_id, type, name, created_at FROM project_groups WHERE offering_id = $1 ORDER BY type, name`
 	err := r.db.SelectContext(ctx, &groups, query, offeringID)
 	return groups, err
 }
 
 func (r *Repository) DeleteGroup(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM groups WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM project_groups WHERE id = $1`, id)
 	return err
 }
 
 func (r *Repository) GroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	var exists bool
-	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM groups WHERE id = $1)`, id)
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM project_groups WHERE id = $1)`, id)
 	return exists, err
 }
 
 func (r *Repository) AssignStudentToGroup(ctx context.Context, sg *StudentGroup) error {
-	query := `INSERT INTO student_groups (id, student_id, group_id, assigned_at) VALUES ($1, $2, $3, $4)`
+	query := `INSERT INTO project_group_members (id, student_id, group_id, assigned_at) VALUES ($1, $2, $3, $4)`
 	_, err := r.db.ExecContext(ctx, query, sg.ID, sg.StudentID, sg.GroupID, sg.AssignedAt)
 	return err
 }
 
 func (r *Repository) RemoveStudentFromGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM student_groups WHERE student_id = $1 AND group_id = $2`, studentID, groupID)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM project_group_members WHERE student_id = $1 AND group_id = $2`, studentID, groupID)
 	return err
 }
 
 func (r *Repository) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	query := `SELECT sg.group_id FROM student_groups sg
-		JOIN groups g ON g.id = sg.group_id
-		WHERE sg.student_id = $1 AND g.offering_id = $2`
+	query := `SELECT pgm.group_id FROM project_group_members pgm
+		JOIN project_groups pg ON pg.id = pgm.group_id
+		WHERE pgm.student_id = $1 AND pg.offering_id = $2`
 	err := r.db.SelectContext(ctx, &ids, query, studentID, offeringID)
 	return ids, err
 }

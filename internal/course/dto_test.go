@@ -124,32 +124,6 @@ func TestToTeacherResponse(t *testing.T) {
 	}
 }
 
-func TestToEnrollmentResponse(t *testing.T) {
-	now := time.Now()
-	grade := 85.5
-	enrollment := &Enrollment{
-		ID:          uuid.New(),
-		OfferingID:  uuid.New(),
-		StudentID:   uuid.New(),
-		Status:      EnrollmentStatusCompleted,
-		EnrolledAt:  now,
-		CompletedAt: &now,
-		FinalGrade:  &grade,
-	}
-
-	resp := ToEnrollmentResponse(enrollment)
-
-	if resp.ID != enrollment.ID {
-		t.Errorf("ID = %v, want %v", resp.ID, enrollment.ID)
-	}
-	if resp.Status != EnrollmentStatusCompleted {
-		t.Errorf("Status = %v, want %v", resp.Status, EnrollmentStatusCompleted)
-	}
-	if *resp.FinalGrade != grade {
-		t.Errorf("FinalGrade = %v, want %v", *resp.FinalGrade, grade)
-	}
-}
-
 func TestToSectionResponse(t *testing.T) {
 	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 	past := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)

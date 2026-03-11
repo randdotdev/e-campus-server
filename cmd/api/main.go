@@ -22,10 +22,10 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/database"
 	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
-	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/files"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/news"
 	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
@@ -147,18 +147,20 @@ func run() error {
 	)
 	contentHandler := content.NewHandler(contentService, log)
 
+	enrollmentRepo := enrollment.NewRepository(db)
+
 	attendanceRepo := attendance.NewRepository(db)
 	attendanceService := attendance.NewService(
 		attendanceRepo,
 		&lessonCheckerAdapter{repo: contentRepo},
-		&enrollmentCheckerAdapter{repo: courseRepo},
+		&enrollmentCheckerAdapter{repo: enrollmentRepo},
 	)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 
 	assignmentRepo := assignment.NewRepository(db)
 	assignmentService := assignment.NewService(
 		assignmentRepo,
-		&courseCheckerAdapter{repo: courseRepo},
+		&courseCheckerAdapter{courseRepo: courseRepo, enrollmentRepo: enrollmentRepo},
 	)
 	assignmentHandler := assignment.NewHandler(assignmentService, log)
 
@@ -213,9 +215,12 @@ func run() error {
 	)
 	qaHandler := qa.NewHandler(qaService, log)
 
-	enrollmentRepo := enrollment.NewRepository(db)
-	enrollmentService := enrollment.NewService(enrollmentRepo)
-	enrollmentHandler := enrollment.NewHandler(enrollmentService)
+	enrollmentService := enrollment.NewService(
+		enrollmentRepo,
+		&enrollmentOfferingCheckerAdapter{repo: courseRepo},
+		&enrollmentCourseCheckerAdapter{repo: courseRepo},
+	)
+	enrollmentHandler := enrollment.NewHandler(enrollmentService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -321,7 +326,7 @@ func run() error {
 			protected.POST("/offerings", courseHandler.CreateOffering)
 			protected.GET("/offerings/:id", courseHandler.GetOffering)
 			protected.PUT("/offerings/:id", courseHandler.UpdateOffering)
-			protected.GET("/offerings/:id/access-level", courseHandler.GetAccessLevel)
+			protected.GET("/offerings/:id/access-level", enrollmentHandler.GetAccessLevel)
 
 			// Teacher routes
 			protected.GET("/offerings/:offering_id/teachers", courseHandler.ListTeachers)
@@ -329,8 +334,21 @@ func run() error {
 			protected.DELETE("/offerings/:offering_id/teachers/:user_id", courseHandler.RemoveTeacher)
 
 			// Enrollment routes
-			protected.GET("/offerings/:offering_id/enrollments", courseHandler.ListEnrollments)
-			protected.POST("/offerings/:offering_id/enrollments", courseHandler.EnrollStudent)
+			protected.GET("/offerings/:offering_id/enrollments", enrollmentHandler.ListEnrollments)
+			protected.POST("/offerings/:offering_id/enrollments", enrollmentHandler.EnrollStudent)
+			protected.DELETE("/offerings/:offering_id/enrollments/:student_id", enrollmentHandler.DropEnrollment)
+
+			// Project group routes
+			protected.GET("/offerings/:offering_id/groups", enrollmentHandler.ListProjectGroups)
+			protected.POST("/offerings/:offering_id/groups", enrollmentHandler.CreateProjectGroup)
+			protected.POST("/groups/assign", enrollmentHandler.AssignToProjectGroup)
+			protected.DELETE("/groups/:group_id/members/:student_id", enrollmentHandler.RemoveFromProjectGroup)
+
+			// Cohort group routes
+			protected.GET("/programs/:program_id/cohort-groups", enrollmentHandler.ListCohortGroups)
+			protected.POST("/cohort-groups", enrollmentHandler.CreateCohortGroup)
+			protected.POST("/cohort-groups/assign", enrollmentHandler.AssignToCohortGroup)
+			protected.DELETE("/cohort-groups/:group_id/members/:student_id", enrollmentHandler.RemoveFromCohortGroup)
 
 			// Section routes
 			protected.GET("/offerings/:offering_id/sections", courseHandler.ListSections)
@@ -428,10 +446,10 @@ func run() error {
 			protected.GET("/me/enrollment-requests", enrollmentHandler.GetMyRequests)
 
 			// Enrollment request routes - admin
-			protected.GET("/enrollment-requests", enrollmentHandler.List)
-			protected.GET("/enrollment-requests/:id", enrollmentHandler.GetByID)
-			protected.PUT("/enrollment-requests/:id/approve", enrollmentHandler.Approve)
-			protected.PUT("/enrollment-requests/:id/reject", enrollmentHandler.Reject)
+			protected.GET("/enrollment-requests", enrollmentHandler.ListRequests)
+			protected.GET("/enrollment-requests/:id", enrollmentHandler.GetRequestByID)
+			protected.PUT("/enrollment-requests/:id/approve", enrollmentHandler.ApproveRequest)
+			protected.PUT("/enrollment-requests/:id/reject", enrollmentHandler.RejectRequest)
 		}
 	}
 
@@ -535,7 +553,7 @@ func (a *lessonCheckerAdapter) GetLessonForAttendance(ctx context.Context, lesso
 }
 
 type enrollmentCheckerAdapter struct {
-	repo *course.Repository
+	repo *enrollment.Repository
 }
 
 func (a *enrollmentCheckerAdapter) IsStudentEnrolled(ctx context.Context, studentID, offeringID uuid.UUID) (bool, error) {
@@ -547,15 +565,16 @@ func (a *enrollmentCheckerAdapter) GetEnrolledStudentIDs(ctx context.Context, of
 }
 
 type courseCheckerAdapter struct {
-	repo *course.Repository
+	courseRepo     *course.Repository
+	enrollmentRepo *enrollment.Repository
 }
 
 func (a *courseCheckerAdapter) GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error) {
-	return a.repo.GetTeacherRole(ctx, offeringID, userID)
+	return a.courseRepo.GetTeacherRole(ctx, offeringID, userID)
 }
 
 func (a *courseCheckerAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	return a.repo.IsEnrolled(ctx, offeringID, studentID)
+	return a.enrollmentRepo.IsEnrolled(ctx, offeringID, studentID)
 }
 
 type qaOfferingCheckerAdapter struct {
@@ -564,4 +583,60 @@ type qaOfferingCheckerAdapter struct {
 
 func (a *qaOfferingCheckerAdapter) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
 	return a.repo.OfferingExists(ctx, id)
+}
+
+type enrollmentOfferingCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *enrollmentOfferingCheckerAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.OfferingExists(ctx, id)
+}
+
+func (a *enrollmentOfferingCheckerAdapter) GetOffering(ctx context.Context, id uuid.UUID) (*enrollment.OfferingInfo, error) {
+	o, err := a.repo.GetOffering(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &enrollment.OfferingInfo{
+		ID:         o.ID,
+		CourseID:   o.CourseID,
+		SemesterID: o.SemesterID,
+		CohortYear: o.CohortYear,
+		Shift:      o.Shift,
+	}, nil
+}
+
+func (a *enrollmentOfferingCheckerAdapter) GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]enrollment.OfferingInfo, error) {
+	offerings, err := a.repo.GetOfferingsByCourseCodeAndCohort(ctx, departmentID, code, cohortYear, shift)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]enrollment.OfferingInfo, len(offerings))
+	for i, o := range offerings {
+		result[i] = enrollment.OfferingInfo{
+			ID:         o.ID,
+			CourseID:   o.CourseID,
+			SemesterID: o.SemesterID,
+			CohortYear: o.CohortYear,
+			Shift:      o.Shift,
+		}
+	}
+	return result, nil
+}
+
+type enrollmentCourseCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *enrollmentCourseCheckerAdapter) GetCourse(ctx context.Context, id uuid.UUID) (*enrollment.CourseInfo, error) {
+	c, err := a.repo.GetCourse(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &enrollment.CourseInfo{
+		ID:           c.ID,
+		DepartmentID: c.DepartmentID,
+		Code:         c.Code,
+	}, nil
 }

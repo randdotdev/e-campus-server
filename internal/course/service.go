@@ -30,14 +30,6 @@ type CourseRepository interface {
 	RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error
 	TeacherExists(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 
-	// Enrollment operations
-	CreateEnrollment(ctx context.Context, e *Enrollment) error
-	GetEnrollment(ctx context.Context, offeringID, studentID uuid.UUID) (*Enrollment, error)
-	ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error)
-	UpdateEnrollment(ctx context.Context, e *Enrollment) error
-	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
-	GetStudentEnrollments(ctx context.Context, studentID uuid.UUID) ([]Enrollment, error)
-
 	// Section operations
 	CreateSection(ctx context.Context, s *Section) error
 	GetSection(ctx context.Context, id uuid.UUID) (*Section, error)
@@ -251,85 +243,6 @@ func (s *Service) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Tea
 
 func (s *Service) RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error {
 	return s.repo.RemoveTeacher(ctx, offeringID, userID)
-}
-
-// Enrollment operations
-
-func (s *Service) EnrollStudent(ctx context.Context, offeringID uuid.UUID, req EnrollStudentRequest) (*Enrollment, error) {
-	if _, err := s.repo.GetOffering(ctx, offeringID); err != nil {
-		return nil, err
-	}
-
-	enrolled, err := s.repo.IsEnrolled(ctx, offeringID, req.StudentID)
-	if err != nil {
-		return nil, err
-	}
-	if enrolled {
-		return nil, ErrAlreadyEnrolled
-	}
-
-	enrollmentType := req.EnrollmentType
-	if enrollmentType == "" {
-		enrollmentType = EnrollmentTypeCurriculum
-	}
-
-	enrollment := &Enrollment{
-		OfferingID:     offeringID,
-		StudentID:      req.StudentID,
-		EnrollmentType: enrollmentType,
-		Status:         EnrollmentStatusEnrolled,
-	}
-
-	if err := s.repo.CreateEnrollment(ctx, enrollment); err != nil {
-		return nil, err
-	}
-
-	return enrollment, nil
-}
-
-func (s *Service) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
-	return s.repo.ListEnrollments(ctx, params, filters)
-}
-
-func (s *Service) GetAccessLevel(ctx context.Context, offeringID, studentID uuid.UUID) (AccessLevel, error) {
-	isEnrolled, err := s.repo.IsEnrolled(ctx, offeringID, studentID)
-	if err != nil {
-		return NoAccess, err
-	}
-	if isEnrolled {
-		return FullAccess, nil
-	}
-
-	// Check sibling enrollment
-	offering, err := s.repo.GetOffering(ctx, offeringID)
-	if err != nil {
-		return NoAccess, err
-	}
-
-	course, err := s.repo.GetCourse(ctx, offering.CourseID)
-	if err != nil {
-		return NoAccess, err
-	}
-
-	siblings, err := s.repo.GetOfferingsByCourseCodeAndCohort(ctx, course.DepartmentID, course.Code, offering.CohortYear, offering.Shift)
-	if err != nil {
-		return NoAccess, err
-	}
-
-	for _, sib := range siblings {
-		if sib.ID == offeringID {
-			continue
-		}
-		enrolled, err := s.repo.IsEnrolled(ctx, sib.ID, studentID)
-		if err != nil {
-			return NoAccess, err
-		}
-		if enrolled {
-			return ViewOnly, nil
-		}
-	}
-
-	return NoAccess, nil
 }
 
 // Section operations

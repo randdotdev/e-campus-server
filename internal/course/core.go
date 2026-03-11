@@ -42,18 +42,6 @@ func IsValidShift(shift string) bool {
 	return shift == ShiftDay || shift == ShiftEvening
 }
 
-func IsValidEnrollmentType(enrollmentType string) bool {
-	return enrollmentType == EnrollmentTypeCurriculum ||
-		enrollmentType == EnrollmentTypeRetake ||
-		enrollmentType == EnrollmentTypePretake ||
-		enrollmentType == EnrollmentTypeExtra
-}
-
 func IsValidLessonType(lessonType string) bool {
 	return lessonType == LessonTypeTheory || lessonType == LessonTypePractice || lessonType == LessonTypeOther
-}
-
-func IsValidEnrollmentStatus(status string) bool {
-	return status == EnrollmentStatusEnrolled || status == EnrollmentStatusDropped ||
-		status == EnrollmentStatusCompleted || status == EnrollmentStatusFailed
 }

@@ -51,17 +51,17 @@ func TestCanRequestRetake(t *testing.T) {
 func TestBuildWarningWithName_Pretake(t *testing.T) {
 	localName := "ئامار"
 	tests := []struct {
-		name       string
-		prereq     *PrereqStatus
+		name        string
+		prereq      *PrereqStatus
 		studentName string
-		wantNil    bool
-		wantEN     string
+		wantNil     bool
+		wantEN      string
 	}{
 		{
 			name: "not taken",
 			prereq: &PrereqStatus{
-				Status:       PrereqNotTaken,
-				CourseNameEN: "Statistics",
+				Status:          PrereqNotTaken,
+				CourseNameEN:    "Statistics",
 				CourseNameLocal: &localName,
 			},
 			studentName: "Ahmad",
@@ -130,8 +130,8 @@ func TestBuildWarningWithName_Retake(t *testing.T) {
 		{
 			name: "failed",
 			course: &CourseStatus{
-				Status:       CourseFailed,
-				CourseNameEN: "Statistics",
+				Status:          CourseFailed,
+				CourseNameEN:    "Statistics",
 				CourseNameLocal: &localName,
 			},
 			studentName: "Ahmad",

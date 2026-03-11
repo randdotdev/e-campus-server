@@ -152,27 +152,6 @@ func TestIsValidShift(t *testing.T) {
 	}
 }
 
-func TestIsValidEnrollmentType(t *testing.T) {
-	tests := []struct {
-		name           string
-		enrollmentType string
-		want           bool
-	}{
-		{"curriculum valid", EnrollmentTypeCurriculum, true},
-		{"retake valid", EnrollmentTypeRetake, true},
-		{"pretake valid", EnrollmentTypePretake, true},
-		{"extra valid", EnrollmentTypeExtra, true},
-		{"invalid type", "unknown", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsValidEnrollmentType(tt.enrollmentType); got != tt.want {
-				t.Errorf("IsValidEnrollmentType(%q) = %v, want %v", tt.enrollmentType, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestIsValidLessonType(t *testing.T) {
 	tests := []struct {
 		name       string

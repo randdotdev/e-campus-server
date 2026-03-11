@@ -29,13 +29,6 @@ type TeacherFilters struct {
 	Query      string
 }
 
-type EnrollmentFilters struct {
-	OfferingID     *uuid.UUID
-	EnrollmentType *string
-	Status         *string
-	Query          string
-}
-
 type SectionFilters struct {
 	OfferingID *uuid.UUID
 }
@@ -127,11 +120,6 @@ type UpdateLessonRequest struct {
 	OrderIndex    *int       `json:"order_index" binding:"omitempty,min=0"`
 }
 
-type EnrollStudentRequest struct {
-	StudentID      uuid.UUID `json:"student_id" binding:"required"`
-	EnrollmentType string    `json:"enrollment_type" binding:"omitempty,oneof=curriculum retake pretake extra"`
-}
-
 // Response DTOs
 
 type CourseResponse struct {
@@ -168,17 +156,6 @@ type TeacherResponse struct {
 	UserID     uuid.UUID `json:"user_id"`
 	Role       string    `json:"role"`
 	CreatedAt  time.Time `json:"created_at"`
-}
-
-type EnrollmentResponse struct {
-	ID             uuid.UUID  `json:"id"`
-	OfferingID     uuid.UUID  `json:"offering_id"`
-	StudentID      uuid.UUID  `json:"student_id"`
-	EnrollmentType string     `json:"enrollment_type"`
-	Status         string     `json:"status"`
-	EnrolledAt     time.Time  `json:"enrolled_at"`
-	CompletedAt    *time.Time `json:"completed_at,omitempty"`
-	FinalGrade     *float64   `json:"final_grade,omitempty"`
 }
 
 type SectionResponse struct {
@@ -270,27 +247,6 @@ func ToTeachersResponse(teachers []Teacher) []TeacherResponse {
 	result := make([]TeacherResponse, len(teachers))
 	for i := range teachers {
 		result[i] = ToTeacherResponse(&teachers[i])
-	}
-	return result
-}
-
-func ToEnrollmentResponse(e *Enrollment) EnrollmentResponse {
-	return EnrollmentResponse{
-		ID:             e.ID,
-		OfferingID:     e.OfferingID,
-		StudentID:      e.StudentID,
-		EnrollmentType: e.EnrollmentType,
-		Status:         e.Status,
-		EnrolledAt:     e.EnrolledAt,
-		CompletedAt:    e.CompletedAt,
-		FinalGrade:     e.FinalGrade,
-	}
-}
-
-func ToEnrollmentsResponse(enrollments []Enrollment) []EnrollmentResponse {
-	result := make([]EnrollmentResponse, len(enrollments))
-	for i := range enrollments {
-		result[i] = ToEnrollmentResponse(&enrollments[i])
 	}
 	return result
 }

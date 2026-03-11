@@ -1,4 +1,4 @@
-// Package course handles academic courses, offerings, enrollments, and groups.
+// Package course handles academic courses, offerings, sections, lessons, and teachers.
 package course
 
 import (
@@ -43,17 +43,6 @@ type Teacher struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
-type Enrollment struct {
-	ID             uuid.UUID  `db:"id"`
-	OfferingID     uuid.UUID  `db:"offering_id"`
-	StudentID      uuid.UUID  `db:"student_id"`
-	EnrollmentType string     `db:"enrollment_type"`
-	Status         string     `db:"status"`
-	EnrolledAt     time.Time  `db:"enrolled_at"`
-	CompletedAt    *time.Time `db:"completed_at"`
-	FinalGrade     *float64   `db:"final_grade"`
-}
-
 type Section struct {
 	ID         uuid.UUID  `db:"id"`
 	OfferingID uuid.UUID  `db:"offering_id"`
@@ -84,22 +73,8 @@ const (
 )
 
 const (
-	EnrollmentTypeCurriculum = "curriculum"
-	EnrollmentTypeRetake     = "retake"
-	EnrollmentTypePretake    = "pretake"
-	EnrollmentTypeExtra      = "extra"
-)
-
-const (
 	TeacherRoleTeacher   = "teacher"
 	TeacherRoleAssistant = "assistant"
-)
-
-const (
-	EnrollmentStatusEnrolled  = "enrolled"
-	EnrollmentStatusDropped   = "dropped"
-	EnrollmentStatusCompleted = "completed"
-	EnrollmentStatusFailed    = "failed"
 )
 
 type Group struct {

@@ -285,25 +285,6 @@ func (h *Handler) UpdateOffering(c *gin.Context) {
 	response.OK(c, ToOfferingResponse(updated))
 }
 
-func (h *Handler) GetAccessLevel(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		response.BadRequest(c, "invalid offering id")
-		return
-	}
-
-	userID := middleware.GetUserID(c)
-	access, err := h.service.GetAccessLevel(c.Request.Context(), id, userID)
-	if errors.Is(err, ErrOfferingNotFound) {
-		response.NotFound(c, "offering not found")
-	} else if err != nil {
-		h.log.Error("get access level failed", zap.Error(err))
-		response.InternalError(c)
-	} else {
-		response.OK(c, gin.H{"access_level": access.String()})
-	}
-}
-
 // Teacher handlers
 
 func (h *Handler) AddTeacher(c *gin.Context) {
@@ -416,94 +397,6 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 	}
 }
 
-// Enrollment handlers
-
-func (h *Handler) ListEnrollments(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
-	if err != nil {
-		response.BadRequest(c, "invalid offering id")
-		return
-	}
-
-	params := pagination.ParsePageParams(c)
-	filters := EnrollmentFilters{
-		OfferingID: &offeringID,
-		Query:      params.Query,
-	}
-
-	if enrollmentType := c.Query("enrollment_type"); enrollmentType != "" {
-		filters.EnrollmentType = &enrollmentType
-	}
-
-	if status := c.Query("status"); status != "" {
-		filters.Status = &status
-	}
-
-	enrollments, hasMore, err := h.service.ListEnrollments(c.Request.Context(), params, filters)
-	if err != nil {
-		h.log.Error("list enrollments failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	result := pagination.PageResult[EnrollmentResponse]{
-		Data:    ToEnrollmentsResponse(enrollments),
-		HasMore: hasMore,
-	}
-	if hasMore && len(enrollments) > 0 {
-		last := enrollments[len(enrollments)-1]
-		result.NextCursor = pagination.EncodeCursor(last.EnrolledAt, last.ID)
-	}
-
-	response.OK(c, result)
-}
-
-func (h *Handler) EnrollStudent(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
-	if err != nil {
-		response.BadRequest(c, "invalid offering id")
-		return
-	}
-
-	offering, err := h.service.GetOffering(c.Request.Context(), offeringID)
-	if errors.Is(err, ErrOfferingNotFound) {
-		response.NotFound(c, "offering not found")
-		return
-	} else if err != nil {
-		h.log.Error("get offering failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	course, err := h.service.GetCourse(c.Request.Context(), offering.CourseID)
-	if err != nil {
-		h.log.Error("get course failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
-		return
-	}
-
-	var req EnrollStudentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
-	enrollment, err := h.service.EnrollStudent(c.Request.Context(), offeringID, req)
-	if errors.Is(err, ErrAlreadyEnrolled) {
-		response.Conflict(c, "student is already enrolled")
-	} else if err != nil {
-		h.log.Error("enroll student failed", zap.Error(err))
-		response.InternalError(c)
-	} else {
-		response.Created(c, ToEnrollmentResponse(enrollment))
-	}
-}
-
 // Section handlers
 
 func (h *Handler) CreateSection(c *gin.Context) {
@@ -547,23 +440,6 @@ func (h *Handler) ListSections(c *gin.Context) {
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
-	}
-
-	userID := middleware.GetUserID(c)
-	access, err := h.service.GetAccessLevel(c.Request.Context(), offeringID, userID)
-	if err != nil {
-		h.log.Error("get access level failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	// Check if teacher
-	if access == NoAccess {
-		_, teacherErr := h.service.GetTeacherRole(c.Request.Context(), offeringID, userID)
-		if teacherErr != nil {
-			response.Forbidden(c, "not enrolled in this course")
-			return
-		}
 	}
 
 	sections, err := h.service.ListSections(c.Request.Context(), offeringID)
@@ -746,31 +622,12 @@ func (h *Handler) GetLesson(c *gin.Context) {
 	lesson, err := h.service.GetLesson(c.Request.Context(), lessonID)
 	if errors.Is(err, ErrLessonNotFound) {
 		response.NotFound(c, "lesson not found")
-		return
 	} else if err != nil {
 		h.log.Error("get lesson failed", zap.Error(err))
 		response.InternalError(c)
-		return
+	} else {
+		response.OK(c, ToLessonResponse(lesson, time.Now()))
 	}
-
-	userID := middleware.GetUserID(c)
-	access, err := h.service.GetAccessLevel(c.Request.Context(), lesson.OfferingID, userID)
-	if err != nil {
-		h.log.Error("get access level failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	// Check if teacher
-	if access == NoAccess {
-		_, teacherErr := h.service.GetTeacherRole(c.Request.Context(), lesson.OfferingID, userID)
-		if teacherErr != nil {
-			response.Forbidden(c, "not enrolled in this course")
-			return
-		}
-	}
-
-	response.OK(c, ToLessonResponse(lesson, time.Now()))
 }
 
 func (h *Handler) ListLessonsBySection(c *gin.Context) {
@@ -780,7 +637,7 @@ func (h *Handler) ListLessonsBySection(c *gin.Context) {
 		return
 	}
 
-	section, err := h.service.GetSection(c.Request.Context(), sectionID)
+	_, err = h.service.GetSection(c.Request.Context(), sectionID)
 	if errors.Is(err, ErrSectionNotFound) {
 		response.NotFound(c, "section not found")
 		return
@@ -788,23 +645,6 @@ func (h *Handler) ListLessonsBySection(c *gin.Context) {
 		h.log.Error("get section failed", zap.Error(err))
 		response.InternalError(c)
 		return
-	}
-
-	userID := middleware.GetUserID(c)
-	access, err := h.service.GetAccessLevel(c.Request.Context(), section.OfferingID, userID)
-	if err != nil {
-		h.log.Error("get access level failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	// Check if teacher
-	if access == NoAccess {
-		_, teacherErr := h.service.GetTeacherRole(c.Request.Context(), section.OfferingID, userID)
-		if teacherErr != nil {
-			response.Forbidden(c, "not enrolled in this course")
-			return
-		}
 	}
 
 	filters := LessonFilters{SectionID: &sectionID}
@@ -827,23 +667,6 @@ func (h *Handler) ListLessonsByOffering(c *gin.Context) {
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
-	}
-
-	userID := middleware.GetUserID(c)
-	access, err := h.service.GetAccessLevel(c.Request.Context(), offeringID, userID)
-	if err != nil {
-		h.log.Error("get access level failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	// Check if teacher
-	if access == NoAccess {
-		_, teacherErr := h.service.GetTeacherRole(c.Request.Context(), offeringID, userID)
-		if teacherErr != nil {
-			response.Forbidden(c, "not enrolled in this course")
-			return
-		}
 	}
 
 	filters := LessonFilters{OfferingID: &offeringID}
