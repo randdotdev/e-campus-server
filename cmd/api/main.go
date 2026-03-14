@@ -11,7 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"github.com/ranjdotdev/e-campus-server/internal/academic"
 	"github.com/ranjdotdev/e-campus-server/internal/application"
 	"github.com/ranjdotdev/e-campus-server/internal/assignment"
 	"github.com/ranjdotdev/e-campus-server/internal/attendance"
@@ -32,6 +34,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
+	"github.com/ranjdotdev/e-campus-server/internal/student"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
 	"github.com/ranjdotdev/e-campus-server/internal/university"
 	"github.com/ranjdotdev/e-campus-server/internal/user"
@@ -221,6 +224,25 @@ func run() error {
 		&enrollmentCourseCheckerAdapter{repo: courseRepo},
 	)
 	enrollmentHandler := enrollment.NewHandler(enrollmentService, log)
+
+	studentRepo := student.NewRepository(db)
+	studentService := student.NewService(
+		studentRepo,
+		&studentProgramProviderAdapter{repo: universityRepo},
+		&studentEnrollmentManagerAdapter{repo: enrollmentRepo},
+	)
+	studentHandler := student.NewHandler(studentService, log)
+
+	academicRepo := academic.NewRepository(db)
+	academicService := academic.NewService(
+		academicRepo,
+		&academicStudentProviderAdapter{repo: studentRepo},
+		&academicCourseProviderAdapter{courseRepo: courseRepo, enrollmentRepo: enrollmentRepo},
+		&academicOfferingProviderAdapter{repo: courseRepo},
+		&academicEnrollmentProviderAdapter{repo: enrollmentRepo},
+		&academicSettingsProviderAdapter{db: db},
+	)
+	academicHandler := academic.NewHandler(academicService, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -450,6 +472,47 @@ func run() error {
 			protected.GET("/enrollment-requests/:id", enrollmentHandler.GetRequestByID)
 			protected.PUT("/enrollment-requests/:id/approve", enrollmentHandler.ApproveRequest)
 			protected.PUT("/enrollment-requests/:id/reject", enrollmentHandler.RejectRequest)
+
+			// Academic year routes
+			protected.GET("/academic-years", academicHandler.ListAcademicYears)
+			protected.POST("/academic-years", academicHandler.CreateAcademicYear)
+			protected.GET("/academic-years/:id", academicHandler.GetAcademicYear)
+			protected.PUT("/academic-years/:id", academicHandler.UpdateAcademicYear)
+
+			// Semester routes
+			protected.GET("/semesters", academicHandler.ListSemesters)
+			protected.POST("/semesters", academicHandler.CreateSemester)
+			protected.GET("/semesters/:id", academicHandler.GetSemester)
+			protected.PUT("/semesters/:id", academicHandler.UpdateSemester)
+			protected.PUT("/semesters/:id/status", academicHandler.UpdateSemesterStatus)
+			protected.POST("/semesters/:id/definalize", academicHandler.DefinalizeSemester)
+			protected.POST("/semesters/:id/generate-offerings", academicHandler.GenerateOfferings)
+			protected.POST("/semesters/:id/bulk-enroll", academicHandler.BulkEnroll)
+			protected.POST("/semesters/:id/end", academicHandler.EndSemester)
+
+			// Curriculum routes
+			protected.GET("/programs/:program_id/curriculum", academicHandler.ListCurriculum)
+			protected.POST("/programs/:program_id/curriculum", academicHandler.AddToCurriculum)
+			protected.DELETE("/curriculum/:id", academicHandler.RemoveFromCurriculum)
+
+			// Requirements routes
+			protected.GET("/programs/:program_id/requirements", academicHandler.ListRequirements)
+			protected.POST("/programs/:program_id/requirements", academicHandler.SetRequirement)
+
+			// Student routes
+			protected.GET("/students", studentHandler.ListStudents)
+			protected.POST("/students", studentHandler.CreateStudent)
+			protected.GET("/students/:id", studentHandler.GetStudent)
+			protected.PUT("/students/:id", studentHandler.UpdateStudent)
+			protected.PUT("/students/:id/status", studentHandler.UpdateStudentStatus)
+			protected.GET("/students/:id/transcript", studentHandler.GetTranscript)
+			protected.GET("/students/:id/leaves", studentHandler.ListLeaves)
+			protected.POST("/students/:id/leave", studentHandler.RequestLeave)
+			protected.PUT("/leaves/:leave_id/approve", studentHandler.ApproveLeave)
+			protected.PUT("/leaves/:leave_id/end", studentHandler.EndLeave)
+			protected.GET("/students/:id/history", studentHandler.ListCohortHistory)
+			protected.GET("/me/student", studentHandler.GetMyStudentRecord)
+			protected.GET("/me/transcript", studentHandler.GetMyTranscript)
 		}
 	}
 
@@ -639,4 +702,177 @@ func (a *enrollmentCourseCheckerAdapter) GetCourse(ctx context.Context, id uuid.
 		DepartmentID: c.DepartmentID,
 		Code:         c.Code,
 	}, nil
+}
+
+// Student package adapters
+
+type studentProgramProviderAdapter struct {
+	repo *university.Repository
+}
+
+func (a *studentProgramProviderAdapter) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.ProgramExists(ctx, id)
+}
+
+func (a *studentProgramProviderAdapter) GetProgramTotalCredits(ctx context.Context, id uuid.UUID) (int, error) {
+	return a.repo.GetProgramTotalCredits(ctx, id)
+}
+
+type studentEnrollmentManagerAdapter struct {
+	repo *enrollment.Repository
+}
+
+func (a *studentEnrollmentManagerAdapter) WithdrawEnrollmentsForLeave(ctx context.Context, studentID uuid.UUID, semesterIDs []uuid.UUID) error {
+	return a.repo.WithdrawEnrollmentsForLeave(ctx, studentID, semesterIDs)
+}
+
+// Academic package adapters
+
+type academicStudentProviderAdapter struct {
+	repo *student.Repository
+}
+
+func (a *academicStudentProviderAdapter) GetActiveStudents(ctx context.Context, programID *uuid.UUID, cohortYear *int) ([]academic.StudentInfo, error) {
+	return a.repo.GetActiveStudentsForAcademic(ctx, programID, cohortYear)
+}
+
+func (a *academicStudentProviderAdapter) GetStudentsByProgram(ctx context.Context, programID uuid.UUID) ([]academic.StudentInfo, error) {
+	return a.repo.GetStudentsByProgramForAcademic(ctx, programID)
+}
+
+func (a *academicStudentProviderAdapter) GetStudentsInSemester(ctx context.Context, semesterID uuid.UUID) ([]academic.StudentInfo, error) {
+	return a.repo.GetStudentsInSemesterForAcademic(ctx, semesterID)
+}
+
+func (a *academicStudentProviderAdapter) UpdateStudentProgression(ctx context.Context, studentID uuid.UUID, currentYear, cohortYear int) error {
+	return a.repo.UpdateStudentProgression(ctx, studentID, currentYear, cohortYear)
+}
+
+func (a *academicStudentProviderAdapter) RecordCohortChange(ctx context.Context, studentID uuid.UUID, fromCohort, toCohort, fromYear, toYear int, reason string) error {
+	return a.repo.RecordCohortChangeForAcademic(ctx, studentID, fromCohort, toCohort, fromYear, toYear, reason)
+}
+
+type academicCourseProviderAdapter struct {
+	courseRepo     *course.Repository
+	enrollmentRepo *enrollment.Repository
+}
+
+func (a *academicCourseProviderAdapter) GetCourse(ctx context.Context, id uuid.UUID) (*academic.CourseInfo, error) {
+	c, err := a.courseRepo.GetCourse(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &academic.CourseInfo{
+		ID:           c.ID,
+		DepartmentID: c.DepartmentID,
+		Code:         c.Code,
+		NameEN:       c.NameEN,
+		Credits:      c.Credits,
+		Requires:     c.Requires,
+	}, nil
+}
+
+func (a *academicCourseProviderAdapter) GetCoursePrerequisite(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error) {
+	c, err := a.courseRepo.GetCourse(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	return c.Requires, nil
+}
+
+func (a *academicCourseProviderAdapter) GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
+	return a.enrollmentRepo.GetPassedCourseIDs(ctx, studentID)
+}
+
+func (a *academicCourseProviderAdapter) CourseExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.courseRepo.CourseExists(ctx, id)
+}
+
+func (a *academicCourseProviderAdapter) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.courseRepo.ProgramExists(ctx, id)
+}
+
+type academicOfferingProviderAdapter struct {
+	repo *course.Repository
+}
+
+func (a *academicOfferingProviderAdapter) CreateOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error) {
+	o := &course.Offering{
+		CourseID:   courseID,
+		SemesterID: semesterID,
+		CohortYear: cohortYear,
+		Shift:      shift,
+	}
+	if err := a.repo.CreateOffering(ctx, o); err != nil {
+		return uuid.Nil, err
+	}
+	return o.ID, nil
+}
+
+func (a *academicOfferingProviderAdapter) GetOfferingID(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error) {
+	return a.repo.GetOfferingID(ctx, courseID, semesterID, cohortYear, shift)
+}
+
+func (a *academicOfferingProviderAdapter) GetOfferingsBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]academic.OfferingInfo, error) {
+	offerings, err := a.repo.GetOfferingsBySemester(ctx, semesterID, cohortYear, shift)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]academic.OfferingInfo, len(offerings))
+	for i, o := range offerings {
+		result[i] = academic.OfferingInfo{
+			ID:       o.ID,
+			CourseID: o.CourseID,
+		}
+	}
+	return result, nil
+}
+
+func (a *academicOfferingProviderAdapter) CountUnfinalizedOfferings(ctx context.Context, semesterID uuid.UUID) (int, error) {
+	return a.repo.CountUnfinalizedOfferings(ctx, semesterID)
+}
+
+type academicEnrollmentProviderAdapter struct {
+	repo *enrollment.Repository
+}
+
+func (a *academicEnrollmentProviderAdapter) CreateEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
+	e := &enrollment.Enrollment{
+		OfferingID:     offeringID,
+		StudentID:      studentID,
+		EnrollmentType: enrollmentType,
+		Status:         enrollment.EnrollmentStatusEnrolled,
+	}
+	return a.repo.CreateEnrollment(ctx, e)
+}
+
+func (a *academicEnrollmentProviderAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
+	return a.repo.IsEnrolled(ctx, offeringID, studentID)
+}
+
+func (a *academicEnrollmentProviderAdapter) HasApprovedPretake(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error) {
+	return a.repo.HasApprovedRequest(ctx, studentID, courseID, semesterID, "pretake")
+}
+
+func (a *academicEnrollmentProviderAdapter) WasFailed(ctx context.Context, studentID, courseID uuid.UUID) (bool, error) {
+	return a.repo.WasFailed(ctx, studentID, courseID)
+}
+
+func (a *academicEnrollmentProviderAdapter) SumCredits(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error) {
+	return a.repo.SumCredits(ctx, studentID, semesterID, status)
+}
+
+type academicSettingsProviderAdapter struct {
+	db *sqlx.DB
+}
+
+func (a *academicSettingsProviderAdapter) GetFullYearRepeat(ctx context.Context) (bool, error) {
+	var settings struct {
+		FullYearRepeat bool `db:"full_year_repeat"`
+	}
+	query := `SELECT (settings->>'full_year_repeat')::boolean as full_year_repeat FROM settings LIMIT 1`
+	if err := a.db.GetContext(ctx, &settings, query); err != nil {
+		return false, nil
+	}
+	return settings.FullYearRepeat, nil
 }

@@ -25,10 +25,11 @@ const (
 )
 
 const (
-	EnrollmentStatusEnrolled  = "enrolled"
-	EnrollmentStatusDropped   = "dropped"
-	EnrollmentStatusCompleted = "completed"
-	EnrollmentStatusFailed    = "failed"
+	EnrollmentStatusEnrolled       = "enrolled"
+	EnrollmentStatusDropped        = "dropped"
+	EnrollmentStatusCompleted      = "completed"
+	EnrollmentStatusFailed         = "failed"
+	EnrollmentStatusWithdrawnLeave = "withdrawn_leave"
 )
 
 type AccessLevel int

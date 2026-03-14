@@ -100,7 +100,6 @@ const (
 const (
 	LessonTypeTheory   = "theory"
 	LessonTypePractice = "practice"
-	LessonTypeOther    = "other"
 )
 
 type AccessLevel int

@@ -380,3 +380,17 @@ func (r *Repository) CountProgramsByDepartment(ctx context.Context, departmentID
 	err := r.db.GetContext(ctx, &count, query, departmentID)
 	return count, err
 }
+
+func (r *Repository) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM programs WHERE id = $1)`
+	err := r.db.GetContext(ctx, &exists, query, id)
+	return exists, err
+}
+
+func (r *Repository) GetProgramTotalCredits(ctx context.Context, id uuid.UUID) (int, error) {
+	var credits int
+	query := `SELECT total_credits FROM programs WHERE id = $1`
+	err := r.db.GetContext(ctx, &credits, query, id)
+	return credits, err
+}

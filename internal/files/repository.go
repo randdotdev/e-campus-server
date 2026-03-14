@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -103,7 +104,7 @@ func (r *Repository) ListFolders(ctx context.Context, ownerID uuid.UUID, parentI
 	argPos++
 
 	if parentID != nil {
-		query += ` AND parent_id = $` + itoa(argPos)
+		query += fmt.Sprintf(" AND parent_id = $%d", argPos)
 		args = append(args, *parentID)
 		argPos++
 	} else {
@@ -115,12 +116,12 @@ func (r *Repository) ListFolders(ctx context.Context, ownerID uuid.UUID, parentI
 		if err != nil {
 			return nil, false, err
 		}
-		query += ` AND (created_at, id) < ($` + itoa(argPos) + `, $` + itoa(argPos+1) + `)`
+		query += fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argPos, argPos+1)
 		args = append(args, cursorTime, cursorID)
 		argPos += 2
 	}
 
-	query += ` ORDER BY created_at DESC, id DESC LIMIT $` + itoa(argPos)
+	query += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", argPos)
 	args = append(args, params.Limit+1)
 
 	if err := r.db.SelectContext(ctx, &folders, query, args...); err != nil {
@@ -215,7 +216,7 @@ func (r *Repository) ListUserFiles(ctx context.Context, ownerID uuid.UUID, folde
 	argPos++
 
 	if folderID != nil {
-		query += ` AND uf.folder_id = $` + itoa(argPos)
+		query += fmt.Sprintf(" AND uf.folder_id = $%d", argPos)
 		args = append(args, *folderID)
 		argPos++
 	} else {
@@ -227,12 +228,12 @@ func (r *Repository) ListUserFiles(ctx context.Context, ownerID uuid.UUID, folde
 		if err != nil {
 			return nil, false, err
 		}
-		query += ` AND (uf.created_at, uf.id) < ($` + itoa(argPos) + `, $` + itoa(argPos+1) + `)`
+		query += fmt.Sprintf(" AND (uf.created_at, uf.id) < ($%d, $%d)", argPos, argPos+1)
 		args = append(args, cursorTime, cursorID)
 		argPos += 2
 	}
 
-	query += ` ORDER BY uf.created_at DESC, uf.id DESC LIMIT $` + itoa(argPos)
+	query += fmt.Sprintf(" ORDER BY uf.created_at DESC, uf.id DESC LIMIT $%d", argPos)
 	args = append(args, params.Limit+1)
 
 	if err := r.db.SelectContext(ctx, &files, query, args...); err != nil {
@@ -278,8 +279,4 @@ func (r *Repository) StoredFileExists(ctx context.Context, id uuid.UUID) (bool, 
 	var exists bool
 	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM stored_files WHERE id = $1)`, id)
 	return exists, err
-}
-
-func itoa(i int) string {
-	return string(rune('0' + i))
 }

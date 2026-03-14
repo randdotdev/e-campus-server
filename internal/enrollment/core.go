@@ -29,7 +29,8 @@ func IsValidEnrollmentStatus(status string) bool {
 	return status == EnrollmentStatusEnrolled ||
 		status == EnrollmentStatusDropped ||
 		status == EnrollmentStatusCompleted ||
-		status == EnrollmentStatusFailed
+		status == EnrollmentStatusFailed ||
+		status == EnrollmentStatusWithdrawnLeave
 }
 
 func IsValidGroupType(groupType string) bool {

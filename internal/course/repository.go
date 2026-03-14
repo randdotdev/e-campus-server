@@ -621,3 +621,42 @@ func (r *Repository) GetStudentGroupIDs(ctx context.Context, studentID, offering
 	err := r.db.SelectContext(ctx, &ids, query, studentID, offeringID)
 	return ids, err
 }
+
+func (r *Repository) CourseExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM courses WHERE id = $1)`, id)
+	return exists, err
+}
+
+func (r *Repository) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM programs WHERE id = $1)`, id)
+	return exists, err
+}
+
+func (r *Repository) GetOfferingID(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error) {
+	var id uuid.UUID
+	query := `SELECT id FROM course_offerings WHERE course_id = $1 AND semester_id = $2 AND cohort_year = $3 AND shift = $4`
+	err := r.db.GetContext(ctx, &id, query, courseID, semesterID, cohortYear, shift)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+func (r *Repository) GetOfferingsBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]Offering, error) {
+	var offerings []Offering
+	query := `SELECT * FROM course_offerings WHERE semester_id = $1 AND cohort_year = $2 AND shift = $3`
+	err := r.db.SelectContext(ctx, &offerings, query, semesterID, cohortYear, shift)
+	return offerings, err
+}
+
+func (r *Repository) CountUnfinalizedOfferings(ctx context.Context, semesterID uuid.UUID) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM course_offerings WHERE semester_id = $1 AND is_active = true`
+	err := r.db.GetContext(ctx, &count, query, semesterID)
+	return count, err
+}

@@ -43,5 +43,5 @@ func IsValidShift(shift string) bool {
 }
 
 func IsValidLessonType(lessonType string) bool {
-	return lessonType == LessonTypeTheory || lessonType == LessonTypePractice || lessonType == LessonTypeOther
+	return lessonType == LessonTypeTheory || lessonType == LessonTypePractice
 }

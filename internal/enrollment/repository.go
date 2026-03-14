@@ -567,3 +567,54 @@ func (r *Repository) IsNaturalCohort(ctx context.Context, studentID, courseID uu
 	err := r.db.GetContext(ctx, &exists, query, studentID, courseID)
 	return exists, err
 }
+
+func (r *Repository) GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	query := `
+		SELECT DISTINCT o.course_id
+		FROM course_enrollments e
+		JOIN course_offerings o ON e.offering_id = o.id
+		WHERE e.student_id = $1 AND e.status = 'completed'`
+	err := r.db.SelectContext(ctx, &ids, query, studentID)
+	return ids, err
+}
+
+func (r *Repository) WasFailed(ctx context.Context, studentID, courseID uuid.UUID) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM course_enrollments e
+			JOIN course_offerings o ON e.offering_id = o.id
+			WHERE e.student_id = $1 AND o.course_id = $2 AND e.status = 'failed'
+		)`
+	err := r.db.GetContext(ctx, &exists, query, studentID, courseID)
+	return exists, err
+}
+
+func (r *Repository) SumCredits(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error) {
+	var credits int
+	query := `
+		SELECT COALESCE(SUM(c.credits), 0)
+		FROM course_enrollments e
+		JOIN course_offerings o ON e.offering_id = o.id
+		JOIN courses c ON o.course_id = c.id
+		WHERE e.student_id = $1 AND o.semester_id = $2 AND e.status = $3`
+	err := r.db.GetContext(ctx, &credits, query, studentID, semesterID, status)
+	return credits, err
+}
+
+func (r *Repository) WithdrawEnrollmentsForLeave(ctx context.Context, studentID uuid.UUID, semesterIDs []uuid.UUID) error {
+	if len(semesterIDs) == 0 {
+		return nil
+	}
+	query := `
+		UPDATE course_enrollments
+		SET status = 'withdrawn_leave'
+		WHERE student_id = $1
+		  AND status = 'enrolled'
+		  AND offering_id IN (
+			SELECT id FROM course_offerings WHERE semester_id = ANY($2)
+		  )`
+	_, err := r.db.ExecContext(ctx, query, studentID, pq.Array(semesterIDs))
+	return err
+}
