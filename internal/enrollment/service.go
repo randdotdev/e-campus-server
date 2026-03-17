@@ -54,6 +54,9 @@ type EnrollmentRepository interface {
 	CourseExists(ctx context.Context, id uuid.UUID) (bool, error)
 	SemesterExists(ctx context.Context, id uuid.UUID) (bool, error)
 	IsNaturalCohort(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	GetStudentCohortInfo(ctx context.Context, studentID uuid.UUID) (cohortYear int, shift string, err error)
+	GetOfferingIDForEnrollment(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
+	IsSemesterActive(ctx context.Context, semesterID uuid.UUID) (bool, error)
 }
 
 type OfferingChecker interface {
@@ -420,7 +423,41 @@ func (s *Service) ApproveRequest(ctx context.Context, id, reviewerID uuid.UUID) 
 	if err := s.repo.ApproveRequest(ctx, id, reviewerID); err != nil {
 		return nil, err
 	}
-	return s.repo.GetRequestByID(ctx, id)
+
+	request, err := s.repo.GetRequestByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	isActive, err := s.repo.IsSemesterActive(ctx, request.SemesterID)
+	if err != nil || !isActive {
+		return request, nil
+	}
+
+	cohortYear, shift, err := s.repo.GetStudentCohortInfo(ctx, request.StudentID)
+	if err != nil {
+		return request, nil
+	}
+
+	offeringID, err := s.repo.GetOfferingIDForEnrollment(ctx, request.CourseID, request.SemesterID, cohortYear, shift)
+	if err != nil || offeringID == nil {
+		return request, nil
+	}
+
+	enrolled, err := s.repo.IsEnrolled(ctx, *offeringID, request.StudentID)
+	if err != nil || enrolled {
+		return request, nil
+	}
+
+	enrollment := &Enrollment{
+		OfferingID:     *offeringID,
+		StudentID:      request.StudentID,
+		EnrollmentType: request.Type,
+		Status:         EnrollmentStatusEnrolled,
+	}
+	_ = s.repo.CreateEnrollment(ctx, enrollment)
+
+	return request, nil
 }
 
 func (s *Service) RejectRequest(ctx context.Context, id, reviewerID uuid.UUID, reason string) (*Request, error) {

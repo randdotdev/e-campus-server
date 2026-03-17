@@ -71,7 +71,7 @@ func (s *Service) CreateCollege(ctx context.Context, req CreateCollegeRequest) (
 
 	college := &College{
 		NameEN:      req.NameEN,
-		NameLocal:      req.NameLocal,
+		NameLocal:   req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
 	}
@@ -160,7 +160,7 @@ func (s *Service) CreateDepartment(ctx context.Context, req CreateDepartmentRequ
 	dept := &Department{
 		CollegeID:   req.CollegeID,
 		NameEN:      req.NameEN,
-		NameLocal:      req.NameLocal,
+		NameLocal:   req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
 	}
@@ -254,11 +254,11 @@ func (s *Service) CreateProgram(ctx context.Context, req CreateProgramRequest) (
 	program := &Program{
 		DepartmentID:  req.DepartmentID,
 		NameEN:        req.NameEN,
-		NameLocal:        req.NameLocal,
+		NameLocal:     req.NameLocal,
 		Code:          req.Code,
 		DegreeType:    req.DegreeType,
 		DurationYears: req.DurationYears,
-		TotalCredits:     req.TotalCredits,
+		TotalCredits:  req.TotalCredits,
 		MinAge:        req.MinAge,
 		MaxAge:        req.MaxAge,
 		Description:   req.Description,

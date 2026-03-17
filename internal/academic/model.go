@@ -120,11 +120,11 @@ type SkipRecord struct {
 }
 
 type BlockedRecord struct {
-	StudentID            uuid.UUID `json:"student_id"`
-	StudentName          string    `json:"student_name"`
-	CourseCode           string    `json:"course_code"`
-	MissingPrerequisite  string    `json:"missing_prerequisite"`
-	MissingCourseID      uuid.UUID `json:"missing_course_id"`
+	StudentID           uuid.UUID `json:"student_id"`
+	StudentName         string    `json:"student_name"`
+	CourseCode          string    `json:"course_code"`
+	MissingPrerequisite string    `json:"missing_prerequisite"`
+	MissingCourseID     uuid.UUID `json:"missing_course_id"`
 }
 
 type GenerateOfferingsResult struct {

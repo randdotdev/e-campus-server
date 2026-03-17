@@ -36,17 +36,17 @@ type RequestLeaveRequest struct {
 }
 
 type StudentResponse struct {
-	ID               uuid.UUID `json:"id"`
-	UserID           uuid.UUID `json:"user_id"`
-	ProgramID        uuid.UUID `json:"program_id"`
-	AdmissionYear    int       `json:"admission_year"`
-	CurrentCohortYear int      `json:"current_cohort_year"`
-	CurrentYear      int       `json:"current_year"`
-	Shift            string    `json:"shift"`
-	Tuition          string    `json:"tuition"`
-	Status           string    `json:"status"`
-	EnrolledAt       string    `json:"enrolled_at"`
-	CreatedAt        string    `json:"created_at"`
+	ID                uuid.UUID `json:"id"`
+	UserID            uuid.UUID `json:"user_id"`
+	ProgramID         uuid.UUID `json:"program_id"`
+	AdmissionYear     int       `json:"admission_year"`
+	CurrentCohortYear int       `json:"current_cohort_year"`
+	CurrentYear       int       `json:"current_year"`
+	Shift             string    `json:"shift"`
+	Tuition           string    `json:"tuition"`
+	Status            string    `json:"status"`
+	EnrolledAt        string    `json:"enrolled_at"`
+	CreatedAt         string    `json:"created_at"`
 }
 
 func ToStudentResponse(s *Student) *StudentResponse {
@@ -54,17 +54,17 @@ func ToStudentResponse(s *Student) *StudentResponse {
 		return nil
 	}
 	return &StudentResponse{
-		ID:               s.ID,
-		UserID:           s.UserID,
-		ProgramID:        s.ProgramID,
-		AdmissionYear:    s.AdmissionYear,
+		ID:                s.ID,
+		UserID:            s.UserID,
+		ProgramID:         s.ProgramID,
+		AdmissionYear:     s.AdmissionYear,
 		CurrentCohortYear: s.CurrentCohortYear,
-		CurrentYear:      s.CurrentYear,
-		Shift:            s.Shift,
-		Tuition:          s.Tuition,
-		Status:           s.Status,
-		EnrolledAt:       s.EnrolledAt.Format(time.RFC3339),
-		CreatedAt:        s.CreatedAt.Format(time.RFC3339),
+		CurrentYear:       s.CurrentYear,
+		Shift:             s.Shift,
+		Tuition:           s.Tuition,
+		Status:            s.Status,
+		EnrolledAt:        s.EnrolledAt.Format(time.RFC3339),
+		CreatedAt:         s.CreatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -130,15 +130,15 @@ func ToLeavesResponse(leaves []Leave) []LeaveResponse {
 }
 
 type CohortHistoryResponse struct {
-	ID            uuid.UUID `json:"id"`
-	StudentID     uuid.UUID `json:"student_id"`
-	FromCohortYear int      `json:"from_cohort_year"`
-	ToCohortYear  int       `json:"to_cohort_year"`
-	FromYear      int       `json:"from_year"`
-	ToYear        int       `json:"to_year"`
-	Reason        string    `json:"reason"`
-	Notes         *string   `json:"notes,omitempty"`
-	ChangedAt     string    `json:"changed_at"`
+	ID             uuid.UUID `json:"id"`
+	StudentID      uuid.UUID `json:"student_id"`
+	FromCohortYear int       `json:"from_cohort_year"`
+	ToCohortYear   int       `json:"to_cohort_year"`
+	FromYear       int       `json:"from_year"`
+	ToYear         int       `json:"to_year"`
+	Reason         string    `json:"reason"`
+	Notes          *string   `json:"notes,omitempty"`
+	ChangedAt      string    `json:"changed_at"`
 }
 
 func ToCohortHistoryResponse(h *CohortHistory) *CohortHistoryResponse {
@@ -146,15 +146,15 @@ func ToCohortHistoryResponse(h *CohortHistory) *CohortHistoryResponse {
 		return nil
 	}
 	return &CohortHistoryResponse{
-		ID:            h.ID,
-		StudentID:     h.StudentID,
+		ID:             h.ID,
+		StudentID:      h.StudentID,
 		FromCohortYear: h.FromCohortYear,
-		ToCohortYear:  h.ToCohortYear,
-		FromYear:      h.FromYear,
-		ToYear:        h.ToYear,
-		Reason:        h.Reason,
-		Notes:         h.Notes,
-		ChangedAt:     h.ChangedAt.Format(time.RFC3339),
+		ToCohortYear:   h.ToCohortYear,
+		FromYear:       h.FromYear,
+		ToYear:         h.ToYear,
+		Reason:         h.Reason,
+		Notes:          h.Notes,
+		ChangedAt:      h.ChangedAt.Format(time.RFC3339),
 	}
 }
 

@@ -12,18 +12,18 @@ import (
 
 // MockRepository implements StudentRepository for testing
 type MockRepository struct {
-	CreateStudentFunc       func(ctx context.Context, s *Student) error
-	GetStudentFunc          func(ctx context.Context, id uuid.UUID) (*Student, error)
-	GetStudentByUserIDFunc  func(ctx context.Context, userID uuid.UUID) (*Student, error)
-	ListStudentsFunc        func(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]Student, bool, error)
-	UpdateStudentFunc       func(ctx context.Context, s *Student) error
+	CreateStudentFunc         func(ctx context.Context, s *Student) error
+	GetStudentFunc            func(ctx context.Context, id uuid.UUID) (*Student, error)
+	GetStudentByUserIDFunc    func(ctx context.Context, userID uuid.UUID) (*Student, error)
+	ListStudentsFunc          func(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]Student, bool, error)
+	UpdateStudentFunc         func(ctx context.Context, s *Student) error
 	StudentExistsByUserIDFunc func(ctx context.Context, userID uuid.UUID) (bool, error)
 
-	CreateLeaveFunc      func(ctx context.Context, l *Leave) error
-	GetLeaveFunc         func(ctx context.Context, id uuid.UUID) (*Leave, error)
-	ListLeavesFunc       func(ctx context.Context, studentID uuid.UUID) ([]Leave, error)
-	UpdateLeaveFunc      func(ctx context.Context, l *Leave) error
-	GetActiveLeaveFunc   func(ctx context.Context, studentID uuid.UUID) (*Leave, error)
+	CreateLeaveFunc       func(ctx context.Context, l *Leave) error
+	GetLeaveFunc          func(ctx context.Context, id uuid.UUID) (*Leave, error)
+	ListLeavesFunc        func(ctx context.Context, studentID uuid.UUID) ([]Leave, error)
+	UpdateLeaveFunc       func(ctx context.Context, l *Leave) error
+	GetActiveLeaveFunc    func(ctx context.Context, studentID uuid.UUID) (*Leave, error)
 	AddLeaveSemestersFunc func(ctx context.Context, leaveID uuid.UUID, semesterIDs []uuid.UUID) error
 	GetLeaveSemestersFunc func(ctx context.Context, leaveID uuid.UUID) ([]uuid.UUID, error)
 
@@ -150,7 +150,7 @@ func (m *MockRepository) GetTranscriptData(ctx context.Context, studentID uuid.U
 
 // MockProgramProvider implements ProgramProvider for testing
 type MockProgramProvider struct {
-	ProgramExistsFunc         func(ctx context.Context, id uuid.UUID) (bool, error)
+	ProgramExistsFunc          func(ctx context.Context, id uuid.UUID) (bool, error)
 	GetProgramTotalCreditsFunc func(ctx context.Context, id uuid.UUID) (int, error)
 }
 

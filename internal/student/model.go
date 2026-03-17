@@ -7,17 +7,17 @@ import (
 )
 
 type Student struct {
-	ID               uuid.UUID `db:"id"`
-	UserID           uuid.UUID `db:"user_id"`
-	ProgramID        uuid.UUID `db:"program_id"`
-	AdmissionYear    int       `db:"admission_year"`
-	CurrentCohortYear int      `db:"current_cohort_year"`
-	CurrentYear      int       `db:"current_year"`
-	Shift            string    `db:"shift"`
-	Tuition          string    `db:"tuition"`
-	Status           string    `db:"status"`
-	EnrolledAt       time.Time `db:"enrolled_at"`
-	CreatedAt        time.Time `db:"created_at"`
+	ID                uuid.UUID `db:"id"`
+	UserID            uuid.UUID `db:"user_id"`
+	ProgramID         uuid.UUID `db:"program_id"`
+	AdmissionYear     int       `db:"admission_year"`
+	CurrentCohortYear int       `db:"current_cohort_year"`
+	CurrentYear       int       `db:"current_year"`
+	Shift             string    `db:"shift"`
+	Tuition           string    `db:"tuition"`
+	Status            string    `db:"status"`
+	EnrolledAt        time.Time `db:"enrolled_at"`
+	CreatedAt         time.Time `db:"created_at"`
 }
 
 const (
@@ -64,29 +64,29 @@ type LeaveSemester struct {
 }
 
 type CohortHistory struct {
-	ID            uuid.UUID `db:"id"`
-	StudentID     uuid.UUID `db:"student_id"`
-	FromCohortYear int      `db:"from_cohort_year"`
-	ToCohortYear  int       `db:"to_cohort_year"`
-	FromYear      int       `db:"from_year"`
-	ToYear        int       `db:"to_year"`
-	Reason        string    `db:"reason"`
-	Notes         *string   `db:"notes"`
-	ChangedAt     time.Time `db:"changed_at"`
+	ID             uuid.UUID `db:"id"`
+	StudentID      uuid.UUID `db:"student_id"`
+	FromCohortYear int       `db:"from_cohort_year"`
+	ToCohortYear   int       `db:"to_cohort_year"`
+	FromYear       int       `db:"from_year"`
+	ToYear         int       `db:"to_year"`
+	Reason         string    `db:"reason"`
+	Notes          *string   `db:"notes"`
+	ChangedAt      time.Time `db:"changed_at"`
 }
 
 const (
-	CohortChangeReasonFailed     = "failed"
+	CohortChangeReasonFailed      = "failed"
 	CohortChangeReasonTransferred = "transferred"
-	CohortChangeReasonReturned   = "returned"
+	CohortChangeReasonReturned    = "returned"
 )
 
 type TranscriptEntry struct {
-	CourseCode   string   `json:"course_code"`
-	CourseName   string   `json:"course_name"`
-	Credits      int      `json:"credits"`
-	Grade        *float64 `json:"grade"`
-	Status       string   `json:"status"`
+	CourseCode string   `json:"course_code"`
+	CourseName string   `json:"course_name"`
+	Credits    int      `json:"credits"`
+	Grade      *float64 `json:"grade"`
+	Status     string   `json:"status"`
 }
 
 type TranscriptSemester struct {

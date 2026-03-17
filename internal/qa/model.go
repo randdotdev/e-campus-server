@@ -8,18 +8,18 @@ import (
 )
 
 type Question struct {
-	ID              uuid.UUID  `db:"id"`
-	OfferingID      uuid.UUID  `db:"offering_id"`
-	Title           string     `db:"title"`
-	Body            string     `db:"body"`
-	IsAnonymous     bool       `db:"is_anonymous"`
-	IsFAQ           bool       `db:"is_faq"`
-	Status    string    `db:"status"`
-	CreatedBy uuid.UUID `db:"created_by"`
-	CreatedAt       time.Time  `db:"created_at"`
-	UpdatedAt       *time.Time `db:"updated_at"`
-	EditedBy        *uuid.UUID `db:"edited_by"`
-	DeletedAt       *time.Time `db:"deleted_at"`
+	ID          uuid.UUID  `db:"id"`
+	OfferingID  uuid.UUID  `db:"offering_id"`
+	Title       string     `db:"title"`
+	Body        string     `db:"body"`
+	IsAnonymous bool       `db:"is_anonymous"`
+	IsFAQ       bool       `db:"is_faq"`
+	Status      string     `db:"status"`
+	CreatedBy   uuid.UUID  `db:"created_by"`
+	CreatedAt   time.Time  `db:"created_at"`
+	UpdatedAt   *time.Time `db:"updated_at"`
+	EditedBy    *uuid.UUID `db:"edited_by"`
+	DeletedAt   *time.Time `db:"deleted_at"`
 }
 
 type QuestionWithAuthor struct {

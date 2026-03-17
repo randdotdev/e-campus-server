@@ -469,7 +469,7 @@ func TestCreateProgram_Success(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalCredits:     240,
+		TotalCredits:  240,
 	}
 
 	program, err := svc.CreateProgram(context.Background(), req)
@@ -498,7 +498,7 @@ func TestCreateProgram_DepartmentNotFound(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalCredits:     240,
+		TotalCredits:  240,
 	}
 
 	_, err := svc.CreateProgram(context.Background(), req)
@@ -525,7 +525,7 @@ func TestCreateProgram_CodeExists(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalCredits:     240,
+		TotalCredits:  240,
 	}
 
 	_, err := svc.CreateProgram(context.Background(), req)

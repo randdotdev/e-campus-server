@@ -251,9 +251,9 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 	}
 
 	user := &User{
-		Email:        req.Email,
-		PasswordHash: passwordHash,
-		FullNameEN:   req.FullNameEN,
+		Email:         req.Email,
+		PasswordHash:  passwordHash,
+		FullNameEN:    req.FullNameEN,
 		FullNameLocal: req.FullNameLocal,
 	}
 

@@ -296,7 +296,7 @@ func (r *Repository) GetActiveStudentsForAcademic(ctx context.Context, programID
 	}
 
 	query := `
-		SELECT s.id, s.user_id, u.name, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
+		SELECT s.id, s.user_id, u.full_name_en, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
 		FROM students s
 		JOIN users u ON s.user_id = u.id
 		WHERE ` + strings.Join(conditions, " AND ")
@@ -320,7 +320,7 @@ func (r *Repository) GetActiveStudentsForAcademic(ctx context.Context, programID
 
 func (r *Repository) GetStudentsByProgramForAcademic(ctx context.Context, programID uuid.UUID) ([]academic.StudentInfo, error) {
 	query := `
-		SELECT s.id, s.user_id, u.name, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
+		SELECT s.id, s.user_id, u.full_name_en, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
 		FROM students s
 		JOIN users u ON s.user_id = u.id
 		WHERE s.program_id = $1`
@@ -344,7 +344,7 @@ func (r *Repository) GetStudentsByProgramForAcademic(ctx context.Context, progra
 
 func (r *Repository) GetStudentsInSemesterForAcademic(ctx context.Context, semesterID uuid.UUID) ([]academic.StudentInfo, error) {
 	query := `
-		SELECT DISTINCT s.id, s.user_id, u.name, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
+		SELECT DISTINCT s.id, s.user_id, u.full_name_en, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
 		FROM students s
 		JOIN users u ON s.user_id = u.id
 		JOIN course_enrollments e ON e.student_id = s.user_id
@@ -381,4 +381,3 @@ func (r *Repository) RecordCohortChangeForAcademic(ctx context.Context, studentI
 	_, err := r.db.ExecContext(ctx, query, studentID, fromCohort, toCohort, fromYear, toYear, reason)
 	return err
 }
-

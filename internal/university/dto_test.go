@@ -14,7 +14,7 @@ func TestToCollegeResponse(t *testing.T) {
 	college := &College{
 		ID:          uuid.New(),
 		NameEN:      "College of Science",
-		NameLocal:      &nameLocal,
+		NameLocal:   &nameLocal,
 		Code:        "SCI",
 		Description: &desc,
 		IsActive:    true,
@@ -68,7 +68,7 @@ func TestToDepartmentResponse(t *testing.T) {
 		ID:        uuid.New(),
 		CollegeID: collegeID,
 		NameEN:    "Computer Science",
-		NameLocal:    &nameLocal,
+		NameLocal: &nameLocal,
 		Code:      "CS",
 		IsActive:  true,
 		CreatedAt: time.Now(),
@@ -116,7 +116,7 @@ func TestToProgramResponse(t *testing.T) {
 		Code:          "BCS",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalCredits:     240,
+		TotalCredits:  240,
 		Description:   &desc,
 		IsActive:      true,
 		CreatedAt:     time.Now(),
@@ -197,7 +197,7 @@ func TestCreateProgramRequest_Validation(t *testing.T) {
 		Code:          "TP",
 		DegreeType:    "bachelor",
 		DurationYears: 4,
-		TotalCredits:     240,
+		TotalCredits:  240,
 	}
 
 	if req.DepartmentID != deptID {

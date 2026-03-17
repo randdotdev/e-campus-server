@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 type CreatePostRequest struct {
 	ScopeType string     `json:"scope_type" binding:"required,oneof=university college department program course"`
 	ScopeID   *uuid.UUID `json:"scope_id"`
@@ -36,7 +35,6 @@ type AddAttachmentRequest struct {
 type PinPostRequest struct {
 	Pinned bool `json:"pinned"`
 }
-
 
 type PostResponse struct {
 	ID              uuid.UUID            `json:"id"`
@@ -76,7 +74,6 @@ type MentionResponse struct {
 	Username string    `json:"username"`
 	FullName string    `json:"full_name"`
 }
-
 
 func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []MentionedUser, isLiked bool, now time.Time) PostResponse {
 	return PostResponse{

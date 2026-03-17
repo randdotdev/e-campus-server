@@ -656,7 +656,16 @@ func (r *Repository) GetOfferingsBySemester(ctx context.Context, semesterID uuid
 
 func (r *Repository) CountUnfinalizedOfferings(ctx context.Context, semesterID uuid.UUID) (int, error) {
 	var count int
-	query := `SELECT COUNT(*) FROM course_offerings WHERE semester_id = $1 AND is_active = true`
+	query := `
+		SELECT COUNT(DISTINCT co.id)
+		FROM course_offerings co
+		WHERE co.semester_id = $1
+			AND co.is_active = true
+			AND EXISTS (
+				SELECT 1 FROM course_enrollments ce
+				WHERE ce.offering_id = co.id
+					AND ce.status = 'enrolled'
+			)`
 	err := r.db.GetContext(ctx, &count, query, semesterID)
 	return count, err
 }

@@ -27,9 +27,9 @@ type Post struct {
 
 type PostWithAuthor struct {
 	Post
-	AuthorName     string  `db:"author_name"`
-	AuthorNameLocal   *string `db:"author_name_local"`
-	AuthorAvatar   *string `db:"author_avatar"`
+	AuthorName      string  `db:"author_name"`
+	AuthorNameLocal *string `db:"author_name_local"`
+	AuthorAvatar    *string `db:"author_avatar"`
 	AuthorRoleTitle *string `db:"author_role_title"`
 }
 
@@ -84,8 +84,8 @@ const (
 
 // File size limits in bytes
 const (
-	MaxImageSize    = 10 * 1024 * 1024  // 10MB
-	MaxVideoSize    = 50 * 1024 * 1024  // 50MB
-	MaxVoiceSize    = 10 * 1024 * 1024  // 10MB
-	MaxDocumentSize = 20 * 1024 * 1024  // 20MB
+	MaxImageSize    = 10 * 1024 * 1024 // 10MB
+	MaxVideoSize    = 50 * 1024 * 1024 // 50MB
+	MaxVoiceSize    = 10 * 1024 * 1024 // 10MB
+	MaxDocumentSize = 20 * 1024 * 1024 // 20MB
 )

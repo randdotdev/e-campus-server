@@ -618,3 +618,47 @@ func (r *Repository) WithdrawEnrollmentsForLeave(ctx context.Context, studentID 
 	_, err := r.db.ExecContext(ctx, query, studentID, pq.Array(semesterIDs))
 	return err
 }
+
+func (r *Repository) GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]uuid.UUID, error) {
+	var courseIDs []uuid.UUID
+	query := `
+		SELECT course_id FROM enrollment_requests
+		WHERE student_id = $1 AND semester_id = $2
+		  AND type = 'retake' AND status = 'approved'`
+	err := r.db.SelectContext(ctx, &courseIDs, query, studentID, semesterID)
+	return courseIDs, err
+}
+
+func (r *Repository) GetStudentCohortInfo(ctx context.Context, studentID uuid.UUID) (cohortYear int, shift string, err error) {
+	query := `SELECT current_cohort_year, shift FROM students WHERE user_id = $1`
+	err = r.db.QueryRowxContext(ctx, query, studentID).Scan(&cohortYear, &shift)
+	return cohortYear, shift, err
+}
+
+func (r *Repository) GetOfferingIDForEnrollment(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error) {
+	var id uuid.UUID
+	query := `
+		SELECT id FROM course_offerings
+		WHERE course_id = $1 AND semester_id = $2 AND cohort_year = $3 AND shift = $4`
+	err := r.db.GetContext(ctx, &id, query, courseID, semesterID, cohortYear, shift)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+func (r *Repository) IsSemesterActive(ctx context.Context, semesterID uuid.UUID) (bool, error) {
+	var status string
+	query := `SELECT status FROM semesters WHERE id = $1`
+	err := r.db.GetContext(ctx, &status, query, semesterID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return status == "active", nil
+}

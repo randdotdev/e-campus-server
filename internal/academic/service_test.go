@@ -300,11 +300,12 @@ func (m *MockOfferingProvider) CountUnfinalizedOfferings(ctx context.Context, se
 }
 
 type MockEnrollmentProvider struct {
-	CreateEnrollmentFunc   func(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
-	IsEnrolledFunc         func(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
-	HasApprovedPretakeFunc func(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
-	WasFailedFunc          func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
-	SumCreditsFunc         func(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
+	CreateEnrollmentFunc           func(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
+	IsEnrolledFunc                 func(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
+	HasApprovedPretakeFunc         func(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
+	WasFailedFunc                  func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	SumCreditsFunc                 func(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
+	GetApprovedRetakeRequestsFunc  func(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
 }
 
 func (m *MockEnrollmentProvider) CreateEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
@@ -340,6 +341,13 @@ func (m *MockEnrollmentProvider) SumCredits(ctx context.Context, studentID, seme
 		return m.SumCreditsFunc(ctx, studentID, semesterID, status)
 	}
 	return 0, nil
+}
+
+func (m *MockEnrollmentProvider) GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error) {
+	if m.GetApprovedRetakeRequestsFunc != nil {
+		return m.GetApprovedRetakeRequestsFunc(ctx, studentID, semesterID)
+	}
+	return nil, nil
 }
 
 type MockSettingsProvider struct {

@@ -90,15 +90,15 @@ func (r *Repository) GetUserRole(ctx context.Context, userID uuid.UUID) (*auth.R
 
 func toUserData(u *User) *auth.UserData {
 	return &auth.UserData{
-		ID:           u.ID,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		FullNameEN:   u.FullNameEN,
+		ID:            u.ID,
+		Email:         u.Email,
+		PasswordHash:  u.PasswordHash,
+		FullNameEN:    u.FullNameEN,
 		FullNameLocal: u.FullNameLocal,
-		AvatarURL:    u.AvatarURL,
-		IsActive:     u.IsActive,
-		IsVerified:   u.IsVerified,
-		CreatedAt:    u.CreatedAt,
+		AvatarURL:     u.AvatarURL,
+		IsActive:      u.IsActive,
+		IsVerified:    u.IsVerified,
+		CreatedAt:     u.CreatedAt,
 	}
 }
 

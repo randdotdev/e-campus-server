@@ -27,14 +27,14 @@ type ProgramFilters struct {
 
 type CreateCollegeRequest struct {
 	NameEN      string  `json:"name_en" binding:"required,min=2,max=255"`
-	NameLocal      *string `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal   *string `json:"name_local" binding:"omitempty,max=255"`
 	Code        string  `json:"code" binding:"required,min=2,max=20"`
 	Description *string `json:"description"`
 }
 
 type UpdateCollegeRequest struct {
 	NameEN      *string `json:"name_en" binding:"omitempty,min=2,max=255"`
-	NameLocal      *string `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal   *string `json:"name_local" binding:"omitempty,max=255"`
 	Code        *string `json:"code" binding:"omitempty,min=2,max=20"`
 	Description *string `json:"description"`
 	IsActive    *bool   `json:"is_active"`
@@ -43,7 +43,7 @@ type UpdateCollegeRequest struct {
 type CollegeResponse struct {
 	ID          uuid.UUID `json:"id"`
 	NameEN      string    `json:"name_en"`
-	NameLocal      *string   `json:"name_local,omitempty"`
+	NameLocal   *string   `json:"name_local,omitempty"`
 	Code        string    `json:"code"`
 	Description *string   `json:"description,omitempty"`
 	IsActive    bool      `json:"is_active"`
@@ -55,7 +55,7 @@ func ToCollegeResponse(c *College) CollegeResponse {
 	return CollegeResponse{
 		ID:          c.ID,
 		NameEN:      c.NameEN,
-		NameLocal:      c.NameLocal,
+		NameLocal:   c.NameLocal,
 		Code:        c.Code,
 		Description: c.Description,
 		IsActive:    c.IsActive,
@@ -77,14 +77,14 @@ func ToCollegesResponse(colleges []College) []CollegeResponse {
 type CreateDepartmentRequest struct {
 	CollegeID   uuid.UUID `json:"college_id" binding:"required"`
 	NameEN      string    `json:"name_en" binding:"required,min=2,max=255"`
-	NameLocal      *string   `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal   *string   `json:"name_local" binding:"omitempty,max=255"`
 	Code        string    `json:"code" binding:"required,min=2,max=20"`
 	Description *string   `json:"description"`
 }
 
 type UpdateDepartmentRequest struct {
 	NameEN      *string `json:"name_en" binding:"omitempty,min=2,max=255"`
-	NameLocal      *string `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal   *string `json:"name_local" binding:"omitempty,max=255"`
 	Code        *string `json:"code" binding:"omitempty,min=2,max=20"`
 	Description *string `json:"description"`
 	IsActive    *bool   `json:"is_active"`
@@ -94,7 +94,7 @@ type DepartmentResponse struct {
 	ID          uuid.UUID `json:"id"`
 	CollegeID   uuid.UUID `json:"college_id"`
 	NameEN      string    `json:"name_en"`
-	NameLocal      *string   `json:"name_local,omitempty"`
+	NameLocal   *string   `json:"name_local,omitempty"`
 	Code        string    `json:"code"`
 	Description *string   `json:"description,omitempty"`
 	IsActive    bool      `json:"is_active"`
@@ -107,7 +107,7 @@ func ToDepartmentResponse(d *Department) DepartmentResponse {
 		ID:          d.ID,
 		CollegeID:   d.CollegeID,
 		NameEN:      d.NameEN,
-		NameLocal:      d.NameLocal,
+		NameLocal:   d.NameLocal,
 		Code:        d.Code,
 		Description: d.Description,
 		IsActive:    d.IsActive,
@@ -129,11 +129,11 @@ func ToDepartmentsResponse(depts []Department) []DepartmentResponse {
 type CreateProgramRequest struct {
 	DepartmentID  uuid.UUID `json:"department_id" binding:"required"`
 	NameEN        string    `json:"name_en" binding:"required,min=2,max=255"`
-	NameLocal        *string   `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal     *string   `json:"name_local" binding:"omitempty,max=255"`
 	Code          string    `json:"code" binding:"required,min=2,max=20"`
 	DegreeType    string    `json:"degree_type" binding:"required,oneof=bachelor master phd"`
 	DurationYears int       `json:"duration_years" binding:"required,min=1,max=8"`
-	TotalCredits     int       `json:"total_credits" binding:"required,min=1"`
+	TotalCredits  int       `json:"total_credits" binding:"required,min=1"`
 	MinAge        *int      `json:"min_age" binding:"omitempty,min=0"`
 	MaxAge        *int      `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string   `json:"description"`
@@ -141,11 +141,11 @@ type CreateProgramRequest struct {
 
 type UpdateProgramRequest struct {
 	NameEN        *string `json:"name_en" binding:"omitempty,min=2,max=255"`
-	NameLocal        *string `json:"name_local" binding:"omitempty,max=255"`
+	NameLocal     *string `json:"name_local" binding:"omitempty,max=255"`
 	Code          *string `json:"code" binding:"omitempty,min=2,max=20"`
 	DegreeType    *string `json:"degree_type" binding:"omitempty,oneof=bachelor master phd"`
 	DurationYears *int    `json:"duration_years" binding:"omitempty,min=1,max=8"`
-	TotalCredits     *int    `json:"total_credits" binding:"omitempty,min=1"`
+	TotalCredits  *int    `json:"total_credits" binding:"omitempty,min=1"`
 	MinAge        *int    `json:"min_age" binding:"omitempty,min=0"`
 	MaxAge        *int    `json:"max_age" binding:"omitempty,max=100"`
 	Description   *string `json:"description"`
@@ -156,11 +156,11 @@ type ProgramResponse struct {
 	ID            uuid.UUID `json:"id"`
 	DepartmentID  uuid.UUID `json:"department_id"`
 	NameEN        string    `json:"name_en"`
-	NameLocal        *string   `json:"name_local,omitempty"`
+	NameLocal     *string   `json:"name_local,omitempty"`
 	Code          string    `json:"code"`
 	DegreeType    string    `json:"degree_type"`
 	DurationYears int       `json:"duration_years"`
-	TotalCredits     int       `json:"total_credits"`
+	TotalCredits  int       `json:"total_credits"`
 	MinAge        *int      `json:"min_age,omitempty"`
 	MaxAge        *int      `json:"max_age,omitempty"`
 	Description   *string   `json:"description,omitempty"`
@@ -174,11 +174,11 @@ func ToProgramResponse(p *Program) ProgramResponse {
 		ID:            p.ID,
 		DepartmentID:  p.DepartmentID,
 		NameEN:        p.NameEN,
-		NameLocal:        p.NameLocal,
+		NameLocal:     p.NameLocal,
 		Code:          p.Code,
 		DegreeType:    p.DegreeType,
 		DurationYears: p.DurationYears,
-		TotalCredits:     p.TotalCredits,
+		TotalCredits:  p.TotalCredits,
 		MinAge:        p.MinAge,
 		MaxAge:        p.MaxAge,
 		Description:   p.Description,

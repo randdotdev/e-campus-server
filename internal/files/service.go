@@ -148,7 +148,6 @@ func (s *Service) DeleteFolder(ctx context.Context, id uuid.UUID, ownerID uuid.U
 	return s.repo.DeleteFolder(ctx, id)
 }
 
-
 func (s *Service) UploadFile(ctx context.Context, ownerID uuid.UUID, name string, folderID *uuid.UUID, reader io.Reader, size int64) (*UserFileWithMeta, error) {
 	// Fetch limits
 	sizeLimit, err := s.limits.GetFileSizeLimit(ctx, ownerID)

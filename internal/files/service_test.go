@@ -14,13 +14,13 @@ import (
 
 // mockRepo implements FileRepository for testing
 type mockRepo struct {
-	folders       map[uuid.UUID]*Folder
-	userFiles     map[uuid.UUID]*UserFile
-	storedFiles   map[uuid.UUID]*StoredFile
-	storageUsed   int64
-	folderEmpty   bool
-	createErr     error
-	duplicateErr  bool
+	folders      map[uuid.UUID]*Folder
+	userFiles    map[uuid.UUID]*UserFile
+	storedFiles  map[uuid.UUID]*StoredFile
+	storageUsed  int64
+	folderEmpty  bool
+	createErr    error
+	duplicateErr bool
 }
 
 func newMockRepo() *mockRepo {

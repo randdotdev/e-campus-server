@@ -410,13 +410,13 @@ func (s *Service) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUI
 }
 
 type AssignmentUpdates struct {
-	Title       *string
-	Body        *string
-	Type        *string
-	Deadline    *time.Time
-	MaxScore    *float64
-	AllowLate   *bool
-	PublishAt   *time.Time
+	Title     *string
+	Body      *string
+	Type      *string
+	Deadline  *time.Time
+	MaxScore  *float64
+	AllowLate *bool
+	PublishAt *time.Time
 }
 
 type FileInput struct {

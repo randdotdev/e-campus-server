@@ -38,14 +38,14 @@ type StudentProvider interface {
 }
 
 type StudentInfo struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
-	Name             string
-	ProgramID        uuid.UUID
+	ID                uuid.UUID
+	UserID            uuid.UUID
+	Name              string
+	ProgramID         uuid.UUID
 	CurrentCohortYear int
-	CurrentYear      int
-	Shift            string
-	Status           string
+	CurrentYear       int
+	Shift             string
+	Status            string
 }
 
 type CourseProvider interface {
@@ -83,6 +83,11 @@ type EnrollmentProvider interface {
 	HasApprovedPretake(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
 	WasFailed(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
 	SumCredits(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
+	GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
+}
+
+type RetakeRequestInfo struct {
+	CourseID uuid.UUID
 }
 
 type SettingsProvider interface {
@@ -587,6 +592,48 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 					OfferingID:  *offeringID,
 					CourseCode:  course.Code,
 					Type:        enrollType,
+				})
+			}
+		}
+
+		retakeRequests, err := s.enrollment.GetApprovedRetakeRequests(ctx, student.UserID, semesterID)
+		if err != nil {
+			continue
+		}
+
+		curriculumCourseIDs := make(map[uuid.UUID]bool)
+		for _, item := range curriculum {
+			curriculumCourseIDs[item.CourseID] = true
+		}
+
+		for _, req := range retakeRequests {
+			if curriculumCourseIDs[req.CourseID] {
+				continue
+			}
+
+			offeringID := findOfferingID(offerings, req.CourseID)
+			if offeringID == nil {
+				continue
+			}
+
+			enrolled, err := s.enrollment.IsEnrolled(ctx, *offeringID, student.UserID)
+			if err != nil || enrolled {
+				continue
+			}
+
+			course, err := s.courses.GetCourse(ctx, req.CourseID)
+			if err != nil {
+				continue
+			}
+
+			if err := s.enrollment.CreateEnrollment(ctx, *offeringID, student.UserID, "retake"); err == nil {
+				result.Enrolled++
+				result.Details.Enrolled = append(result.Details.Enrolled, EnrollRecord{
+					StudentID:   student.ID,
+					StudentName: student.Name,
+					OfferingID:  *offeringID,
+					CourseCode:  course.Code,
+					Type:        "retake",
 				})
 			}
 		}

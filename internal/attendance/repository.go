@@ -94,7 +94,7 @@ func (r *Repository) GetLessonAttendance(ctx context.Context, lessonID uuid.UUID
 		JOIN users u ON a.student_id = u.id
 		LEFT JOIN excuse_requests e ON a.lesson_id = e.lesson_id AND a.student_id = e.student_id
 		WHERE a.lesson_id = $1
-		ORDER BY u.full_name`
+		ORDER BY u.full_name_en`
 	var records []AttendanceRecord
 	if err := r.db.SelectContext(ctx, &records, query, lessonID); err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (r *Repository) GetOfferingAttendance(ctx context.Context, offeringID uuid.
 		JOIN sections s ON l.section_id = s.id
 		LEFT JOIN excuse_requests e ON a.lesson_id = e.lesson_id AND a.student_id = e.student_id
 		WHERE s.offering_id = $1
-		ORDER BY l.order_index, u.full_name`
+		ORDER BY l.order_index, u.full_name_en`
 	var records []AttendanceRecord
 	if err := r.db.SelectContext(ctx, &records, query, offeringID); err != nil {
 		return nil, err

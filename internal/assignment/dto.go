@@ -35,13 +35,13 @@ type AddAttachmentRequest struct {
 }
 
 type CreateSubmissionRequest struct {
-	Content *string         `json:"content"`
-	Files   []FileInputDTO  `json:"files"`
+	Content *string        `json:"content"`
+	Files   []FileInputDTO `json:"files"`
 }
 
 type UpdateSubmissionRequest struct {
-	Content *string         `json:"content"`
-	Files   []FileInputDTO  `json:"files"`
+	Content *string        `json:"content"`
+	Files   []FileInputDTO `json:"files"`
 }
 
 type GradeRequest struct {
@@ -57,17 +57,17 @@ type FileInputDTO struct {
 // Response types
 
 type AssignmentResponse struct {
-	ID           uuid.UUID  `json:"id"`
-	OfferingID   uuid.UUID  `json:"offering_id"`
-	Title        string     `json:"title"`
-	Body         *string    `json:"body,omitempty"`
-	Type         *string    `json:"type,omitempty"`
-	Deadline     time.Time  `json:"deadline"`
-	MaxScore     float64    `json:"max_score"`
-	AllowLate    bool       `json:"allow_late"`
-	IsPublished  bool       `json:"is_published"`
-	ScoresPublic bool       `json:"scores_public"`
-	CreatedAt    time.Time  `json:"created_at"`
+	ID           uuid.UUID `json:"id"`
+	OfferingID   uuid.UUID `json:"offering_id"`
+	Title        string    `json:"title"`
+	Body         *string   `json:"body,omitempty"`
+	Type         *string   `json:"type,omitempty"`
+	Deadline     time.Time `json:"deadline"`
+	MaxScore     float64   `json:"max_score"`
+	AllowLate    bool      `json:"allow_late"`
+	IsPublished  bool      `json:"is_published"`
+	ScoresPublic bool      `json:"scores_public"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type AssignmentWithAttachmentsResponse struct {
@@ -83,16 +83,16 @@ type AttachmentResponse struct {
 }
 
 type SubmissionResponse struct {
-	ID           uuid.UUID            `json:"id"`
-	AssignmentID uuid.UUID            `json:"assignment_id"`
-	StudentID    uuid.UUID            `json:"student_id"`
-	Content      *string              `json:"content,omitempty"`
+	ID           uuid.UUID                `json:"id"`
+	AssignmentID uuid.UUID                `json:"assignment_id"`
+	StudentID    uuid.UUID                `json:"student_id"`
+	Content      *string                  `json:"content,omitempty"`
 	Files        []SubmissionFileResponse `json:"files,omitempty"`
-	Status       string               `json:"status"`
-	IsLate       bool                 `json:"is_late"`
-	SubmittedAt  *time.Time           `json:"submitted_at,omitempty"`
-	CreatedAt    time.Time            `json:"created_at"`
-	UpdatedAt    *time.Time           `json:"updated_at,omitempty"`
+	Status       string                   `json:"status"`
+	IsLate       bool                     `json:"is_late"`
+	SubmittedAt  *time.Time               `json:"submitted_at,omitempty"`
+	CreatedAt    time.Time                `json:"created_at"`
+	UpdatedAt    *time.Time               `json:"updated_at,omitempty"`
 }
 
 type SubmissionWithScoreResponse struct {

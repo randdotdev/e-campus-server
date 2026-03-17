@@ -20,7 +20,6 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-
 func (r *Repository) Create(ctx context.Context, p *Post) error {
 	query := `
 		INSERT INTO posts (id, scope_type, scope_id, parent_id, root_id, body, is_pinned, publish_at, expires_at, author_id, like_count, comment_count, created_at)
@@ -219,7 +218,6 @@ func (r *Repository) DecrementCommentCount(ctx context.Context, id uuid.UUID) er
 	return err
 }
 
-
 type LikeRepo struct {
 	db *sqlx.DB
 }
@@ -269,7 +267,6 @@ func (r *LikeRepo) GetUserLikes(ctx context.Context, postIDs []uuid.UUID, userID
 	}
 	return result, nil
 }
-
 
 type AttachmentRepo struct {
 	db *sqlx.DB
@@ -338,7 +335,6 @@ func (r *AttachmentRepo) ListByPostIDs(ctx context.Context, postIDs []uuid.UUID)
 	}
 	return result, nil
 }
-
 
 type MentionRepo struct {
 	db *sqlx.DB
@@ -427,7 +423,6 @@ func (r *MentionRepo) ListByPostIDs(ctx context.Context, postIDs []uuid.UUID) (m
 	return result, nil
 }
 
-
 type UserRepo struct {
 	db *sqlx.DB
 }
@@ -463,7 +458,6 @@ func (r *UserRepo) GetUserIDsByUsernames(ctx context.Context, usernames []string
 	}
 	return result, nil
 }
-
 
 type ScopeRepo struct {
 	db *sqlx.DB

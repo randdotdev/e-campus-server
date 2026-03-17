@@ -14,15 +14,15 @@ func TestToUserResponse(t *testing.T) {
 	now := time.Now()
 
 	user := &UserData{
-		ID:           id,
-		Email:        "test@example.com",
-		PasswordHash: "hashedpassword",
-		FullNameEN:   "Test User",
-		FullNameLocal:   &fullNameKU,
-		AvatarURL:    &avatarURL,
-		IsActive:     true,
-		IsVerified:   true,
-		CreatedAt:    now,
+		ID:            id,
+		Email:         "test@example.com",
+		PasswordHash:  "hashedpassword",
+		FullNameEN:    "Test User",
+		FullNameLocal: &fullNameKU,
+		AvatarURL:     &avatarURL,
+		IsActive:      true,
+		IsVerified:    true,
+		CreatedAt:     now,
 	}
 
 	resp := ToUserResponse(user)
@@ -55,15 +55,15 @@ func TestToUserResponse_NilOptionalFields(t *testing.T) {
 	now := time.Now()
 
 	user := &UserData{
-		ID:           id,
-		Email:        "minimal@example.com",
-		PasswordHash: "hash",
-		FullNameEN:   "Minimal User",
-		FullNameLocal:   nil,
-		AvatarURL:    nil,
-		IsActive:     true,
-		IsVerified:   false,
-		CreatedAt:    now,
+		ID:            id,
+		Email:         "minimal@example.com",
+		PasswordHash:  "hash",
+		FullNameEN:    "Minimal User",
+		FullNameLocal: nil,
+		AvatarURL:     nil,
+		IsActive:      true,
+		IsVerified:    false,
+		CreatedAt:     now,
 	}
 
 	resp := ToUserResponse(user)

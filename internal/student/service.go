@@ -31,10 +31,10 @@ type StudentRepository interface {
 }
 
 type TranscriptData struct {
-	StudentName     string
-	ProgramName     string
-	TotalCredits    int
-	Enrollments     []EnrollmentData
+	StudentName  string
+	ProgramName  string
+	TotalCredits int
+	Enrollments  []EnrollmentData
 }
 
 type EnrollmentData struct {
@@ -84,14 +84,14 @@ func (s *Service) CreateStudent(ctx context.Context, req CreateStudentRequest) (
 	}
 
 	student := &Student{
-		UserID:           req.UserID,
-		ProgramID:        req.ProgramID,
-		AdmissionYear:    req.AdmissionYear,
+		UserID:            req.UserID,
+		ProgramID:         req.ProgramID,
+		AdmissionYear:     req.AdmissionYear,
 		CurrentCohortYear: req.AdmissionYear,
-		CurrentYear:      1,
-		Shift:            req.Shift,
-		Tuition:          req.Tuition,
-		Status:           StatusActive,
+		CurrentYear:       1,
+		Shift:             req.Shift,
+		Tuition:           req.Tuition,
+		Status:            StatusActive,
 	}
 
 	if err := s.repo.CreateStudent(ctx, student); err != nil {

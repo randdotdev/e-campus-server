@@ -21,17 +21,17 @@ func TestToStudentResponse(t *testing.T) {
 		now := time.Now()
 
 		s := &Student{
-			ID:               id,
-			UserID:           userID,
-			ProgramID:        programID,
-			AdmissionYear:    2022,
+			ID:                id,
+			UserID:            userID,
+			ProgramID:         programID,
+			AdmissionYear:     2022,
 			CurrentCohortYear: 2022,
-			CurrentYear:      2,
-			Shift:            ShiftDay,
-			Tuition:          TuitionFree,
-			Status:           StatusActive,
-			EnrolledAt:       now,
-			CreatedAt:        now,
+			CurrentYear:       2,
+			Shift:             ShiftDay,
+			Tuition:           TuitionFree,
+			Status:            StatusActive,
+			EnrolledAt:        now,
+			CreatedAt:         now,
 		}
 
 		resp := ToStudentResponse(s)
@@ -238,15 +238,15 @@ func TestToCohortHistoryResponse(t *testing.T) {
 		notes := "Failed due to poor grades"
 
 		h := &CohortHistory{
-			ID:            id,
-			StudentID:     studentID,
+			ID:             id,
+			StudentID:      studentID,
 			FromCohortYear: 2022,
-			ToCohortYear:  2023,
-			FromYear:      2,
-			ToYear:        2,
-			Reason:        CohortChangeReasonFailed,
-			Notes:         &notes,
-			ChangedAt:     now,
+			ToCohortYear:   2023,
+			FromYear:       2,
+			ToYear:         2,
+			Reason:         CohortChangeReasonFailed,
+			Notes:          &notes,
+			ChangedAt:      now,
 		}
 
 		resp := ToCohortHistoryResponse(h)
@@ -280,15 +280,15 @@ func TestToCohortHistoryResponse(t *testing.T) {
 	t.Run("cohort history without notes", func(t *testing.T) {
 		now := time.Now()
 		h := &CohortHistory{
-			ID:            uuid.New(),
-			StudentID:     uuid.New(),
+			ID:             uuid.New(),
+			StudentID:      uuid.New(),
 			FromCohortYear: 2022,
-			ToCohortYear:  2023,
-			FromYear:      1,
-			ToYear:        1,
-			Reason:        CohortChangeReasonTransferred,
-			Notes:         nil,
-			ChangedAt:     now,
+			ToCohortYear:   2023,
+			FromYear:       1,
+			ToYear:         1,
+			Reason:         CohortChangeReasonTransferred,
+			Notes:          nil,
+			ChangedAt:      now,
 		}
 
 		resp := ToCohortHistoryResponse(h)

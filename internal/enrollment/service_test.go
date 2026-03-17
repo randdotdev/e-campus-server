@@ -49,13 +49,16 @@ type mockRepo struct {
 	hasApprovedRequestFunc func(ctx context.Context, studentID, courseID, semesterID uuid.UUID, reqType string) (bool, error)
 
 	// Lookup operations
-	getPrereqStatusFunc func(ctx context.Context, studentID, courseID uuid.UUID) (*PrereqStatus, error)
-	getCourseStatusFunc func(ctx context.Context, studentID, courseID uuid.UUID) (*CourseStatus, error)
-	getCoursePrereqFunc func(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
-	getStudentNameFunc  func(ctx context.Context, studentID uuid.UUID) (string, error)
-	courseExistsFunc    func(ctx context.Context, id uuid.UUID) (bool, error)
-	semesterExistsFunc  func(ctx context.Context, id uuid.UUID) (bool, error)
-	isNaturalCohortFunc func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	getPrereqStatusFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (*PrereqStatus, error)
+	getCourseStatusFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (*CourseStatus, error)
+	getCoursePrereqFunc              func(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
+	getStudentNameFunc               func(ctx context.Context, studentID uuid.UUID) (string, error)
+	courseExistsFunc                 func(ctx context.Context, id uuid.UUID) (bool, error)
+	semesterExistsFunc               func(ctx context.Context, id uuid.UUID) (bool, error)
+	isNaturalCohortFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	getStudentCohortInfoFunc         func(ctx context.Context, studentID uuid.UUID) (int, string, error)
+	getOfferingIDForEnrollmentFunc   func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
+	isSemesterActiveFunc             func(ctx context.Context, semesterID uuid.UUID) (bool, error)
 }
 
 // Enrollment operations
@@ -326,6 +329,27 @@ func (m *mockRepo) IsNaturalCohort(ctx context.Context, studentID, courseID uuid
 		return m.isNaturalCohortFunc(ctx, studentID, courseID)
 	}
 	return true, nil
+}
+
+func (m *mockRepo) GetStudentCohortInfo(ctx context.Context, studentID uuid.UUID) (int, string, error) {
+	if m.getStudentCohortInfoFunc != nil {
+		return m.getStudentCohortInfoFunc(ctx, studentID)
+	}
+	return 2024, "day", nil
+}
+
+func (m *mockRepo) GetOfferingIDForEnrollment(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error) {
+	if m.getOfferingIDForEnrollmentFunc != nil {
+		return m.getOfferingIDForEnrollmentFunc(ctx, courseID, semesterID, cohortYear, shift)
+	}
+	return nil, nil
+}
+
+func (m *mockRepo) IsSemesterActive(ctx context.Context, semesterID uuid.UUID) (bool, error) {
+	if m.isSemesterActiveFunc != nil {
+		return m.isSemesterActiveFunc(ctx, semesterID)
+	}
+	return false, nil
 }
 
 // Mock offering checker
