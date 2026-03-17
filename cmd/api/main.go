@@ -25,6 +25,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
 	"github.com/ranjdotdev/e-campus-server/internal/exam"
 	"github.com/ranjdotdev/e-campus-server/internal/files"
+	"github.com/ranjdotdev/e-campus-server/internal/grading"
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/mute"
@@ -243,6 +244,17 @@ func run() error {
 		&academicSettingsProviderAdapter{db: db},
 	)
 	academicHandler := academic.NewHandler(academicService, log)
+
+	gradingRepo := grading.NewRepository(db)
+	gradingService := grading.NewService(
+		gradingRepo,
+		&gradingOfferingAdapter{repo: gradingRepo},
+		&gradingExamScoreAdapter{repo: gradingRepo},
+		&gradingAssignmentScoreAdapter{repo: gradingRepo},
+		&gradingAttendanceAdapter{repo: gradingRepo},
+		&gradingEnrollmentAdapter{repo: gradingRepo},
+	)
+	gradingHandler := grading.NewHandler(gradingService, &gradingTeacherCheckerAdapter{repo: courseRepo})
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -513,6 +525,16 @@ func run() error {
 			protected.GET("/students/:id/history", studentHandler.ListCohortHistory)
 			protected.GET("/me/student", studentHandler.GetMyStudentRecord)
 			protected.GET("/me/transcript", studentHandler.GetMyTranscript)
+
+			// Grading routes
+			protected.PUT("/offerings/:offering_id/grading-rules", gradingHandler.SaveRules)
+			protected.GET("/offerings/:offering_id/grading-rules", gradingHandler.GetRules)
+			protected.DELETE("/offerings/:offering_id/grading-rules", gradingHandler.DeleteRules)
+			protected.POST("/offerings/:offering_id/finalize-grades", gradingHandler.FinalizeGrades)
+			protected.DELETE("/offerings/:offering_id/finalize-grades", gradingHandler.DefinalizeGrades)
+			protected.GET("/offerings/:offering_id/grades", gradingHandler.GetGrades)
+			protected.PUT("/offerings/:offering_id/grades/:student_id", gradingHandler.OverrideGrade)
+			protected.GET("/offerings/:offering_id/grades/:student_id/preview", gradingHandler.PreviewGrade)
 		}
 	}
 
@@ -862,6 +884,18 @@ func (a *academicEnrollmentProviderAdapter) SumCredits(ctx context.Context, stud
 	return a.repo.SumCredits(ctx, studentID, semesterID, status)
 }
 
+func (a *academicEnrollmentProviderAdapter) GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]academic.RetakeRequestInfo, error) {
+	courseIDs, err := a.repo.GetApprovedRetakeRequests(ctx, studentID, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]academic.RetakeRequestInfo, len(courseIDs))
+	for i, id := range courseIDs {
+		result[i] = academic.RetakeRequestInfo{CourseID: id}
+	}
+	return result, nil
+}
+
 type academicSettingsProviderAdapter struct {
 	db *sqlx.DB
 }
@@ -875,4 +909,94 @@ func (a *academicSettingsProviderAdapter) GetFullYearRepeat(ctx context.Context)
 		return false, nil
 	}
 	return settings.FullYearRepeat, nil
+}
+
+// Grading package adapters
+
+type gradingTeacherCheckerAdapter struct {
+	repo *course.Repository
+}
+
+func (a *gradingTeacherCheckerAdapter) IsTeacher(offeringID, userID uuid.UUID) (bool, error) {
+	role, err := a.repo.GetTeacherRole(context.Background(), offeringID, userID)
+	if err != nil {
+		return false, err
+	}
+	return role == "teacher", nil
+}
+
+type gradingOfferingAdapter struct {
+	repo *grading.Repository
+}
+
+func (a *gradingOfferingAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return a.repo.OfferingExists(ctx, id)
+}
+
+func (a *gradingOfferingAdapter) GetSemesterStatus(ctx context.Context, offeringID uuid.UUID) (string, error) {
+	return a.repo.GetSemesterStatus(ctx, offeringID)
+}
+
+func (a *gradingOfferingAdapter) GetPassThreshold(ctx context.Context, offeringID uuid.UUID) (int, error) {
+	return a.repo.GetPassThreshold(ctx, offeringID)
+}
+
+type gradingExamScoreAdapter struct {
+	repo *grading.Repository
+}
+
+func (a *gradingExamScoreAdapter) GetStudentExamScores(ctx context.Context, studentID uuid.UUID, examIDs []uuid.UUID) (map[uuid.UUID]grading.ExamScore, error) {
+	return a.repo.GetStudentExamScores(ctx, studentID, examIDs)
+}
+
+func (a *gradingExamScoreAdapter) ExamsBelongToOffering(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
+	return a.repo.ExamsBelongToOffering(ctx, offeringID, examIDs)
+}
+
+func (a *gradingExamScoreAdapter) HasUngradedAttempts(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
+	return a.repo.HasUngradedExamAttempts(ctx, offeringID, examIDs)
+}
+
+type gradingAssignmentScoreAdapter struct {
+	repo *grading.Repository
+}
+
+func (a *gradingAssignmentScoreAdapter) GetStudentAssignmentAverage(ctx context.Context, studentID, offeringID uuid.UUID) (float64, bool, error) {
+	return a.repo.GetStudentAssignmentAverage(ctx, studentID, offeringID)
+}
+
+func (a *gradingAssignmentScoreAdapter) HasUngradedSubmissions(ctx context.Context, offeringID uuid.UUID) (bool, error) {
+	return a.repo.HasUngradedAssignments(ctx, offeringID)
+}
+
+type gradingAttendanceAdapter struct {
+	repo *grading.Repository
+}
+
+func (a *gradingAttendanceAdapter) GetStudentAttendanceRate(ctx context.Context, studentID, offeringID uuid.UUID) (float64, error) {
+	return a.repo.GetStudentAttendanceRate(ctx, studentID, offeringID)
+}
+
+type gradingEnrollmentAdapter struct {
+	repo *grading.Repository
+}
+
+func (a *gradingEnrollmentAdapter) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
+	return a.repo.GetEnrolledStudentIDs(ctx, offeringID)
+}
+
+func (a *gradingEnrollmentAdapter) GetStudentGrades(ctx context.Context, offeringID uuid.UUID) ([]grading.StudentGrade, error) {
+	return a.repo.GetStudentGrades(ctx, offeringID)
+}
+
+func (a *gradingEnrollmentAdapter) UpdateEnrollmentGrade(ctx context.Context, offeringID, studentID uuid.UUID, grade float64, status string) error {
+	return a.repo.UpdateEnrollmentGrade(ctx, offeringID, studentID, grade, status)
+}
+
+func (a *gradingEnrollmentAdapter) ClearEnrollmentGrades(ctx context.Context, offeringID uuid.UUID) error {
+	return a.repo.ClearEnrollmentGrades(ctx, offeringID)
+}
+
+func (a *gradingEnrollmentAdapter) IsOfferingFinalized(ctx context.Context, offeringID uuid.UUID) (bool, error) {
+	return a.repo.IsOfferingFinalized(ctx, offeringID)
 }
