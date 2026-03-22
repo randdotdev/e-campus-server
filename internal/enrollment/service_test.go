@@ -49,16 +49,16 @@ type mockRepo struct {
 	hasApprovedRequestFunc func(ctx context.Context, studentID, courseID, semesterID uuid.UUID, reqType string) (bool, error)
 
 	// Lookup operations
-	getPrereqStatusFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (*PrereqStatus, error)
-	getCourseStatusFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (*CourseStatus, error)
-	getCoursePrereqFunc              func(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
-	getStudentNameFunc               func(ctx context.Context, studentID uuid.UUID) (string, error)
-	courseExistsFunc                 func(ctx context.Context, id uuid.UUID) (bool, error)
-	semesterExistsFunc               func(ctx context.Context, id uuid.UUID) (bool, error)
-	isNaturalCohortFunc              func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
-	getStudentCohortInfoFunc         func(ctx context.Context, studentID uuid.UUID) (int, string, error)
-	getOfferingIDForEnrollmentFunc   func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
-	isSemesterActiveFunc             func(ctx context.Context, semesterID uuid.UUID) (bool, error)
+	getPrereqStatusFunc            func(ctx context.Context, studentID, courseID uuid.UUID) (*PrereqStatus, error)
+	getCourseStatusFunc            func(ctx context.Context, studentID, courseID uuid.UUID) (*CourseStatus, error)
+	getCoursePrereqFunc            func(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
+	getStudentNameFunc             func(ctx context.Context, studentID uuid.UUID) (string, error)
+	courseExistsFunc               func(ctx context.Context, id uuid.UUID) (bool, error)
+	semesterExistsFunc             func(ctx context.Context, id uuid.UUID) (bool, error)
+	isNaturalCohortFunc            func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	getStudentCohortInfoFunc       func(ctx context.Context, studentID uuid.UUID) (int, string, error)
+	getOfferingIDForEnrollmentFunc func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
+	isSemesterActiveFunc           func(ctx context.Context, semesterID uuid.UUID) (bool, error)
 }
 
 // Enrollment operations

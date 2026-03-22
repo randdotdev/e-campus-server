@@ -30,6 +30,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/news"
+	"github.com/ranjdotdev/e-campus-server/internal/notification"
 	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
@@ -255,6 +256,12 @@ func run() error {
 		&gradingEnrollmentAdapter{repo: gradingRepo},
 	)
 	gradingHandler := grading.NewHandler(gradingService, &gradingTeacherCheckerAdapter{repo: courseRepo})
+
+	notificationRepo := notification.NewRepository(db)
+	notificationHub := notification.NewHub()
+	go notificationHub.Run()
+	notificationService := notification.NewService(notificationRepo, notificationHub)
+	notificationHandler := notification.NewHandler(notificationService, notificationHub, log)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -535,6 +542,14 @@ func run() error {
 			protected.GET("/offerings/:offering_id/grades", gradingHandler.GetGrades)
 			protected.PUT("/offerings/:offering_id/grades/:student_id", gradingHandler.OverrideGrade)
 			protected.GET("/offerings/:offering_id/grades/:student_id/preview", gradingHandler.PreviewGrade)
+
+			// Notification routes
+			protected.GET("/notifications/ws", notificationHandler.HandleWebSocket)
+			protected.GET("/notifications", notificationHandler.List)
+			protected.GET("/notifications/unread-count", notificationHandler.UnreadCount)
+			protected.PUT("/notifications/:id/read", notificationHandler.MarkRead)
+			protected.PUT("/notifications/read-all", notificationHandler.MarkAllRead)
+			protected.DELETE("/notifications/:id", notificationHandler.Delete)
 		}
 	}
 
