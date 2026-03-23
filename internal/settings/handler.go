@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -34,6 +35,11 @@ func (h *Handler) GetSettings(c *gin.Context) {
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
+	if !permission.CanAdminUniversity(c) {
+		response.Forbidden(c, "university admin access required")
+		return
+	}
+
 	var req UpdateSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, err.Error())
@@ -77,6 +83,11 @@ func (h *Handler) GetInstitution(c *gin.Context) {
 }
 
 func (h *Handler) UpdateInstitution(c *gin.Context) {
+	if !permission.CanAdminUniversity(c) {
+		response.Forbidden(c, "university admin access required")
+		return
+	}
+
 	var req UpdateInstitutionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, err.Error())
@@ -117,6 +128,11 @@ func (h *Handler) GetFeatures(c *gin.Context) {
 }
 
 func (h *Handler) UpdateFeatures(c *gin.Context) {
+	if !permission.CanAdminUniversity(c) {
+		response.Forbidden(c, "university admin access required")
+		return
+	}
+
 	var req UpdateFeaturesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, err.Error())
