@@ -33,14 +33,6 @@ type SectionFilters struct {
 	OfferingID *uuid.UUID
 }
 
-type LessonFilters struct {
-	SectionID     *uuid.UUID
-	OfferingID    *uuid.UUID
-	Type          *string
-	ScheduledFrom *time.Time
-	ScheduledTo   *time.Time
-}
-
 // Request DTOs
 
 type CreateCourseRequest struct {
@@ -97,29 +89,6 @@ type UpdateSectionRequest struct {
 	UnlockAt   *time.Time `json:"unlock_at"`
 }
 
-type CreateLessonRequest struct {
-	SectionID     uuid.UUID  `json:"section_id" binding:"required"`
-	Title         string     `json:"title" binding:"required,min=1,max=255"`
-	Description   *string    `json:"description"`
-	Type          string     `json:"type" binding:"required,oneof=theory practice other"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
-	DurationHours *float64   `json:"duration_hours" binding:"omitempty,min=0"`
-	Room          *string    `json:"room" binding:"omitempty,max=50"`
-	PublishAt     *time.Time `json:"publish_at"`
-	OrderIndex    int        `json:"order_index" binding:"min=0"`
-}
-
-type UpdateLessonRequest struct {
-	Title         *string    `json:"title" binding:"omitempty,min=1,max=255"`
-	Description   *string    `json:"description"`
-	Type          *string    `json:"type" binding:"omitempty,oneof=theory practice other"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
-	DurationHours *float64   `json:"duration_hours" binding:"omitempty,min=0"`
-	Room          *string    `json:"room" binding:"omitempty,max=50"`
-	PublishAt     *time.Time `json:"publish_at"`
-	OrderIndex    *int       `json:"order_index" binding:"omitempty,min=0"`
-}
-
 // Response DTOs
 
 type CourseResponse struct {
@@ -166,21 +135,6 @@ type SectionResponse struct {
 	UnlockAt   *time.Time `json:"unlock_at,omitempty"`
 	IsUnlocked bool       `json:"is_unlocked"`
 	CreatedAt  time.Time  `json:"created_at"`
-}
-
-type LessonResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	SectionID     uuid.UUID  `json:"section_id"`
-	OfferingID    uuid.UUID  `json:"offering_id"`
-	Title         string     `json:"title"`
-	Description   *string    `json:"description,omitempty"`
-	Type          string     `json:"type"`
-	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
-	DurationHours *float64   `json:"duration_hours,omitempty"`
-	Room          *string    `json:"room,omitempty"`
-	OrderIndex    int        `json:"order_index"`
-	IsPublished   bool       `json:"is_published"`
-	CreatedAt     time.Time  `json:"created_at"`
 }
 
 // Mapper functions
@@ -267,31 +221,6 @@ func ToSectionsResponse(sections []Section, now time.Time) []SectionResponse {
 	result := make([]SectionResponse, len(sections))
 	for i := range sections {
 		result[i] = ToSectionResponse(&sections[i], now)
-	}
-	return result
-}
-
-func ToLessonResponse(l *Lesson, now time.Time) LessonResponse {
-	return LessonResponse{
-		ID:            l.ID,
-		SectionID:     l.SectionID,
-		OfferingID:    l.OfferingID,
-		Title:         l.Title,
-		Description:   l.Description,
-		Type:          l.Type,
-		ScheduledAt:   l.ScheduledAt,
-		DurationHours: l.DurationHours,
-		Room:          l.Room,
-		OrderIndex:    l.OrderIndex,
-		IsPublished:   IsLessonPublished(l.PublishAt, now),
-		CreatedAt:     l.CreatedAt,
-	}
-}
-
-func ToLessonsResponse(lessons []Lesson, now time.Time) []LessonResponse {
-	result := make([]LessonResponse, len(lessons))
-	for i := range lessons {
-		result[i] = ToLessonResponse(&lessons[i], now)
 	}
 	return result
 }

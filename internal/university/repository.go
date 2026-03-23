@@ -27,12 +27,13 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) CreateCollege(ctx context.Context, college *College) error {
 	query := `
-		INSERT INTO colleges (name_en, name_local, code, description)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO colleges (name_en, name_local, code, description, about, founded, phone, email, logo_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, is_active, created_at, updated_at`
 
 	return r.db.QueryRowxContext(ctx, query,
 		college.NameEN, college.NameLocal, college.Code, college.Description,
+		college.About, college.Founded, college.Phone, college.Email, college.LogoURL,
 	).Scan(&college.ID, &college.IsActive, &college.CreatedAt, &college.UpdatedAt)
 }
 
@@ -98,12 +99,14 @@ func (r *Repository) ListColleges(ctx context.Context, params pagination.PagePar
 func (r *Repository) UpdateCollege(ctx context.Context, college *College) error {
 	query := `
 		UPDATE colleges
-		SET name_en = $2, name_local = $3, code = $4, description = $5, is_active = $6
+		SET name_en = $2, name_local = $3, code = $4, description = $5, is_active = $6,
+			about = $7, founded = $8, phone = $9, email = $10, logo_url = $11
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
 		college.ID, college.NameEN, college.NameLocal, college.Code, college.Description, college.IsActive,
+		college.About, college.Founded, college.Phone, college.Email, college.LogoURL,
 	).Scan(&college.UpdatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -133,12 +136,13 @@ func (r *Repository) CollegeCodeExists(ctx context.Context, code string, exclude
 
 func (r *Repository) CreateDepartment(ctx context.Context, dept *Department) error {
 	query := `
-		INSERT INTO departments (college_id, name_en, name_local, code, description)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO departments (college_id, name_en, name_local, code, description, about, founded, phone, email, logo_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, is_active, created_at, updated_at`
 
 	return r.db.QueryRowxContext(ctx, query,
 		dept.CollegeID, dept.NameEN, dept.NameLocal, dept.Code, dept.Description,
+		dept.About, dept.Founded, dept.Phone, dept.Email, dept.LogoURL,
 	).Scan(&dept.ID, &dept.IsActive, &dept.CreatedAt, &dept.UpdatedAt)
 }
 
@@ -210,12 +214,14 @@ func (r *Repository) ListDepartments(ctx context.Context, params pagination.Page
 func (r *Repository) UpdateDepartment(ctx context.Context, dept *Department) error {
 	query := `
 		UPDATE departments
-		SET name_en = $2, name_local = $3, code = $4, description = $5, is_active = $6
+		SET name_en = $2, name_local = $3, code = $4, description = $5, is_active = $6,
+			about = $7, founded = $8, phone = $9, email = $10, logo_url = $11
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
 		dept.ID, dept.NameEN, dept.NameLocal, dept.Code, dept.Description, dept.IsActive,
+		dept.About, dept.Founded, dept.Phone, dept.Email, dept.LogoURL,
 	).Scan(&dept.UpdatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {

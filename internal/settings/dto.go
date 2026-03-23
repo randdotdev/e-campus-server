@@ -3,12 +3,18 @@ package settings
 import "time"
 
 type UpdateInstitutionRequest struct {
-	NameEN  string `json:"name_en" binding:"required"`
-	NameKU  string `json:"name_ku"`
-	NameAR  string `json:"name_ar"`
-	Type    string `json:"type" binding:"required,oneof=public private"`
-	Country string `json:"country" binding:"required"`
-	Region  string `json:"region"`
+	Name          map[string]string `json:"name" binding:"required"`
+	Type          string            `json:"type" binding:"required,oneof=public private"`
+	Country       string            `json:"country" binding:"required"`
+	Region        string            `json:"region"`
+	Accreditation string            `json:"accreditation"`
+	Founded       int               `json:"founded"`
+	About         map[string]string `json:"about"`
+	Address       string            `json:"address"`
+	Phone         string            `json:"phone"`
+	Email         string            `json:"email"`
+	Website       string            `json:"website"`
+	LogoURL       string            `json:"logo_url"`
 }
 
 type UpdateDegreeLabelRequest struct {
@@ -22,11 +28,13 @@ type UpdateGradingRequest struct {
 }
 
 type UpdateFeaturesRequest struct {
-	CreditsTracking bool `json:"credits_tracking"`
-	AllowRetake     bool `json:"allow_retake"`
-	AllowPretake    bool `json:"allow_pretake"`
-	FullYearRepeat  bool `json:"full_year_repeat"`
-	GradeVisibility bool `json:"grade_visibility"`
+	CreditsTracking       bool `json:"credits_tracking"`
+	AllowRetake           bool `json:"allow_retake"`
+	AllowPretake          bool `json:"allow_pretake"`
+	FullYearRepeat        bool `json:"full_year_repeat"`
+	GradeVisibility       bool `json:"grade_visibility"`
+	ShowUniversityMembers bool `json:"show_university_members"`
+	ShowCourseMembers     bool `json:"show_course_members"`
 }
 
 type UpdateAcademicRequest struct {
@@ -50,12 +58,29 @@ type UpdatePreferencesRequest struct {
 	PushNotifications  *bool   `json:"push_notifications"`
 }
 
+// SettingsResponse is for admin endpoints (all languages)
 type SettingsResponse struct {
 	Institution  Institution            `json:"institution"`
 	DegreeLabels map[string]DegreeLabel `json:"degree_labels"`
 	Grading      GradingConfig          `json:"grading"`
 	Features     Features               `json:"features"`
 	Academic     AcademicConfig         `json:"academic"`
+}
+
+// InstitutionPublicResponse is for public endpoints (single language)
+type InstitutionPublicResponse struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Country       string `json:"country"`
+	Region        string `json:"region,omitempty"`
+	Accreditation string `json:"accreditation,omitempty"`
+	Founded       int    `json:"founded,omitempty"`
+	About         string `json:"about,omitempty"`
+	Address       string `json:"address,omitempty"`
+	Phone         string `json:"phone,omitempty"`
+	Email         string `json:"email,omitempty"`
+	Website       string `json:"website,omitempty"`
+	LogoURL       string `json:"logo_url,omitempty"`
 }
 
 type PreferencesResponse struct {
@@ -67,11 +92,13 @@ type PreferencesResponse struct {
 }
 
 type FeaturesResponse struct {
-	CreditsTracking bool `json:"credits_tracking"`
-	AllowRetake     bool `json:"allow_retake"`
-	AllowPretake    bool `json:"allow_pretake"`
-	FullYearRepeat  bool `json:"full_year_repeat"`
-	GradeVisibility bool `json:"grade_visibility"`
+	CreditsTracking       bool `json:"credits_tracking"`
+	AllowRetake           bool `json:"allow_retake"`
+	AllowPretake          bool `json:"allow_pretake"`
+	FullYearRepeat        bool `json:"full_year_repeat"`
+	GradeVisibility       bool `json:"grade_visibility"`
+	ShowUniversityMembers bool `json:"show_university_members"`
+	ShowCourseMembers     bool `json:"show_course_members"`
 }
 
 func ToSettingsResponse(s *UniversitySettings) SettingsResponse {
@@ -81,6 +108,23 @@ func ToSettingsResponse(s *UniversitySettings) SettingsResponse {
 		Grading:      s.Grading,
 		Features:     s.Features,
 		Academic:     s.Academic,
+	}
+}
+
+func ToInstitutionPublicResponse(i Institution, lang string) InstitutionPublicResponse {
+	return InstitutionPublicResponse{
+		Name:          i.GetName(lang),
+		Type:          i.Type,
+		Country:       i.Country,
+		Region:        i.Region,
+		Accreditation: i.Accreditation,
+		Founded:       i.Founded,
+		About:         i.GetAbout(lang),
+		Address:       i.Address,
+		Phone:         i.Phone,
+		Email:         i.Email,
+		Website:       i.Website,
+		LogoURL:       i.LogoURL,
 	}
 }
 
@@ -103,12 +147,18 @@ func ToSettingsUpdates(req UpdateSettingsRequest) SettingsUpdates {
 
 	if req.Institution != nil {
 		updates.Institution = &Institution{
-			NameEN:  req.Institution.NameEN,
-			NameKU:  req.Institution.NameKU,
-			NameAR:  req.Institution.NameAR,
-			Type:    req.Institution.Type,
-			Country: req.Institution.Country,
-			Region:  req.Institution.Region,
+			Name:          req.Institution.Name,
+			Type:          req.Institution.Type,
+			Country:       req.Institution.Country,
+			Region:        req.Institution.Region,
+			Accreditation: req.Institution.Accreditation,
+			Founded:       req.Institution.Founded,
+			About:         req.Institution.About,
+			Address:       req.Institution.Address,
+			Phone:         req.Institution.Phone,
+			Email:         req.Institution.Email,
+			Website:       req.Institution.Website,
+			LogoURL:       req.Institution.LogoURL,
 		}
 	}
 
@@ -128,11 +178,13 @@ func ToSettingsUpdates(req UpdateSettingsRequest) SettingsUpdates {
 
 	if req.Features != nil {
 		updates.Features = &Features{
-			CreditsTracking: req.Features.CreditsTracking,
-			AllowRetake:     req.Features.AllowRetake,
-			AllowPretake:    req.Features.AllowPretake,
-			FullYearRepeat:  req.Features.FullYearRepeat,
-			GradeVisibility: req.Features.GradeVisibility,
+			CreditsTracking:       req.Features.CreditsTracking,
+			AllowRetake:           req.Features.AllowRetake,
+			AllowPretake:          req.Features.AllowPretake,
+			FullYearRepeat:        req.Features.FullYearRepeat,
+			GradeVisibility:       req.Features.GradeVisibility,
+			ShowUniversityMembers: req.Features.ShowUniversityMembers,
+			ShowCourseMembers:     req.Features.ShowCourseMembers,
 		}
 	}
 

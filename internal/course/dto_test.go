@@ -159,43 +159,6 @@ func TestToSectionResponse(t *testing.T) {
 	}
 }
 
-func TestToLessonResponse(t *testing.T) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	past := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	future := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
-
-	tests := []struct {
-		name          string
-		publishAt     *time.Time
-		wantPublished bool
-	}{
-		{"nil publish is draft", nil, false},
-		{"past publish is visible", &past, true},
-		{"future publish is hidden", &future, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lesson := &Lesson{
-				ID:         uuid.New(),
-				SectionID:  uuid.New(),
-				OfferingID: uuid.New(),
-				Title:      "Lesson 1",
-				Type:       LessonTypeTheory,
-				PublishAt:  tt.publishAt,
-				OrderIndex: 0,
-				CreatedAt:  now,
-			}
-
-			resp := ToLessonResponse(lesson, now)
-
-			if resp.IsPublished != tt.wantPublished {
-				t.Errorf("IsPublished = %v, want %v", resp.IsPublished, tt.wantPublished)
-			}
-		})
-	}
-}
-
 func ptr[T any](v T) *T {
 	return &v
 }

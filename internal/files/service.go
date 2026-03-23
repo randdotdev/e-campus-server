@@ -295,8 +295,6 @@ func (s *Service) DeleteFile(ctx context.Context, id uuid.UUID, ownerID uuid.UUI
 		return err
 	}
 
-	// TODO: Also check lesson_attachments when content package is ready
-
 	if CanDeleteStoredFile(count) {
 		storedFile, err := s.repo.GetStoredFileByID(ctx, storedFileID)
 		if err != nil {

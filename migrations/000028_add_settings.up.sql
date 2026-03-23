@@ -12,12 +12,18 @@ CREATE TABLE user_preferences (
 -- Preserves existing full_year_repeat value if present
 UPDATE settings SET settings = jsonb_build_object(
     'institution', jsonb_build_object(
-        'name_en', 'University',
-        'name_ku', '',
-        'name_ar', '',
+        'name', jsonb_build_object('en', 'University'),
         'type', 'public',
         'country', 'Iraq',
-        'region', 'Kurdistan'
+        'region', 'Kurdistan',
+        'accreditation', '',
+        'founded', 0,
+        'about', jsonb_build_object(),
+        'address', '',
+        'phone', '',
+        'email', '',
+        'website', '',
+        'logo_url', ''
     ),
     'degree_labels', jsonb_build_object(
         'bachelor', jsonb_build_object('en', 'Bachelor', 'local', ''),
@@ -33,7 +39,9 @@ UPDATE settings SET settings = jsonb_build_object(
         'allow_retake', true,
         'allow_pretake', true,
         'full_year_repeat', COALESCE((settings->>'full_year_repeat')::boolean, false),
-        'grade_visibility', true
+        'grade_visibility', true,
+        'show_university_members', true,
+        'show_course_members', true
     ),
     'academic', jsonb_build_object(
         'semesters_per_year', 2,

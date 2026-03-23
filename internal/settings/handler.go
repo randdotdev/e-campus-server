@@ -97,12 +97,18 @@ func (h *Handler) UpdateInstitution(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	updates := SettingsUpdates{
 		Institution: &Institution{
-			NameEN:  req.NameEN,
-			NameKU:  req.NameKU,
-			NameAR:  req.NameAR,
-			Type:    req.Type,
-			Country: req.Country,
-			Region:  req.Region,
+			Name:          req.Name,
+			Type:          req.Type,
+			Country:       req.Country,
+			Region:        req.Region,
+			Accreditation: req.Accreditation,
+			Founded:       req.Founded,
+			About:         req.About,
+			Address:       req.Address,
+			Phone:         req.Phone,
+			Email:         req.Email,
+			Website:       req.Website,
+			LogoURL:       req.LogoURL,
 		},
 	}
 
@@ -142,11 +148,13 @@ func (h *Handler) UpdateFeatures(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	updates := SettingsUpdates{
 		Features: &Features{
-			CreditsTracking: req.CreditsTracking,
-			AllowRetake:     req.AllowRetake,
-			AllowPretake:    req.AllowPretake,
-			FullYearRepeat:  req.FullYearRepeat,
-			GradeVisibility: req.GradeVisibility,
+			CreditsTracking:       req.CreditsTracking,
+			AllowRetake:           req.AllowRetake,
+			AllowPretake:          req.AllowPretake,
+			FullYearRepeat:        req.FullYearRepeat,
+			GradeVisibility:       req.GradeVisibility,
+			ShowUniversityMembers: req.ShowUniversityMembers,
+			ShowCourseMembers:     req.ShowCourseMembers,
 		},
 	}
 
@@ -195,4 +203,17 @@ func (h *Handler) UpdateMyPreferences(c *gin.Context) {
 	}
 
 	response.OK(c, ToPreferencesResponse(prefs))
+}
+
+func (h *Handler) GetPublicAbout(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+
+	settings, err := h.svc.Get(c.Request.Context())
+	if err != nil {
+		h.log.Error("get public about failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ToInstitutionPublicResponse(settings.Institution, lang))
 }

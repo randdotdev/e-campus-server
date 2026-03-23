@@ -37,13 +37,6 @@ type CourseRepository interface {
 	UpdateSection(ctx context.Context, s *Section) error
 	DeleteSection(ctx context.Context, id uuid.UUID) error
 
-	// Lesson operations
-	CreateLesson(ctx context.Context, l *Lesson) error
-	GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error)
-	ListLessons(ctx context.Context, filters LessonFilters) ([]Lesson, error)
-	UpdateLesson(ctx context.Context, l *Lesson) error
-	DeleteLesson(ctx context.Context, id uuid.UUID) error
-
 	// Access level helpers
 	GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]Offering, error)
 }
@@ -303,82 +296,4 @@ func (s *Service) UpdateSection(ctx context.Context, id uuid.UUID, req UpdateSec
 
 func (s *Service) DeleteSection(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteSection(ctx, id)
-}
-
-// Lesson operations
-
-func (s *Service) CreateLesson(ctx context.Context, req CreateLessonRequest) (*Lesson, error) {
-	section, err := s.repo.GetSection(ctx, req.SectionID)
-	if err != nil {
-		return nil, err
-	}
-
-	lesson := &Lesson{
-		SectionID:     section.ID,
-		OfferingID:    section.OfferingID,
-		Title:         req.Title,
-		Description:   req.Description,
-		Type:          req.Type,
-		ScheduledAt:   req.ScheduledAt,
-		DurationHours: req.DurationHours,
-		Room:          req.Room,
-		PublishAt:     req.PublishAt,
-		OrderIndex:    req.OrderIndex,
-	}
-
-	if err := s.repo.CreateLesson(ctx, lesson); err != nil {
-		return nil, err
-	}
-
-	return lesson, nil
-}
-
-func (s *Service) GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error) {
-	return s.repo.GetLesson(ctx, id)
-}
-
-func (s *Service) ListLessons(ctx context.Context, filters LessonFilters) ([]Lesson, error) {
-	return s.repo.ListLessons(ctx, filters)
-}
-
-func (s *Service) UpdateLesson(ctx context.Context, id uuid.UUID, req UpdateLessonRequest) (*Lesson, error) {
-	lesson, err := s.repo.GetLesson(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Title != nil {
-		lesson.Title = *req.Title
-	}
-	if req.Description != nil {
-		lesson.Description = req.Description
-	}
-	if req.Type != nil {
-		lesson.Type = *req.Type
-	}
-	if req.ScheduledAt != nil {
-		lesson.ScheduledAt = req.ScheduledAt
-	}
-	if req.DurationHours != nil {
-		lesson.DurationHours = req.DurationHours
-	}
-	if req.Room != nil {
-		lesson.Room = req.Room
-	}
-	if req.PublishAt != nil {
-		lesson.PublishAt = req.PublishAt
-	}
-	if req.OrderIndex != nil {
-		lesson.OrderIndex = *req.OrderIndex
-	}
-
-	if err := s.repo.UpdateLesson(ctx, lesson); err != nil {
-		return nil, err
-	}
-
-	return lesson, nil
-}
-
-func (s *Service) DeleteLesson(ctx context.Context, id uuid.UUID) error {
-	return s.repo.DeleteLesson(ctx, id)
 }

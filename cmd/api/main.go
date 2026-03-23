@@ -105,6 +105,12 @@ func run() error {
 	}
 	log.Info("connected to MinIO")
 
+	// Initialize notification service early so other services can use it
+	notificationRepo := notification.NewRepository(db)
+	notificationHub := notification.NewHub()
+	go notificationHub.Run()
+	notificationService := notification.NewService(notificationRepo, notificationHub)
+
 	authRepo := auth.NewTokenRepository(rdb)
 	userRepo := user.NewRepository(db)
 
@@ -260,10 +266,6 @@ func run() error {
 	)
 	gradingHandler := grading.NewHandler(gradingService, courseRepo)
 
-	notificationRepo := notification.NewRepository(db)
-	notificationHub := notification.NewHub()
-	go notificationHub.Run()
-	notificationService := notification.NewService(notificationRepo, notificationHub)
 	notificationHandler := notification.NewHandler(notificationService, notificationHub, log)
 
 	router := gin.New()
@@ -281,6 +283,16 @@ func run() error {
 			authRoutes.POST("/login", authHandler.Login)
 			authRoutes.POST("/refresh", authHandler.Refresh)
 			authRoutes.POST("/logout", authHandler.Logout)
+		}
+
+		public := v1.Group("/public")
+		{
+			public.GET("/about", settingsHandler.GetPublicAbout)
+			public.GET("/colleges", universityHandler.GetPublicColleges)
+			public.GET("/colleges/:id", universityHandler.GetPublicCollege)
+			public.GET("/colleges/:college_id/departments", universityHandler.GetPublicDepartments)
+			public.GET("/departments/:id", universityHandler.GetPublicDepartment)
+			public.GET("/departments/:department_id/programs", universityHandler.GetPublicPrograms)
 		}
 
 		protected := v1.Group("")
@@ -393,21 +405,6 @@ func run() error {
 			protected.POST("/cohort-groups", enrollmentHandler.CreateCohortGroup)
 			protected.POST("/cohort-groups/assign", enrollmentHandler.AssignToCohortGroup)
 			protected.DELETE("/cohort-groups/:group_id/members/:student_id", enrollmentHandler.RemoveFromCohortGroup)
-
-			// Section routes
-			protected.GET("/offerings/:offering_id/sections", courseHandler.ListSections)
-			protected.POST("/sections", courseHandler.CreateSection)
-			protected.GET("/sections/:id", courseHandler.GetSection)
-			protected.PUT("/sections/:id", courseHandler.UpdateSection)
-			protected.DELETE("/sections/:id", courseHandler.DeleteSection)
-
-			// Lesson routes
-			protected.GET("/sections/:section_id/lessons", courseHandler.ListLessonsBySection)
-			protected.GET("/offerings/:offering_id/lessons", courseHandler.ListLessonsByOffering)
-			protected.POST("/lessons", courseHandler.CreateLesson)
-			protected.GET("/lessons/:id", courseHandler.GetLesson)
-			protected.PUT("/lessons/:id", courseHandler.UpdateLesson)
-			protected.DELETE("/lessons/:id", courseHandler.DeleteLesson)
 
 			// Exam routes
 			examHandler.RegisterRoutes(protected, middleware.Auth(authService))

@@ -487,3 +487,157 @@ func (h *Handler) parseProgramFilters(c *gin.Context) (ProgramFilters, error) {
 	}
 	return filters, nil
 }
+
+func (h *Handler) GetPublicColleges(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+	params := pagination.ParsePageParams(c)
+	filters := CollegeFilters{IsActive: ptrBool(true)}
+
+	colleges, hasMore, err := h.service.ListColleges(c.Request.Context(), params, filters)
+	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
+		h.log.Error("list public colleges failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	result := pagination.PageResult[CollegePublicResponse]{
+		Data:    ToCollegesPublicResponse(colleges, lang),
+		HasMore: hasMore,
+	}
+	if hasMore && len(colleges) > 0 {
+		last := colleges[len(colleges)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
+}
+
+func (h *Handler) GetPublicCollege(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid college id")
+		return
+	}
+
+	college, err := h.service.GetCollege(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrCollegeNotFound) {
+			response.NotFound(c, "college not found")
+			return
+		}
+		h.log.Error("get public college failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !college.IsActive {
+		response.NotFound(c, "college not found")
+		return
+	}
+
+	response.OK(c, ToCollegePublicResponse(college, lang))
+}
+
+func (h *Handler) GetPublicDepartments(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+	collegeID, err := uuid.Parse(c.Param("college_id"))
+	if err != nil {
+		response.BadRequest(c, "invalid college id")
+		return
+	}
+
+	params := pagination.ParsePageParams(c)
+	filters := DepartmentFilters{CollegeID: &collegeID, IsActive: ptrBool(true)}
+
+	depts, hasMore, err := h.service.ListDepartments(c.Request.Context(), params, filters)
+	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
+		h.log.Error("list public departments failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	result := pagination.PageResult[DepartmentPublicResponse]{
+		Data:    ToDepartmentsPublicResponse(depts, lang),
+		HasMore: hasMore,
+	}
+	if hasMore && len(depts) > 0 {
+		last := depts[len(depts)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
+}
+
+func (h *Handler) GetPublicDepartment(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid department id")
+		return
+	}
+
+	dept, err := h.service.GetDepartment(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrDepartmentNotFound) {
+			response.NotFound(c, "department not found")
+			return
+		}
+		h.log.Error("get public department failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !dept.IsActive {
+		response.NotFound(c, "department not found")
+		return
+	}
+
+	response.OK(c, ToDepartmentPublicResponse(dept, lang))
+}
+
+func (h *Handler) GetPublicPrograms(c *gin.Context) {
+	lang := c.DefaultQuery("lang", "en")
+	deptID, err := uuid.Parse(c.Param("department_id"))
+	if err != nil {
+		response.BadRequest(c, "invalid department id")
+		return
+	}
+
+	params := pagination.ParsePageParams(c)
+	filters := ProgramFilters{DepartmentID: &deptID, IsActive: ptrBool(true)}
+
+	programs, hasMore, err := h.service.ListPrograms(c.Request.Context(), params, filters)
+	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
+		h.log.Error("list public programs failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	result := pagination.PageResult[ProgramPublicResponse]{
+		Data:    ToProgramsPublicResponse(programs, lang),
+		HasMore: hasMore,
+	}
+	if hasMore && len(programs) > 0 {
+		last := programs[len(programs)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
+}
+
+func ptrBool(b bool) *bool {
+	return &b
+}

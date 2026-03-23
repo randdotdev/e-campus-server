@@ -19,13 +19,6 @@ func IsSectionUnlocked(unlockAt *time.Time, now time.Time) bool {
 	return now.After(*unlockAt) || now.Equal(*unlockAt)
 }
 
-func IsLessonPublished(publishAt *time.Time, now time.Time) bool {
-	if publishAt == nil {
-		return false
-	}
-	return now.After(*publishAt) || now.Equal(*publishAt)
-}
-
 func CanTeacherManage(role string) bool {
 	return role == TeacherRoleTeacher || role == TeacherRoleAssistant
 }
@@ -40,8 +33,4 @@ func IsValidTeacherRole(role string) bool {
 
 func IsValidShift(shift string) bool {
 	return shift == ShiftDay || shift == ShiftEvening
-}
-
-func IsValidLessonType(lessonType string) bool {
-	return lessonType == LessonTypeTheory || lessonType == LessonTypePractice
 }

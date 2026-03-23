@@ -20,7 +20,7 @@ func TestValidateSettings(t *testing.T) {
 		{
 			name: "missing institution name",
 			settings: &UniversitySettings{
-				Institution: Institution{NameEN: ""},
+				Institution: Institution{Name: map[string]string{}},
 				Grading:     GradingConfig{Display: GradingDisplayNumeric},
 				Academic:    AcademicConfig{SemestersPerYear: 2},
 			},
@@ -29,7 +29,7 @@ func TestValidateSettings(t *testing.T) {
 		{
 			name: "invalid grading display",
 			settings: &UniversitySettings{
-				Institution: Institution{NameEN: "Test"},
+				Institution: Institution{Name: map[string]string{"en": "Test"}},
 				Grading:     GradingConfig{Display: "invalid"},
 				Academic:    AcademicConfig{SemestersPerYear: 2},
 			},
@@ -38,7 +38,7 @@ func TestValidateSettings(t *testing.T) {
 		{
 			name: "invalid semesters per year - zero",
 			settings: &UniversitySettings{
-				Institution: Institution{NameEN: "Test"},
+				Institution: Institution{Name: map[string]string{"en": "Test"}},
 				Grading:     GradingConfig{Display: GradingDisplayNumeric},
 				Academic:    AcademicConfig{SemestersPerYear: 0},
 			},
@@ -47,7 +47,7 @@ func TestValidateSettings(t *testing.T) {
 		{
 			name: "invalid semesters per year - four",
 			settings: &UniversitySettings{
-				Institution: Institution{NameEN: "Test"},
+				Institution: Institution{Name: map[string]string{"en": "Test"}},
 				Grading:     GradingConfig{Display: GradingDisplayNumeric},
 				Academic:    AcademicConfig{SemestersPerYear: 4},
 			},
@@ -56,7 +56,7 @@ func TestValidateSettings(t *testing.T) {
 		{
 			name: "valid semesters per year - three",
 			settings: &UniversitySettings{
-				Institution: Institution{NameEN: "Test"},
+				Institution: Institution{Name: map[string]string{"en": "Test"}},
 				Grading:     GradingConfig{Display: GradingDisplayNumeric},
 				Academic:    AcademicConfig{SemestersPerYear: 3},
 			},
@@ -212,8 +212,8 @@ func TestGetDegreeLabel(t *testing.T) {
 func TestDefaultSettings(t *testing.T) {
 	s := DefaultSettings()
 
-	if s.Institution.NameEN == "" {
-		t.Error("Institution.NameEN should not be empty")
+	if s.Institution.GetName("en") == "" {
+		t.Error("Institution name should not be empty")
 	}
 	if s.Grading.Display != GradingDisplayNumeric {
 		t.Errorf("Grading.Display = %v, want %v", s.Grading.Display, GradingDisplayNumeric)
@@ -253,15 +253,15 @@ func TestApplyUpdates(t *testing.T) {
 	t.Run("update institution", func(t *testing.T) {
 		updates := SettingsUpdates{
 			Institution: &Institution{
-				NameEN:  "New University",
+				Name:    map[string]string{"en": "New University"},
 				Type:    InstitutionTypePrivate,
 				Country: "Turkey",
 			},
 		}
 		result := ApplyUpdates(current, updates)
 
-		if result.Institution.NameEN != "New University" {
-			t.Errorf("Institution.NameEN = %v, want New University", result.Institution.NameEN)
+		if result.Institution.GetName("en") != "New University" {
+			t.Errorf("Institution name = %v, want New University", result.Institution.GetName("en"))
 		}
 		if result.Grading.Display != current.Grading.Display {
 			t.Error("Grading should remain unchanged")
@@ -285,7 +285,7 @@ func TestApplyUpdates(t *testing.T) {
 		updates := SettingsUpdates{}
 		result := ApplyUpdates(current, updates)
 
-		if result.Institution.NameEN != current.Institution.NameEN {
+		if result.Institution.GetName("en") != current.Institution.GetName("en") {
 			t.Error("Institution should remain unchanged")
 		}
 	})

@@ -51,31 +51,6 @@ func TestIsSectionUnlocked(t *testing.T) {
 	}
 }
 
-func TestIsLessonPublished(t *testing.T) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	past := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	future := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
-
-	tests := []struct {
-		name      string
-		publishAt *time.Time
-		now       time.Time
-		want      bool
-	}{
-		{"nil publish is draft", nil, now, false},
-		{"past publish is visible", &past, now, true},
-		{"future publish is hidden", &future, now, false},
-		{"exact time is visible", &now, now, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsLessonPublished(tt.publishAt, tt.now); got != tt.want {
-				t.Errorf("IsLessonPublished() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestCanTeacherManage(t *testing.T) {
 	tests := []struct {
 		name string
@@ -147,26 +122,6 @@ func TestIsValidShift(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsValidShift(tt.shift); got != tt.want {
 				t.Errorf("IsValidShift(%q) = %v, want %v", tt.shift, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestIsValidLessonType(t *testing.T) {
-	tests := []struct {
-		name       string
-		lessonType string
-		want       bool
-	}{
-		{"theory valid", LessonTypeTheory, true},
-		{"practice valid", LessonTypePractice, true},
-		{"invalid type", "lab", false},
-		{"other invalid", "other", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsValidLessonType(tt.lessonType); got != tt.want {
-				t.Errorf("IsValidLessonType(%q) = %v, want %v", tt.lessonType, got, tt.want)
 			}
 		})
 	}

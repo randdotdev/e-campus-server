@@ -17,12 +17,40 @@ type UniversitySettings struct {
 }
 
 type Institution struct {
-	NameEN  string `json:"name_en"`
-	NameKU  string `json:"name_ku,omitempty"`
-	NameAR  string `json:"name_ar,omitempty"`
-	Type    string `json:"type"`
-	Country string `json:"country"`
-	Region  string `json:"region,omitempty"`
+	Name          map[string]string `json:"name"`
+	Type          string            `json:"type"`
+	Country       string            `json:"country"`
+	Region        string            `json:"region,omitempty"`
+	Accreditation string            `json:"accreditation,omitempty"`
+	Founded       int               `json:"founded,omitempty"`
+	About         map[string]string `json:"about,omitempty"`
+	Address       string            `json:"address,omitempty"`
+	Phone         string            `json:"phone,omitempty"`
+	Email         string            `json:"email,omitempty"`
+	Website       string            `json:"website,omitempty"`
+	LogoURL       string            `json:"logo_url,omitempty"`
+}
+
+// GetName returns the name in the given language with fallback to English.
+func (i Institution) GetName(lang string) string {
+	if i.Name == nil {
+		return ""
+	}
+	if v, ok := i.Name[lang]; ok && v != "" {
+		return v
+	}
+	return i.Name["en"]
+}
+
+// GetAbout returns the about text in the given language with fallback to English.
+func (i Institution) GetAbout(lang string) string {
+	if i.About == nil {
+		return ""
+	}
+	if v, ok := i.About[lang]; ok && v != "" {
+		return v
+	}
+	return i.About["en"]
 }
 
 type DegreeLabel struct {
@@ -36,11 +64,13 @@ type GradingConfig struct {
 }
 
 type Features struct {
-	CreditsTracking bool `json:"credits_tracking"`
-	AllowRetake     bool `json:"allow_retake"`
-	AllowPretake    bool `json:"allow_pretake"`
-	FullYearRepeat  bool `json:"full_year_repeat"`
-	GradeVisibility bool `json:"grade_visibility"`
+	CreditsTracking       bool `json:"credits_tracking"`
+	AllowRetake           bool `json:"allow_retake"`
+	AllowPretake          bool `json:"allow_pretake"`
+	FullYearRepeat        bool `json:"full_year_repeat"`
+	GradeVisibility       bool `json:"grade_visibility"`
+	ShowUniversityMembers bool `json:"show_university_members"`
+	ShowCourseMembers     bool `json:"show_course_members"`
 }
 
 type AcademicConfig struct {

@@ -105,7 +105,7 @@ func TestService_Update(t *testing.T) {
 		svc := NewService(repo, &mockPrefsRepo{})
 
 		invalid := &UniversitySettings{
-			Institution: Institution{NameEN: ""},
+			Institution: Institution{Name: map[string]string{}},
 			Grading:     GradingConfig{Display: GradingDisplayNumeric},
 			Academic:    AcademicConfig{SemestersPerYear: 2},
 		}
@@ -125,7 +125,7 @@ func TestService_Update(t *testing.T) {
 		svc := NewService(repo, &mockPrefsRepo{})
 
 		settings := DefaultSettings()
-		settings.Institution.NameEN = "Updated Name"
+		settings.Institution.Name["en"] = "Updated Name"
 
 		err := svc.Update(context.Background(), settings, uuid.New())
 		if err != nil {
@@ -133,7 +133,7 @@ func TestService_Update(t *testing.T) {
 		}
 
 		cached, _ := svc.Get(context.Background())
-		if cached.Institution.NameEN != "Updated Name" {
+		if cached.Institution.GetName("en") != "Updated Name" {
 			t.Error("cache not updated")
 		}
 	})
@@ -154,7 +154,7 @@ func TestService_UpdatePartial(t *testing.T) {
 	svc := NewService(repo, &mockPrefsRepo{})
 
 	newInstitution := Institution{
-		NameEN:  "New Name",
+		Name:    map[string]string{"en": "New Name"},
 		Type:    InstitutionTypePrivate,
 		Country: "Turkey",
 	}
@@ -165,8 +165,8 @@ func TestService_UpdatePartial(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result.Institution.NameEN != "New Name" {
-		t.Errorf("Institution.NameEN = %v, want New Name", result.Institution.NameEN)
+	if result.Institution.GetName("en") != "New Name" {
+		t.Errorf("Institution name = %v, want New Name", result.Institution.GetName("en"))
 	}
 	if result.Features.CreditsTracking != defaultSettings.Features.CreditsTracking {
 		t.Error("Features should remain unchanged")

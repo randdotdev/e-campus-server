@@ -40,13 +40,6 @@ type mockRepo struct {
 	updateSectionFunc func(ctx context.Context, s *Section) error
 	deleteSectionFunc func(ctx context.Context, id uuid.UUID) error
 
-	// Lesson
-	createLessonFunc func(ctx context.Context, l *Lesson) error
-	getLessonFunc    func(ctx context.Context, id uuid.UUID) (*Lesson, error)
-	listLessonsFunc  func(ctx context.Context, filters LessonFilters) ([]Lesson, error)
-	updateLessonFunc func(ctx context.Context, l *Lesson) error
-	deleteLessonFunc func(ctx context.Context, id uuid.UUID) error
-
 	// Access
 	getOfferingsByCourseCodeAndCohortFunc func(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]Offering, error)
 }
@@ -198,42 +191,6 @@ func (m *mockRepo) UpdateSection(ctx context.Context, s *Section) error {
 func (m *mockRepo) DeleteSection(ctx context.Context, id uuid.UUID) error {
 	if m.deleteSectionFunc != nil {
 		return m.deleteSectionFunc(ctx, id)
-	}
-	return nil
-}
-
-func (m *mockRepo) CreateLesson(ctx context.Context, l *Lesson) error {
-	if m.createLessonFunc != nil {
-		return m.createLessonFunc(ctx, l)
-	}
-	l.ID = uuid.New()
-	return nil
-}
-
-func (m *mockRepo) GetLesson(ctx context.Context, id uuid.UUID) (*Lesson, error) {
-	if m.getLessonFunc != nil {
-		return m.getLessonFunc(ctx, id)
-	}
-	return nil, ErrLessonNotFound
-}
-
-func (m *mockRepo) ListLessons(ctx context.Context, filters LessonFilters) ([]Lesson, error) {
-	if m.listLessonsFunc != nil {
-		return m.listLessonsFunc(ctx, filters)
-	}
-	return nil, nil
-}
-
-func (m *mockRepo) UpdateLesson(ctx context.Context, l *Lesson) error {
-	if m.updateLessonFunc != nil {
-		return m.updateLessonFunc(ctx, l)
-	}
-	return nil
-}
-
-func (m *mockRepo) DeleteLesson(ctx context.Context, id uuid.UUID) error {
-	if m.deleteLessonFunc != nil {
-		return m.deleteLessonFunc(ctx, id)
 	}
 	return nil
 }
@@ -502,54 +459,6 @@ func TestService_CreateSection(t *testing.T) {
 		_, err := svc.CreateSection(ctx, req)
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("CreateSection() error = %v, want ErrOfferingNotFound", err)
-		}
-	})
-}
-
-func TestService_CreateLesson(t *testing.T) {
-	ctx := context.Background()
-	sectionID := uuid.New()
-	offeringID := uuid.New()
-
-	t.Run("success", func(t *testing.T) {
-		repo := &mockRepo{
-			getSectionFunc: func(ctx context.Context, id uuid.UUID) (*Section, error) {
-				return &Section{ID: id, OfferingID: offeringID}, nil
-			},
-		}
-		svc := NewService(repo)
-
-		req := CreateLessonRequest{
-			SectionID: sectionID,
-			Title:     "Lesson 1",
-			Type:      LessonTypeTheory,
-		}
-
-		lesson, err := svc.CreateLesson(ctx, req)
-		if err != nil {
-			t.Fatalf("CreateLesson() error = %v", err)
-		}
-		if lesson.Title != "Lesson 1" {
-			t.Errorf("Title = %v, want Lesson 1", lesson.Title)
-		}
-		if lesson.OfferingID != offeringID {
-			t.Errorf("OfferingID = %v, want %v", lesson.OfferingID, offeringID)
-		}
-	})
-
-	t.Run("section not found", func(t *testing.T) {
-		repo := &mockRepo{}
-		svc := NewService(repo)
-
-		req := CreateLessonRequest{
-			SectionID: sectionID,
-			Title:     "Lesson 1",
-			Type:      LessonTypeTheory,
-		}
-
-		_, err := svc.CreateLesson(ctx, req)
-		if !errors.Is(err, ErrSectionNotFound) {
-			t.Errorf("CreateLesson() error = %v, want ErrSectionNotFound", err)
 		}
 	})
 }

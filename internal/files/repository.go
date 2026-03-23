@@ -60,7 +60,9 @@ func (r *Repository) GetStoredFileByHash(ctx context.Context, hash string) (*Sto
 
 func (r *Repository) CountStoredFileReferences(ctx context.Context, id uuid.UUID) (int, error) {
 	var count int
-	query := `SELECT COUNT(*) FROM user_files WHERE stored_file_id = $1`
+	query := `SELECT
+		(SELECT COUNT(*) FROM user_files WHERE stored_file_id = $1) +
+		(SELECT COUNT(*) FROM lesson_attachments WHERE stored_file_id = $1)`
 	if err := r.db.GetContext(ctx, &count, query, id); err != nil {
 		return 0, err
 	}

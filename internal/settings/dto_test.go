@@ -9,12 +9,12 @@ import (
 
 func TestToSettingsResponse(t *testing.T) {
 	settings := DefaultSettings()
-	settings.Institution.NameEN = "Test University"
+	settings.Institution.Name["en"] = "Test University"
 
 	resp := ToSettingsResponse(settings)
 
-	if resp.Institution.NameEN != "Test University" {
-		t.Errorf("Institution.NameEN = %v, want Test University", resp.Institution.NameEN)
+	if resp.Institution.GetName("en") != "Test University" {
+		t.Errorf("Institution name = %v, want Test University", resp.Institution.GetName("en"))
 	}
 	if resp.Grading.Display != GradingDisplayNumeric {
 		t.Errorf("Grading.Display = %v, want %v", resp.Grading.Display, GradingDisplayNumeric)
@@ -71,7 +71,7 @@ func TestToSettingsUpdates(t *testing.T) {
 	t.Run("with institution update", func(t *testing.T) {
 		req := UpdateSettingsRequest{
 			Institution: &UpdateInstitutionRequest{
-				NameEN:  "New Name",
+				Name:    map[string]string{"en": "New Name"},
 				Type:    InstitutionTypePrivate,
 				Country: "Turkey",
 			},
@@ -82,8 +82,8 @@ func TestToSettingsUpdates(t *testing.T) {
 		if updates.Institution == nil {
 			t.Fatal("Institution should not be nil")
 		}
-		if updates.Institution.NameEN != "New Name" {
-			t.Errorf("Institution.NameEN = %v, want New Name", updates.Institution.NameEN)
+		if updates.Institution.GetName("en") != "New Name" {
+			t.Errorf("Institution name = %v, want New Name", updates.Institution.GetName("en"))
 		}
 		if updates.Features != nil {
 			t.Error("Features should be nil")

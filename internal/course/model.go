@@ -52,21 +52,6 @@ type Section struct {
 	CreatedAt  time.Time  `db:"created_at"`
 }
 
-type Lesson struct {
-	ID            uuid.UUID  `db:"id"`
-	SectionID     uuid.UUID  `db:"section_id"`
-	OfferingID    uuid.UUID  `db:"offering_id"`
-	Title         string     `db:"title"`
-	Description   *string    `db:"description"`
-	Type          string     `db:"type"`
-	ScheduledAt   *time.Time `db:"scheduled_at"`
-	DurationHours *float64   `db:"duration_hours"`
-	Room          *string    `db:"room"`
-	PublishAt     *time.Time `db:"publish_at"`
-	OrderIndex    int        `db:"order_index"`
-	CreatedAt     time.Time  `db:"created_at"`
-}
-
 const (
 	ShiftDay     = "day"
 	ShiftEvening = "evening"
@@ -95,11 +80,6 @@ type StudentGroup struct {
 const (
 	GroupTypeTheory   = "theory"
 	GroupTypePractice = "practice"
-)
-
-const (
-	LessonTypeTheory   = "theory"
-	LessonTypePractice = "practice"
 )
 
 type AccessLevel int

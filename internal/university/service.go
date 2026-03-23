@@ -74,6 +74,11 @@ func (s *Service) CreateCollege(ctx context.Context, req CreateCollegeRequest) (
 		NameLocal:   req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
+		About:       req.About,
+		Founded:     req.Founded,
+		Phone:       req.Phone,
+		Email:       req.Email,
+		LogoURL:     req.LogoURL,
 	}
 
 	if err := s.repo.CreateCollege(ctx, college); err != nil {
@@ -120,6 +125,21 @@ func (s *Service) UpdateCollege(ctx context.Context, id uuid.UUID, req UpdateCol
 	if req.IsActive != nil {
 		college.IsActive = *req.IsActive
 	}
+	if req.About != nil {
+		college.About = req.About
+	}
+	if req.Founded != nil {
+		college.Founded = req.Founded
+	}
+	if req.Phone != nil {
+		college.Phone = req.Phone
+	}
+	if req.Email != nil {
+		college.Email = req.Email
+	}
+	if req.LogoURL != nil {
+		college.LogoURL = req.LogoURL
+	}
 
 	if err := s.repo.UpdateCollege(ctx, college); err != nil {
 		return nil, err
@@ -163,6 +183,11 @@ func (s *Service) CreateDepartment(ctx context.Context, req CreateDepartmentRequ
 		NameLocal:   req.NameLocal,
 		Code:        req.Code,
 		Description: req.Description,
+		About:       req.About,
+		Founded:     req.Founded,
+		Phone:       req.Phone,
+		Email:       req.Email,
+		LogoURL:     req.LogoURL,
 	}
 
 	if err := s.repo.CreateDepartment(ctx, dept); err != nil {
@@ -213,6 +238,21 @@ func (s *Service) UpdateDepartment(ctx context.Context, id uuid.UUID, req Update
 	}
 	if req.IsActive != nil {
 		dept.IsActive = *req.IsActive
+	}
+	if req.About != nil {
+		dept.About = req.About
+	}
+	if req.Founded != nil {
+		dept.Founded = req.Founded
+	}
+	if req.Phone != nil {
+		dept.Phone = req.Phone
+	}
+	if req.Email != nil {
+		dept.Email = req.Email
+	}
+	if req.LogoURL != nil {
+		dept.LogoURL = req.LogoURL
 	}
 
 	if err := s.repo.UpdateDepartment(ctx, dept); err != nil {

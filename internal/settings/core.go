@@ -3,7 +3,7 @@ package settings
 import "github.com/google/uuid"
 
 func ValidateSettings(s *UniversitySettings) error {
-	if s.Institution.NameEN == "" {
+	if s.Institution.GetName("en") == "" {
 		return ErrMissingInstitutionName
 	}
 	if !IsValidGradingDisplay(s.Grading.Display) {
@@ -70,7 +70,7 @@ func GetDegreeLabel(labels map[string]DegreeLabel, degree, lang string) string {
 func DefaultSettings() *UniversitySettings {
 	return &UniversitySettings{
 		Institution: Institution{
-			NameEN:  "University",
+			Name:    map[string]string{"en": "University"},
 			Type:    InstitutionTypePublic,
 			Country: "Iraq",
 			Region:  "Kurdistan",
