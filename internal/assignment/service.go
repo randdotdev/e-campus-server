@@ -34,20 +34,25 @@ type AssignmentRepository interface {
 	UserOwnsFiles(ctx context.Context, userID uuid.UUID, storedFileIDs []uuid.UUID) (bool, error)
 }
 
-type CourseChecker interface {
+type TeacherChecker interface {
 	GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error)
+}
+
+type EnrollmentChecker interface {
 	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 }
 
 type Service struct {
-	repo   AssignmentRepository
-	course CourseChecker
+	repo       AssignmentRepository
+	teachers   TeacherChecker
+	enrollment EnrollmentChecker
 }
 
-func NewService(repo AssignmentRepository, course CourseChecker) *Service {
+func NewService(repo AssignmentRepository, teachers TeacherChecker, enrollment EnrollmentChecker) *Service {
 	return &Service{
-		repo:   repo,
-		course: course,
+		repo:       repo,
+		teachers:   teachers,
+		enrollment: enrollment,
 	}
 }
 
@@ -144,7 +149,7 @@ func (s *Service) CreateSubmission(ctx context.Context, assignmentID, studentID 
 		return nil, ErrNotPublished
 	}
 
-	enrolled, err := s.course.IsEnrolled(ctx, a.OfferingID, studentID)
+	enrolled, err := s.enrollment.IsEnrolled(ctx, a.OfferingID, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +395,7 @@ func (s *Service) GetSubmissionFiles(ctx context.Context, submissionID uuid.UUID
 }
 
 func (s *Service) IsTeacher(ctx context.Context, offeringID, userID uuid.UUID) (bool, error) {
-	role, err := s.course.GetTeacherRole(ctx, offeringID, userID)
+	role, err := s.teachers.GetTeacherRole(ctx, offeringID, userID)
 	if err != nil {
 		return false, err
 	}
@@ -398,7 +403,7 @@ func (s *Service) IsTeacher(ctx context.Context, offeringID, userID uuid.UUID) (
 }
 
 func (s *Service) IsTeacherOrAssistant(ctx context.Context, offeringID, userID uuid.UUID) (bool, error) {
-	role, err := s.course.GetTeacherRole(ctx, offeringID, userID)
+	role, err := s.teachers.GetTeacherRole(ctx, offeringID, userID)
 	if err != nil {
 		return false, err
 	}
@@ -406,7 +411,7 @@ func (s *Service) IsTeacherOrAssistant(ctx context.Context, offeringID, userID u
 }
 
 func (s *Service) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	return s.course.IsEnrolled(ctx, offeringID, studentID)
+	return s.enrollment.IsEnrolled(ctx, offeringID, studentID)
 }
 
 type AssignmentUpdates struct {

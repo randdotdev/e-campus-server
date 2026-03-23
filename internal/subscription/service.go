@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/files"
 )
 
 type SubscriptionRepository interface {
@@ -20,6 +21,8 @@ type SubscriptionRepository interface {
 type Service struct {
 	repo SubscriptionRepository
 }
+
+var _ files.StorageLimits = (*Service)(nil)
 
 func NewService(repo SubscriptionRepository) *Service {
 	return &Service{repo: repo}
@@ -118,4 +121,22 @@ func (s *Service) ClearOverrides(ctx context.Context, reason string, changedBy u
 
 func (s *Service) GetHistory(ctx context.Context, limit int) ([]History, error) {
 	return s.repo.GetHistory(ctx, DefaultHistoryLimit(limit))
+}
+
+// files.StorageLimits implementation
+
+func (s *Service) GetFileSizeLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
+	limits, err := s.GetLimits(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return limits.MaxFileSizeBytes, nil
+}
+
+func (s *Service) GetStorageLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
+	limits, err := s.GetLimits(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return limits.MaxStorageBytes, nil
 }

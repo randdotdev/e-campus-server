@@ -49,41 +49,41 @@ type StudentInfo struct {
 }
 
 type CourseProvider interface {
-	GetCourse(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
+	GetCourseForAcademic(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
 	GetCoursePrerequisite(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
-	GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 	CourseExists(ctx context.Context, id uuid.UUID) (bool, error)
 	ProgramExists(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
 type CourseInfo struct {
-	ID           uuid.UUID
-	DepartmentID uuid.UUID
-	Code         string
-	NameEN       string
-	Credits      int
-	Requires     *uuid.UUID
+	ID           uuid.UUID  `db:"id"`
+	DepartmentID uuid.UUID  `db:"department_id"`
+	Code         string     `db:"code"`
+	NameEN       string     `db:"name_en"`
+	Credits      int        `db:"credits"`
+	Requires     *uuid.UUID `db:"requires"`
 }
 
 type OfferingProvider interface {
-	CreateOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error)
+	CreateSemesterOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error)
 	GetOfferingID(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
-	GetOfferingsBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error)
+	GetOfferingsInfoBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error)
 	CountUnfinalizedOfferings(ctx context.Context, semesterID uuid.UUID) (int, error)
 }
 
 type OfferingInfo struct {
-	ID       uuid.UUID
-	CourseID uuid.UUID
+	ID       uuid.UUID `db:"id"`
+	CourseID uuid.UUID `db:"course_id"`
 }
 
 type EnrollmentProvider interface {
-	CreateEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
+	CreateStudentEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
 	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 	HasApprovedPretake(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
 	WasFailed(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
 	SumCredits(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
-	GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
+	GetRetakeRequestInfos(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
+	GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type RetakeRequestInfo struct {
@@ -429,7 +429,7 @@ func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, p
 		}
 
 		for _, item := range curriculum {
-			course, err := s.courses.GetCourse(ctx, item.CourseID)
+			course, err := s.courses.GetCourseForAcademic(ctx, item.CourseID)
 			if err != nil {
 				continue
 			}
@@ -451,7 +451,7 @@ func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, p
 					record.Status = OfferingStatusSkipped
 					result.Skipped++
 				} else {
-					_, err := s.offerings.CreateOffering(ctx, item.CourseID, semesterID, key.cohortYear, shift)
+					_, err := s.offerings.CreateSemesterOffering(ctx, item.CourseID, semesterID, key.cohortYear, shift)
 					if err != nil {
 						record.Status = OfferingStatusError
 						result.Skipped++
@@ -496,12 +496,12 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 			continue
 		}
 
-		offerings, err := s.offerings.GetOfferingsBySemester(ctx, semesterID, student.CurrentCohortYear, student.Shift)
+		offerings, err := s.offerings.GetOfferingsInfoBySemester(ctx, semesterID, student.CurrentCohortYear, student.Shift)
 		if err != nil {
 			continue
 		}
 
-		passedCourseIDs, err := s.courses.GetPassedCourseIDs(ctx, student.UserID)
+		passedCourseIDs, err := s.enrollment.GetPassedCourseIDs(ctx, student.UserID)
 		if err != nil {
 			continue
 		}
@@ -512,7 +512,7 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 		}
 
 		for _, item := range curriculum {
-			course, err := s.courses.GetCourse(ctx, item.CourseID)
+			course, err := s.courses.GetCourseForAcademic(ctx, item.CourseID)
 			if err != nil {
 				continue
 			}
@@ -549,7 +549,7 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 						continue
 					}
 					if hasPretake {
-						if err := s.enrollment.CreateEnrollment(ctx, *offeringID, student.UserID, "pretake"); err == nil {
+						if err := s.enrollment.CreateStudentEnrollment(ctx, *offeringID, student.UserID, "pretake"); err == nil {
 							result.Enrolled++
 							result.Details.Enrolled = append(result.Details.Enrolled, EnrollRecord{
 								StudentID:   student.ID,
@@ -560,7 +560,7 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 							})
 						}
 					} else {
-						prereq, _ := s.courses.GetCourse(ctx, *course.Requires)
+						prereq, _ := s.courses.GetCourseForAcademic(ctx, *course.Requires)
 						prereqCode := ""
 						if prereq != nil {
 							prereqCode = prereq.Code
@@ -584,7 +584,7 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 				enrollType = "retake"
 			}
 
-			if err := s.enrollment.CreateEnrollment(ctx, *offeringID, student.UserID, enrollType); err == nil {
+			if err := s.enrollment.CreateStudentEnrollment(ctx, *offeringID, student.UserID, enrollType); err == nil {
 				result.Enrolled++
 				result.Details.Enrolled = append(result.Details.Enrolled, EnrollRecord{
 					StudentID:   student.ID,
@@ -596,7 +596,7 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 			}
 		}
 
-		retakeRequests, err := s.enrollment.GetApprovedRetakeRequests(ctx, student.UserID, semesterID)
+		retakeRequests, err := s.enrollment.GetRetakeRequestInfos(ctx, student.UserID, semesterID)
 		if err != nil {
 			continue
 		}
@@ -621,12 +621,12 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 				continue
 			}
 
-			course, err := s.courses.GetCourse(ctx, req.CourseID)
+			course, err := s.courses.GetCourseForAcademic(ctx, req.CourseID)
 			if err != nil {
 				continue
 			}
 
-			if err := s.enrollment.CreateEnrollment(ctx, *offeringID, student.UserID, "retake"); err == nil {
+			if err := s.enrollment.CreateStudentEnrollment(ctx, *offeringID, student.UserID, "retake"); err == nil {
 				result.Enrolled++
 				result.Details.Enrolled = append(result.Details.Enrolled, EnrollRecord{
 					StudentID:   student.ID,

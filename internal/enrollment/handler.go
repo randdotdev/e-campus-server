@@ -85,6 +85,20 @@ func (h *Handler) EnrollStudent(c *gin.Context) {
 	response.Created(c, ToEnrollmentResponse(enrollment))
 }
 
+func (h *Handler) GetMyEnrollments(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	status := c.Query("status")
+
+	enrollments, err := h.svc.GetMyEnrollments(c.Request.Context(), userID, status)
+	if err != nil {
+		h.log.Error("get my enrollments failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ToMyEnrollmentsResponse(enrollments))
+}
+
 func (h *Handler) GetAccessLevel(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

@@ -14,6 +14,15 @@ type Repository struct {
 	db *sqlx.DB
 }
 
+var (
+	_ GradingRepository       = (*Repository)(nil)
+	_ OfferingProvider        = (*Repository)(nil)
+	_ ExamScoreProvider       = (*Repository)(nil)
+	_ AssignmentScoreProvider = (*Repository)(nil)
+	_ AttendanceProvider      = (*Repository)(nil)
+	_ EnrollmentProvider      = (*Repository)(nil)
+)
+
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
@@ -292,7 +301,7 @@ func (r *Repository) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.
 	return ids, nil
 }
 
-func (r *Repository) HasUngradedExamAttempts(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
+func (r *Repository) HasUngradedAttempts(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
 	if len(examIDs) == 0 {
 		return false, nil
 	}
@@ -312,7 +321,7 @@ func (r *Repository) HasUngradedExamAttempts(ctx context.Context, offeringID uui
 	return hasUngraded, err
 }
 
-func (r *Repository) HasUngradedAssignments(ctx context.Context, offeringID uuid.UUID) (bool, error) {
+func (r *Repository) HasUngradedSubmissions(ctx context.Context, offeringID uuid.UUID) (bool, error) {
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM assignment_submissions ass

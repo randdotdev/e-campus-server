@@ -292,3 +292,25 @@ func (h *Handler) PreviewGrade(c *gin.Context) {
 
 	response.OK(c, PreviewResponse{Grade: grade})
 }
+
+func (h *Handler) GetMyGrade(c *gin.Context) {
+	offeringID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	userID := middleware.GetUserID(c)
+
+	grade, err := h.service.PreviewGrade(c.Request.Context(), offeringID, userID)
+	if err != nil {
+		if err == ErrRulesNotFound {
+			response.NotFound(c, "grading rules not set")
+			return
+		}
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, PreviewResponse{Grade: grade})
+}

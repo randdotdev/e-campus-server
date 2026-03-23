@@ -16,6 +16,7 @@ type EnrollmentRepository interface {
 	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 	GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
 	GetStudentEnrollments(ctx context.Context, studentID uuid.UUID) ([]Enrollment, error)
+	GetMyEnrollments(ctx context.Context, studentID uuid.UUID, status string) ([]MyEnrollment, error)
 	DropEnrollment(ctx context.Context, enrollmentID uuid.UUID) error
 
 	// Project group operations
@@ -61,26 +62,26 @@ type EnrollmentRepository interface {
 
 type OfferingChecker interface {
 	OfferingExists(ctx context.Context, id uuid.UUID) (bool, error)
-	GetOffering(ctx context.Context, id uuid.UUID) (*OfferingInfo, error)
-	GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]OfferingInfo, error)
+	GetOfferingInfo(ctx context.Context, id uuid.UUID) (*OfferingInfo, error)
+	GetOfferingsInfoByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]OfferingInfo, error)
 }
 
 type CourseChecker interface {
-	GetCourse(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
+	GetCourseInfo(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
 }
 
 type OfferingInfo struct {
-	ID         uuid.UUID
-	CourseID   uuid.UUID
-	SemesterID uuid.UUID
-	CohortYear int
-	Shift      string
+	ID         uuid.UUID `db:"id"`
+	CourseID   uuid.UUID `db:"course_id"`
+	SemesterID uuid.UUID `db:"semester_id"`
+	CohortYear int       `db:"cohort_year"`
+	Shift      string    `db:"shift"`
 }
 
 type CourseInfo struct {
-	ID           uuid.UUID
-	DepartmentID uuid.UUID
-	Code         string
+	ID           uuid.UUID `db:"id"`
+	DepartmentID uuid.UUID `db:"department_id"`
+	Code         string    `db:"code"`
 }
 
 type Service struct {
@@ -149,17 +150,17 @@ func (s *Service) GetAccessLevel(ctx context.Context, offeringID, studentID uuid
 	}
 
 	// Check sibling enrollment
-	offering, err := s.offering.GetOffering(ctx, offeringID)
+	offering, err := s.offering.GetOfferingInfo(ctx, offeringID)
 	if err != nil {
 		return NoAccess, err
 	}
 
-	course, err := s.course.GetCourse(ctx, offering.CourseID)
+	course, err := s.course.GetCourseInfo(ctx, offering.CourseID)
 	if err != nil {
 		return NoAccess, err
 	}
 
-	siblings, err := s.offering.GetOfferingsByCourseCodeAndCohort(ctx, course.DepartmentID, course.Code, offering.CohortYear, offering.Shift)
+	siblings, err := s.offering.GetOfferingsInfoByCourseCodeAndCohort(ctx, course.DepartmentID, course.Code, offering.CohortYear, offering.Shift)
 	if err != nil {
 		return NoAccess, err
 	}
@@ -186,6 +187,10 @@ func (s *Service) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUI
 
 func (s *Service) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
 	return s.repo.GetEnrolledStudentIDs(ctx, offeringID)
+}
+
+func (s *Service) GetMyEnrollments(ctx context.Context, studentID uuid.UUID, status string) ([]MyEnrollment, error) {
+	return s.repo.GetMyEnrollments(ctx, studentID, status)
 }
 
 func (s *Service) DropEnrollment(ctx context.Context, offeringID, studentID uuid.UUID) error {

@@ -10,12 +10,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/ranjdotdev/e-campus-server/internal/academic"
+	"github.com/ranjdotdev/e-campus-server/internal/assignment"
+	"github.com/ranjdotdev/e-campus-server/internal/attendance"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/student"
 )
 
 type Repository struct {
 	db *sqlx.DB
 }
+
+var (
+	_ student.EnrollmentManager    = (*Repository)(nil)
+	_ attendance.EnrollmentChecker = (*Repository)(nil)
+	_ assignment.EnrollmentChecker = (*Repository)(nil)
+	_ academic.EnrollmentProvider  = (*Repository)(nil)
+)
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
@@ -152,6 +163,10 @@ func (r *Repository) IsEnrolled(ctx context.Context, offeringID, studentID uuid.
 	query := `SELECT EXISTS(SELECT 1 FROM course_enrollments WHERE offering_id = $1 AND student_id = $2 AND status = 'enrolled')`
 	err := r.db.GetContext(ctx, &exists, query, offeringID, studentID)
 	return exists, err
+}
+
+func (r *Repository) IsStudentEnrolled(ctx context.Context, studentID, offeringID uuid.UUID) (bool, error) {
+	return r.IsEnrolled(ctx, offeringID, studentID)
 }
 
 func (r *Repository) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
@@ -661,4 +676,68 @@ func (r *Repository) IsSemesterActive(ctx context.Context, semesterID uuid.UUID)
 		return false, err
 	}
 	return status == "active", nil
+}
+
+func (r *Repository) GetMyEnrollments(ctx context.Context, studentID uuid.UUID, status string) ([]MyEnrollment, error) {
+	query := strings.Builder{}
+	args := []any{studentID}
+
+	query.WriteString(`
+		SELECT
+			e.id,
+			e.offering_id,
+			c.name_en AS course_name,
+			c.code AS course_code,
+			s.name AS semester_name,
+			e.enrollment_type,
+			e.status,
+			e.enrolled_at,
+			e.completed_at,
+			e.final_grade
+		FROM course_enrollments e
+		JOIN course_offerings o ON o.id = e.offering_id
+		JOIN courses c ON c.id = o.course_id
+		JOIN semesters s ON s.id = o.semester_id
+		WHERE e.student_id = $1`)
+
+	if status != "" {
+		query.WriteString(` AND e.status = $2`)
+		args = append(args, status)
+	}
+
+	query.WriteString(` ORDER BY e.enrolled_at DESC`)
+
+	var enrollments []MyEnrollment
+	if err := r.db.SelectContext(ctx, &enrollments, query.String(), args...); err != nil {
+		return nil, err
+	}
+	return enrollments, nil
+}
+
+// academic.EnrollmentProvider implementation
+
+func (r *Repository) CreateStudentEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
+	e := &Enrollment{
+		OfferingID:     offeringID,
+		StudentID:      studentID,
+		EnrollmentType: enrollmentType,
+		Status:         EnrollmentStatusEnrolled,
+	}
+	return r.CreateEnrollment(ctx, e)
+}
+
+func (r *Repository) HasApprovedPretake(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error) {
+	return r.HasApprovedRequest(ctx, studentID, courseID, semesterID, "pretake")
+}
+
+func (r *Repository) GetRetakeRequestInfos(ctx context.Context, studentID, semesterID uuid.UUID) ([]academic.RetakeRequestInfo, error) {
+	courseIDs, err := r.GetApprovedRetakeRequests(ctx, studentID, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]academic.RetakeRequestInfo, len(courseIDs))
+	for i, id := range courseIDs {
+		result[i] = academic.RetakeRequestInfo{CourseID: id}
+	}
+	return result, nil
 }

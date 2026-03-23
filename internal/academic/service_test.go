@@ -222,16 +222,15 @@ func (m *MockStudentProvider) RecordCohortChange(ctx context.Context, studentID 
 }
 
 type MockCourseProvider struct {
-	GetCourseFunc             func(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
+	GetCourseForAcademicFunc  func(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
 	GetCoursePrerequisiteFunc func(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error)
-	GetPassedCourseIDsFunc    func(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 	CourseExistsFunc          func(ctx context.Context, id uuid.UUID) (bool, error)
 	ProgramExistsFunc         func(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
-func (m *MockCourseProvider) GetCourse(ctx context.Context, id uuid.UUID) (*CourseInfo, error) {
-	if m.GetCourseFunc != nil {
-		return m.GetCourseFunc(ctx, id)
+func (m *MockCourseProvider) GetCourseForAcademic(ctx context.Context, id uuid.UUID) (*CourseInfo, error) {
+	if m.GetCourseForAcademicFunc != nil {
+		return m.GetCourseForAcademicFunc(ctx, id)
 	}
 	return nil, ErrCourseNotFound
 }
@@ -241,13 +240,6 @@ func (m *MockCourseProvider) GetCoursePrerequisite(ctx context.Context, courseID
 		return m.GetCoursePrerequisiteFunc(ctx, courseID)
 	}
 	return nil, nil
-}
-
-func (m *MockCourseProvider) GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
-	if m.GetPassedCourseIDsFunc != nil {
-		return m.GetPassedCourseIDsFunc(ctx, studentID)
-	}
-	return []uuid.UUID{}, nil
 }
 
 func (m *MockCourseProvider) CourseExists(ctx context.Context, id uuid.UUID) (bool, error) {
@@ -265,15 +257,15 @@ func (m *MockCourseProvider) ProgramExists(ctx context.Context, id uuid.UUID) (b
 }
 
 type MockOfferingProvider struct {
-	CreateOfferingFunc            func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error)
-	GetOfferingIDFunc             func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
-	GetOfferingsBySemesterFunc    func(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error)
-	CountUnfinalizedOfferingsFunc func(ctx context.Context, semesterID uuid.UUID) (int, error)
+	CreateSemesterOfferingFunc     func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error)
+	GetOfferingIDFunc              func(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error)
+	GetOfferingsInfoBySemesterFunc func(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error)
+	CountUnfinalizedOfferingsFunc  func(ctx context.Context, semesterID uuid.UUID) (int, error)
 }
 
-func (m *MockOfferingProvider) CreateOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error) {
-	if m.CreateOfferingFunc != nil {
-		return m.CreateOfferingFunc(ctx, courseID, semesterID, cohortYear, shift)
+func (m *MockOfferingProvider) CreateSemesterOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error) {
+	if m.CreateSemesterOfferingFunc != nil {
+		return m.CreateSemesterOfferingFunc(ctx, courseID, semesterID, cohortYear, shift)
 	}
 	return uuid.New(), nil
 }
@@ -285,9 +277,9 @@ func (m *MockOfferingProvider) GetOfferingID(ctx context.Context, courseID, seme
 	return nil, nil
 }
 
-func (m *MockOfferingProvider) GetOfferingsBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error) {
-	if m.GetOfferingsBySemesterFunc != nil {
-		return m.GetOfferingsBySemesterFunc(ctx, semesterID, cohortYear, shift)
+func (m *MockOfferingProvider) GetOfferingsInfoBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]OfferingInfo, error) {
+	if m.GetOfferingsInfoBySemesterFunc != nil {
+		return m.GetOfferingsInfoBySemesterFunc(ctx, semesterID, cohortYear, shift)
 	}
 	return []OfferingInfo{}, nil
 }
@@ -300,17 +292,18 @@ func (m *MockOfferingProvider) CountUnfinalizedOfferings(ctx context.Context, se
 }
 
 type MockEnrollmentProvider struct {
-	CreateEnrollmentFunc          func(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
-	IsEnrolledFunc                func(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
-	HasApprovedPretakeFunc        func(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
-	WasFailedFunc                 func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
-	SumCreditsFunc                func(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
-	GetApprovedRetakeRequestsFunc func(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
+	CreateStudentEnrollmentFunc func(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error
+	IsEnrolledFunc              func(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
+	HasApprovedPretakeFunc      func(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error)
+	WasFailedFunc               func(ctx context.Context, studentID, courseID uuid.UUID) (bool, error)
+	SumCreditsFunc              func(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error)
+	GetRetakeRequestInfosFunc   func(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error)
+	GetPassedCourseIDsFunc      func(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 }
 
-func (m *MockEnrollmentProvider) CreateEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
-	if m.CreateEnrollmentFunc != nil {
-		return m.CreateEnrollmentFunc(ctx, offeringID, studentID, enrollmentType)
+func (m *MockEnrollmentProvider) CreateStudentEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
+	if m.CreateStudentEnrollmentFunc != nil {
+		return m.CreateStudentEnrollmentFunc(ctx, offeringID, studentID, enrollmentType)
 	}
 	return nil
 }
@@ -343,11 +336,18 @@ func (m *MockEnrollmentProvider) SumCredits(ctx context.Context, studentID, seme
 	return 0, nil
 }
 
-func (m *MockEnrollmentProvider) GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error) {
-	if m.GetApprovedRetakeRequestsFunc != nil {
-		return m.GetApprovedRetakeRequestsFunc(ctx, studentID, semesterID)
+func (m *MockEnrollmentProvider) GetRetakeRequestInfos(ctx context.Context, studentID, semesterID uuid.UUID) ([]RetakeRequestInfo, error) {
+	if m.GetRetakeRequestInfosFunc != nil {
+		return m.GetRetakeRequestInfosFunc(ctx, studentID, semesterID)
 	}
 	return nil, nil
+}
+
+func (m *MockEnrollmentProvider) GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
+	if m.GetPassedCourseIDsFunc != nil {
+		return m.GetPassedCourseIDsFunc(ctx, studentID)
+	}
+	return []uuid.UUID{}, nil
 }
 
 type MockSettingsProvider struct {

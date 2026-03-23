@@ -150,3 +150,16 @@ type Warning struct {
 	MessageEN    string  `json:"message_en"`
 	MessageLocal *string `json:"message_local,omitempty"`
 }
+
+type MyEnrollment struct {
+	ID             uuid.UUID  `db:"id"`
+	OfferingID     uuid.UUID  `db:"offering_id"`
+	CourseName     string     `db:"course_name"`
+	CourseCode     string     `db:"course_code"`
+	SemesterName   string     `db:"semester_name"`
+	EnrollmentType string     `db:"enrollment_type"`
+	Status         string     `db:"status"`
+	EnrolledAt     time.Time  `db:"enrolled_at"`
+	CompletedAt    *time.Time `db:"completed_at"`
+	FinalGrade     *float64   `db:"final_grade"`
+}

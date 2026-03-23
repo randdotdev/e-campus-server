@@ -46,7 +46,7 @@ type RejectionRepository interface {
 }
 
 type OfferingChecker interface {
-	Exists(ctx context.Context, id uuid.UUID) (bool, error)
+	OfferingExists(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
 type MuteChecker interface {
@@ -91,7 +91,7 @@ func (s *Service) AskQuestion(ctx context.Context, offeringID, userID uuid.UUID,
 		return nil, err
 	}
 
-	exists, err := s.offerings.Exists(ctx, offeringID)
+	exists, err := s.offerings.OfferingExists(ctx, offeringID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (s *Service) CreateFAQ(ctx context.Context, offeringID, teacherID uuid.UUID
 		return nil, nil, err
 	}
 
-	exists, err := s.offerings.Exists(ctx, offeringID)
+	exists, err := s.offerings.OfferingExists(ctx, offeringID)
 	if err != nil {
 		return nil, nil, err
 	}

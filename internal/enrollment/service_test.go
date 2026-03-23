@@ -112,6 +112,10 @@ func (m *mockRepo) GetStudentEnrollments(ctx context.Context, studentID uuid.UUI
 	return []Enrollment{}, nil
 }
 
+func (m *mockRepo) GetMyEnrollments(ctx context.Context, studentID uuid.UUID, status string) ([]MyEnrollment, error) {
+	return []MyEnrollment{}, nil
+}
+
 func (m *mockRepo) DropEnrollment(ctx context.Context, enrollmentID uuid.UUID) error {
 	if m.dropEnrollmentFunc != nil {
 		return m.dropEnrollmentFunc(ctx, enrollmentID)
@@ -366,14 +370,14 @@ func (m *mockOfferingChecker) OfferingExists(ctx context.Context, id uuid.UUID) 
 	return true, nil
 }
 
-func (m *mockOfferingChecker) GetOffering(ctx context.Context, id uuid.UUID) (*OfferingInfo, error) {
+func (m *mockOfferingChecker) GetOfferingInfo(ctx context.Context, id uuid.UUID) (*OfferingInfo, error) {
 	if m.getFunc != nil {
 		return m.getFunc(ctx, id)
 	}
 	return &OfferingInfo{ID: id, CourseID: uuid.New()}, nil
 }
 
-func (m *mockOfferingChecker) GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]OfferingInfo, error) {
+func (m *mockOfferingChecker) GetOfferingsInfoByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]OfferingInfo, error) {
 	if m.getByCourseCodeFunc != nil {
 		return m.getByCourseCodeFunc(ctx, departmentID, code, cohortYear, shift)
 	}
@@ -385,7 +389,7 @@ type mockCourseChecker struct {
 	getFunc func(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
 }
 
-func (m *mockCourseChecker) GetCourse(ctx context.Context, id uuid.UUID) (*CourseInfo, error) {
+func (m *mockCourseChecker) GetCourseInfo(ctx context.Context, id uuid.UUID) (*CourseInfo, error) {
 	if m.getFunc != nil {
 		return m.getFunc(ctx, id)
 	}

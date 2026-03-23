@@ -8,12 +8,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ranjdotdev/e-campus-server/internal/content"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
 type Repository struct {
 	db *sqlx.DB
 }
+
+var _ content.StoredFileChecker = (*Repository)(nil)
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}

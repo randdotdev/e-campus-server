@@ -251,7 +251,7 @@ func NewSettingsRepository(db *sqlx.DB) *SettingsRepo {
 
 func (r *SettingsRepo) GetDefaultLanguage(ctx context.Context) (string, error) {
 	var lang sql.NullString
-	query := `SELECT settings->>'default_language' FROM settings LIMIT 1`
+	query := `SELECT settings->'academic'->>'default_language' FROM settings LIMIT 1`
 
 	if err := r.db.GetContext(ctx, &lang, query); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

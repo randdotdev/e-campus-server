@@ -10,7 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/ranjdotdev/e-campus-server/internal/academic"
+	"github.com/ranjdotdev/e-campus-server/internal/assignment"
+	"github.com/ranjdotdev/e-campus-server/internal/content"
+	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
+	"github.com/ranjdotdev/e-campus-server/internal/grading"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/qa"
 )
 
 func isUniqueViolation(err error) bool {
@@ -21,6 +27,18 @@ func isUniqueViolation(err error) bool {
 type Repository struct {
 	db *sqlx.DB
 }
+
+var (
+	_ content.OfferingChecker    = (*Repository)(nil)
+	_ content.GroupChecker       = (*Repository)(nil)
+	_ qa.OfferingChecker         = (*Repository)(nil)
+	_ grading.TeacherChecker     = (*Repository)(nil)
+	_ assignment.TeacherChecker  = (*Repository)(nil)
+	_ enrollment.OfferingChecker = (*Repository)(nil)
+	_ enrollment.CourseChecker   = (*Repository)(nil)
+	_ academic.OfferingProvider  = (*Repository)(nil)
+	_ academic.CourseProvider    = (*Repository)(nil)
+)
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
@@ -316,6 +334,14 @@ func (r *Repository) GetTeacherRole(ctx context.Context, offeringID, userID uuid
 		return "", err
 	}
 	return role, nil
+}
+
+func (r *Repository) IsTeacher(offeringID, userID uuid.UUID) (bool, error) {
+	role, err := r.GetTeacherRole(context.Background(), offeringID, userID)
+	if err != nil {
+		return false, err
+	}
+	return role == "teacher", nil
 }
 
 func (r *Repository) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error) {
@@ -668,4 +694,95 @@ func (r *Repository) CountUnfinalizedOfferings(ctx context.Context, semesterID u
 			)`
 	err := r.db.GetContext(ctx, &count, query, semesterID)
 	return count, err
+}
+
+// enrollment.OfferingChecker implementation
+
+func (r *Repository) GetOfferingInfo(ctx context.Context, id uuid.UUID) (*enrollment.OfferingInfo, error) {
+	var info enrollment.OfferingInfo
+	query := `SELECT id, course_id, semester_id, cohort_year, shift FROM course_offerings WHERE id = $1`
+	if err := r.db.GetContext(ctx, &info, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrOfferingNotFound
+		}
+		return nil, err
+	}
+	return &info, nil
+}
+
+func (r *Repository) GetOfferingsInfoByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]enrollment.OfferingInfo, error) {
+	var infos []enrollment.OfferingInfo
+	query := `
+		SELECT o.id, o.course_id, o.semester_id, o.cohort_year, o.shift
+		FROM course_offerings o
+		JOIN courses c ON o.course_id = c.id
+		WHERE c.department_id = $1 AND c.code = $2 AND o.cohort_year = $3 AND o.shift = $4`
+	if err := r.db.SelectContext(ctx, &infos, query, departmentID, code, cohortYear, shift); err != nil {
+		return nil, err
+	}
+	return infos, nil
+}
+
+// enrollment.CourseChecker implementation
+
+func (r *Repository) GetCourseInfo(ctx context.Context, id uuid.UUID) (*enrollment.CourseInfo, error) {
+	var info enrollment.CourseInfo
+	query := `SELECT id, department_id, code FROM courses WHERE id = $1`
+	if err := r.db.GetContext(ctx, &info, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCourseNotFound
+		}
+		return nil, err
+	}
+	return &info, nil
+}
+
+// academic.OfferingProvider implementation
+
+func (r *Repository) CreateSemesterOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error) {
+	o := &Offering{
+		CourseID:   courseID,
+		SemesterID: semesterID,
+		CohortYear: cohortYear,
+		Shift:      shift,
+	}
+	if err := r.CreateOffering(ctx, o); err != nil {
+		return uuid.Nil, err
+	}
+	return o.ID, nil
+}
+
+func (r *Repository) GetOfferingsInfoBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]academic.OfferingInfo, error) {
+	var infos []academic.OfferingInfo
+	query := `SELECT id, course_id FROM course_offerings WHERE semester_id = $1 AND cohort_year = $2 AND shift = $3`
+	if err := r.db.SelectContext(ctx, &infos, query, semesterID, cohortYear, shift); err != nil {
+		return nil, err
+	}
+	return infos, nil
+}
+
+// academic.CourseProvider implementation
+
+func (r *Repository) GetCourseForAcademic(ctx context.Context, id uuid.UUID) (*academic.CourseInfo, error) {
+	var info academic.CourseInfo
+	query := `SELECT id, department_id, code, name_en, credits, requires FROM courses WHERE id = $1`
+	if err := r.db.GetContext(ctx, &info, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCourseNotFound
+		}
+		return nil, err
+	}
+	return &info, nil
+}
+
+func (r *Repository) GetCoursePrerequisite(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error) {
+	var requires *uuid.UUID
+	query := `SELECT requires FROM courses WHERE id = $1`
+	if err := r.db.GetContext(ctx, &requires, query, courseID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCourseNotFound
+		}
+		return nil, err
+	}
+	return requires, nil
 }

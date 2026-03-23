@@ -10,11 +10,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/student"
 )
 
 type Repository struct {
 	db *sqlx.DB
 }
+
+var _ student.ProgramProvider = (*Repository)(nil)
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}

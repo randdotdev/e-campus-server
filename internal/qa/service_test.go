@@ -119,7 +119,7 @@ func newMockOfferingChecker() *mockOfferingChecker {
 	return &mockOfferingChecker{offerings: make(map[uuid.UUID]bool)}
 }
 
-func (m *mockOfferingChecker) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
+func (m *mockOfferingChecker) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	return m.offerings[id], nil
 }
 

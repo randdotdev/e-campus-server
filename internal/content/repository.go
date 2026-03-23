@@ -7,11 +7,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ranjdotdev/e-campus-server/internal/attendance"
 )
 
 type Repository struct {
 	db *sqlx.DB
 }
+
+var _ attendance.LessonChecker = (*Repository)(nil)
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}

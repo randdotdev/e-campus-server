@@ -17,6 +17,8 @@ type Repository struct {
 	db *sqlx.DB
 }
 
+var _ academic.StudentProvider = (*Repository)(nil)
+
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
@@ -278,7 +280,7 @@ func (r *Repository) GetTranscriptData(ctx context.Context, studentID uuid.UUID)
 	return &data, nil
 }
 
-func (r *Repository) GetActiveStudentsForAcademic(ctx context.Context, programID *uuid.UUID, cohortYear *int) ([]academic.StudentInfo, error) {
+func (r *Repository) GetActiveStudents(ctx context.Context, programID *uuid.UUID, cohortYear *int) ([]academic.StudentInfo, error) {
 	var conditions []string
 	var args []interface{}
 	argIndex := 1
@@ -318,7 +320,7 @@ func (r *Repository) GetActiveStudentsForAcademic(ctx context.Context, programID
 	return students, nil
 }
 
-func (r *Repository) GetStudentsByProgramForAcademic(ctx context.Context, programID uuid.UUID) ([]academic.StudentInfo, error) {
+func (r *Repository) GetStudentsByProgram(ctx context.Context, programID uuid.UUID) ([]academic.StudentInfo, error) {
 	query := `
 		SELECT s.id, s.user_id, u.full_name_en, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
 		FROM students s
@@ -342,7 +344,7 @@ func (r *Repository) GetStudentsByProgramForAcademic(ctx context.Context, progra
 	return students, nil
 }
 
-func (r *Repository) GetStudentsInSemesterForAcademic(ctx context.Context, semesterID uuid.UUID) ([]academic.StudentInfo, error) {
+func (r *Repository) GetStudentsInSemester(ctx context.Context, semesterID uuid.UUID) ([]academic.StudentInfo, error) {
 	query := `
 		SELECT DISTINCT s.id, s.user_id, u.full_name_en, s.program_id, s.current_cohort_year, s.current_year, s.shift, s.status
 		FROM students s
@@ -374,7 +376,7 @@ func (r *Repository) UpdateStudentProgression(ctx context.Context, studentID uui
 	return err
 }
 
-func (r *Repository) RecordCohortChangeForAcademic(ctx context.Context, studentID uuid.UUID, fromCohort, toCohort, fromYear, toYear int, reason string) error {
+func (r *Repository) RecordCohortChange(ctx context.Context, studentID uuid.UUID, fromCohort, toCohort, fromYear, toYear int, reason string) error {
 	query := `
 		INSERT INTO student_cohort_history (student_id, from_cohort_year, to_cohort_year, from_year, to_year, reason)
 		VALUES ($1, $2, $3, $4, $5, $6)`

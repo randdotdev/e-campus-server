@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"github.com/ranjdotdev/e-campus-server/internal/academic"
 	"github.com/ranjdotdev/e-campus-server/internal/application"
@@ -35,6 +33,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/settings"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/student"
 	"github.com/ranjdotdev/e-campus-server/internal/subscription"
@@ -139,16 +138,15 @@ func run() error {
 	examHandler := exam.NewHandler(examService, log)
 
 	filesRepo := files.NewRepository(db)
-	filesLimits := &storageLimitsAdapter{sub: subscriptionService}
-	filesService := files.NewService(filesRepo, storageClient, filesLimits)
+	filesService := files.NewService(filesRepo, storageClient, subscriptionService)
 	filesHandler := files.NewHandler(filesService, log)
 
 	contentRepo := content.NewRepository(db)
 	contentService := content.NewService(
 		contentRepo,
-		&offeringCheckerAdapter{repo: courseRepo},
-		&groupCheckerAdapter{repo: courseRepo},
-		&storedFileCheckerAdapter{repo: filesRepo},
+		courseRepo,
+		courseRepo,
+		filesRepo,
 	)
 	contentHandler := content.NewHandler(contentService, log)
 
@@ -157,15 +155,16 @@ func run() error {
 	attendanceRepo := attendance.NewRepository(db)
 	attendanceService := attendance.NewService(
 		attendanceRepo,
-		&lessonCheckerAdapter{repo: contentRepo},
-		&enrollmentCheckerAdapter{repo: enrollmentRepo},
+		contentRepo,
+		enrollmentRepo,
 	)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 
 	assignmentRepo := assignment.NewRepository(db)
 	assignmentService := assignment.NewService(
 		assignmentRepo,
-		&courseCheckerAdapter{courseRepo: courseRepo, enrollmentRepo: enrollmentRepo},
+		courseRepo,
+		enrollmentRepo,
 	)
 	assignmentHandler := assignment.NewHandler(assignmentService, log)
 
@@ -215,47 +214,51 @@ func run() error {
 		qaRejectionRepo,
 		qaQuestionAttachmentRepo,
 		qaAnswerAttachmentRepo,
-		&qaOfferingCheckerAdapter{repo: courseRepo},
+		courseRepo,
 		muteRepo,
 	)
 	qaHandler := qa.NewHandler(qaService, log)
 
 	enrollmentService := enrollment.NewService(
 		enrollmentRepo,
-		&enrollmentOfferingCheckerAdapter{repo: courseRepo},
-		&enrollmentCourseCheckerAdapter{repo: courseRepo},
+		courseRepo,
+		courseRepo,
 	)
 	enrollmentHandler := enrollment.NewHandler(enrollmentService, log)
 
 	studentRepo := student.NewRepository(db)
 	studentService := student.NewService(
 		studentRepo,
-		&studentProgramProviderAdapter{repo: universityRepo},
-		&studentEnrollmentManagerAdapter{repo: enrollmentRepo},
+		universityRepo,
+		enrollmentRepo,
 	)
 	studentHandler := student.NewHandler(studentService, log)
+
+	settingsRepo := settings.NewRepository(db)
+	settingsService := settings.NewService(settingsRepo, settingsRepo)
+	settingsHandler := settings.NewHandler(settingsService, log)
 
 	academicRepo := academic.NewRepository(db)
 	academicService := academic.NewService(
 		academicRepo,
-		&academicStudentProviderAdapter{repo: studentRepo},
-		&academicCourseProviderAdapter{courseRepo: courseRepo, enrollmentRepo: enrollmentRepo},
-		&academicOfferingProviderAdapter{repo: courseRepo},
-		&academicEnrollmentProviderAdapter{repo: enrollmentRepo},
-		&academicSettingsProviderAdapter{db: db},
+		studentRepo,
+		courseRepo,
+		courseRepo,
+		enrollmentRepo,
+		settingsRepo,
 	)
 	academicHandler := academic.NewHandler(academicService, log)
 
 	gradingRepo := grading.NewRepository(db)
 	gradingService := grading.NewService(
 		gradingRepo,
-		&gradingOfferingAdapter{repo: gradingRepo},
-		&gradingExamScoreAdapter{repo: gradingRepo},
-		&gradingAssignmentScoreAdapter{repo: gradingRepo},
-		&gradingAttendanceAdapter{repo: gradingRepo},
-		&gradingEnrollmentAdapter{repo: gradingRepo},
+		gradingRepo,
+		gradingRepo,
+		gradingRepo,
+		gradingRepo,
+		gradingRepo,
 	)
-	gradingHandler := grading.NewHandler(gradingService, &gradingTeacherCheckerAdapter{repo: courseRepo})
+	gradingHandler := grading.NewHandler(gradingService, courseRepo)
 
 	notificationRepo := notification.NewRepository(db)
 	notificationHub := notification.NewHub()
@@ -481,6 +484,9 @@ func run() error {
 			// Q&A routes
 			qaHandler.RegisterRoutes(protected, middleware.Auth(authService))
 
+			// Enrollment routes - student
+			protected.GET("/me/enrollments", enrollmentHandler.GetMyEnrollments)
+
 			// Enrollment request routes - student
 			protected.POST("/enrollment-requests/pretake", enrollmentHandler.CreatePretake)
 			protected.POST("/enrollment-requests/retake", enrollmentHandler.CreateRetake)
@@ -542,6 +548,7 @@ func run() error {
 			protected.GET("/offerings/:offering_id/grades", gradingHandler.GetGrades)
 			protected.PUT("/offerings/:offering_id/grades/:student_id", gradingHandler.OverrideGrade)
 			protected.GET("/offerings/:offering_id/grades/:student_id/preview", gradingHandler.PreviewGrade)
+			protected.GET("/offerings/:id/my-grade", gradingHandler.GetMyGrade)
 
 			// Notification routes
 			protected.GET("/notifications/ws", notificationHandler.HandleWebSocket)
@@ -550,6 +557,18 @@ func run() error {
 			protected.PUT("/notifications/:id/read", notificationHandler.MarkRead)
 			protected.PUT("/notifications/read-all", notificationHandler.MarkAllRead)
 			protected.DELETE("/notifications/:id", notificationHandler.Delete)
+
+			// User preferences
+			protected.GET("/me/preferences", settingsHandler.GetMyPreferences)
+			protected.PUT("/me/preferences", settingsHandler.UpdateMyPreferences)
+
+			// University settings (admin)
+			protected.GET("/settings", settingsHandler.GetSettings)
+			protected.PUT("/settings", settingsHandler.UpdateSettings)
+			protected.GET("/settings/institution", settingsHandler.GetInstitution)
+			protected.PUT("/settings/institution", settingsHandler.UpdateInstitution)
+			protected.GET("/settings/features", settingsHandler.GetFeatures)
+			protected.PUT("/settings/features", settingsHandler.UpdateFeatures)
 		}
 	}
 
@@ -594,424 +613,4 @@ func gracefulShutdown(srv *http.Server, log *zap.Logger) error {
 
 	log.Info("server exited")
 	return nil
-}
-
-type storageLimitsAdapter struct {
-	sub *subscription.Service
-}
-
-func (a *storageLimitsAdapter) GetFileSizeLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
-	limits, err := a.sub.GetLimits(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return limits.MaxFileSizeBytes, nil
-}
-
-func (a *storageLimitsAdapter) GetStorageLimit(ctx context.Context, userID uuid.UUID) (int64, error) {
-	limits, err := a.sub.GetLimits(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return limits.MaxStorageBytes, nil
-}
-
-type offeringCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *offeringCheckerAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.OfferingExists(ctx, id)
-}
-
-type groupCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *groupCheckerAdapter) GroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.GroupExists(ctx, id)
-}
-
-func (a *groupCheckerAdapter) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
-	return a.repo.GetStudentGroupIDs(ctx, studentID, offeringID)
-}
-
-type storedFileCheckerAdapter struct {
-	repo *files.Repository
-}
-
-func (a *storedFileCheckerAdapter) StoredFileExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.StoredFileExists(ctx, id)
-}
-
-type lessonCheckerAdapter struct {
-	repo *content.Repository
-}
-
-func (a *lessonCheckerAdapter) GetLessonForAttendance(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, bool, error) {
-	return a.repo.GetLessonForAttendance(ctx, lessonID)
-}
-
-type enrollmentCheckerAdapter struct {
-	repo *enrollment.Repository
-}
-
-func (a *enrollmentCheckerAdapter) IsStudentEnrolled(ctx context.Context, studentID, offeringID uuid.UUID) (bool, error) {
-	return a.repo.IsEnrolled(ctx, offeringID, studentID)
-}
-
-func (a *enrollmentCheckerAdapter) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
-	return a.repo.GetEnrolledStudentIDs(ctx, offeringID)
-}
-
-type courseCheckerAdapter struct {
-	courseRepo     *course.Repository
-	enrollmentRepo *enrollment.Repository
-}
-
-func (a *courseCheckerAdapter) GetTeacherRole(ctx context.Context, offeringID, userID uuid.UUID) (string, error) {
-	return a.courseRepo.GetTeacherRole(ctx, offeringID, userID)
-}
-
-func (a *courseCheckerAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	return a.enrollmentRepo.IsEnrolled(ctx, offeringID, studentID)
-}
-
-type qaOfferingCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *qaOfferingCheckerAdapter) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.OfferingExists(ctx, id)
-}
-
-type enrollmentOfferingCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *enrollmentOfferingCheckerAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.OfferingExists(ctx, id)
-}
-
-func (a *enrollmentOfferingCheckerAdapter) GetOffering(ctx context.Context, id uuid.UUID) (*enrollment.OfferingInfo, error) {
-	o, err := a.repo.GetOffering(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return &enrollment.OfferingInfo{
-		ID:         o.ID,
-		CourseID:   o.CourseID,
-		SemesterID: o.SemesterID,
-		CohortYear: o.CohortYear,
-		Shift:      o.Shift,
-	}, nil
-}
-
-func (a *enrollmentOfferingCheckerAdapter) GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]enrollment.OfferingInfo, error) {
-	offerings, err := a.repo.GetOfferingsByCourseCodeAndCohort(ctx, departmentID, code, cohortYear, shift)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]enrollment.OfferingInfo, len(offerings))
-	for i, o := range offerings {
-		result[i] = enrollment.OfferingInfo{
-			ID:         o.ID,
-			CourseID:   o.CourseID,
-			SemesterID: o.SemesterID,
-			CohortYear: o.CohortYear,
-			Shift:      o.Shift,
-		}
-	}
-	return result, nil
-}
-
-type enrollmentCourseCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *enrollmentCourseCheckerAdapter) GetCourse(ctx context.Context, id uuid.UUID) (*enrollment.CourseInfo, error) {
-	c, err := a.repo.GetCourse(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return &enrollment.CourseInfo{
-		ID:           c.ID,
-		DepartmentID: c.DepartmentID,
-		Code:         c.Code,
-	}, nil
-}
-
-// Student package adapters
-
-type studentProgramProviderAdapter struct {
-	repo *university.Repository
-}
-
-func (a *studentProgramProviderAdapter) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.ProgramExists(ctx, id)
-}
-
-func (a *studentProgramProviderAdapter) GetProgramTotalCredits(ctx context.Context, id uuid.UUID) (int, error) {
-	return a.repo.GetProgramTotalCredits(ctx, id)
-}
-
-type studentEnrollmentManagerAdapter struct {
-	repo *enrollment.Repository
-}
-
-func (a *studentEnrollmentManagerAdapter) WithdrawEnrollmentsForLeave(ctx context.Context, studentID uuid.UUID, semesterIDs []uuid.UUID) error {
-	return a.repo.WithdrawEnrollmentsForLeave(ctx, studentID, semesterIDs)
-}
-
-// Academic package adapters
-
-type academicStudentProviderAdapter struct {
-	repo *student.Repository
-}
-
-func (a *academicStudentProviderAdapter) GetActiveStudents(ctx context.Context, programID *uuid.UUID, cohortYear *int) ([]academic.StudentInfo, error) {
-	return a.repo.GetActiveStudentsForAcademic(ctx, programID, cohortYear)
-}
-
-func (a *academicStudentProviderAdapter) GetStudentsByProgram(ctx context.Context, programID uuid.UUID) ([]academic.StudentInfo, error) {
-	return a.repo.GetStudentsByProgramForAcademic(ctx, programID)
-}
-
-func (a *academicStudentProviderAdapter) GetStudentsInSemester(ctx context.Context, semesterID uuid.UUID) ([]academic.StudentInfo, error) {
-	return a.repo.GetStudentsInSemesterForAcademic(ctx, semesterID)
-}
-
-func (a *academicStudentProviderAdapter) UpdateStudentProgression(ctx context.Context, studentID uuid.UUID, currentYear, cohortYear int) error {
-	return a.repo.UpdateStudentProgression(ctx, studentID, currentYear, cohortYear)
-}
-
-func (a *academicStudentProviderAdapter) RecordCohortChange(ctx context.Context, studentID uuid.UUID, fromCohort, toCohort, fromYear, toYear int, reason string) error {
-	return a.repo.RecordCohortChangeForAcademic(ctx, studentID, fromCohort, toCohort, fromYear, toYear, reason)
-}
-
-type academicCourseProviderAdapter struct {
-	courseRepo     *course.Repository
-	enrollmentRepo *enrollment.Repository
-}
-
-func (a *academicCourseProviderAdapter) GetCourse(ctx context.Context, id uuid.UUID) (*academic.CourseInfo, error) {
-	c, err := a.courseRepo.GetCourse(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return &academic.CourseInfo{
-		ID:           c.ID,
-		DepartmentID: c.DepartmentID,
-		Code:         c.Code,
-		NameEN:       c.NameEN,
-		Credits:      c.Credits,
-		Requires:     c.Requires,
-	}, nil
-}
-
-func (a *academicCourseProviderAdapter) GetCoursePrerequisite(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error) {
-	c, err := a.courseRepo.GetCourse(ctx, courseID)
-	if err != nil {
-		return nil, err
-	}
-	return c.Requires, nil
-}
-
-func (a *academicCourseProviderAdapter) GetPassedCourseIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
-	return a.enrollmentRepo.GetPassedCourseIDs(ctx, studentID)
-}
-
-func (a *academicCourseProviderAdapter) CourseExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.courseRepo.CourseExists(ctx, id)
-}
-
-func (a *academicCourseProviderAdapter) ProgramExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.courseRepo.ProgramExists(ctx, id)
-}
-
-type academicOfferingProviderAdapter struct {
-	repo *course.Repository
-}
-
-func (a *academicOfferingProviderAdapter) CreateOffering(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (uuid.UUID, error) {
-	o := &course.Offering{
-		CourseID:   courseID,
-		SemesterID: semesterID,
-		CohortYear: cohortYear,
-		Shift:      shift,
-	}
-	if err := a.repo.CreateOffering(ctx, o); err != nil {
-		return uuid.Nil, err
-	}
-	return o.ID, nil
-}
-
-func (a *academicOfferingProviderAdapter) GetOfferingID(ctx context.Context, courseID, semesterID uuid.UUID, cohortYear int, shift string) (*uuid.UUID, error) {
-	return a.repo.GetOfferingID(ctx, courseID, semesterID, cohortYear, shift)
-}
-
-func (a *academicOfferingProviderAdapter) GetOfferingsBySemester(ctx context.Context, semesterID uuid.UUID, cohortYear int, shift string) ([]academic.OfferingInfo, error) {
-	offerings, err := a.repo.GetOfferingsBySemester(ctx, semesterID, cohortYear, shift)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]academic.OfferingInfo, len(offerings))
-	for i, o := range offerings {
-		result[i] = academic.OfferingInfo{
-			ID:       o.ID,
-			CourseID: o.CourseID,
-		}
-	}
-	return result, nil
-}
-
-func (a *academicOfferingProviderAdapter) CountUnfinalizedOfferings(ctx context.Context, semesterID uuid.UUID) (int, error) {
-	return a.repo.CountUnfinalizedOfferings(ctx, semesterID)
-}
-
-type academicEnrollmentProviderAdapter struct {
-	repo *enrollment.Repository
-}
-
-func (a *academicEnrollmentProviderAdapter) CreateEnrollment(ctx context.Context, offeringID, studentID uuid.UUID, enrollmentType string) error {
-	e := &enrollment.Enrollment{
-		OfferingID:     offeringID,
-		StudentID:      studentID,
-		EnrollmentType: enrollmentType,
-		Status:         enrollment.EnrollmentStatusEnrolled,
-	}
-	return a.repo.CreateEnrollment(ctx, e)
-}
-
-func (a *academicEnrollmentProviderAdapter) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	return a.repo.IsEnrolled(ctx, offeringID, studentID)
-}
-
-func (a *academicEnrollmentProviderAdapter) HasApprovedPretake(ctx context.Context, studentID, courseID, semesterID uuid.UUID) (bool, error) {
-	return a.repo.HasApprovedRequest(ctx, studentID, courseID, semesterID, "pretake")
-}
-
-func (a *academicEnrollmentProviderAdapter) WasFailed(ctx context.Context, studentID, courseID uuid.UUID) (bool, error) {
-	return a.repo.WasFailed(ctx, studentID, courseID)
-}
-
-func (a *academicEnrollmentProviderAdapter) SumCredits(ctx context.Context, studentID, semesterID uuid.UUID, status string) (int, error) {
-	return a.repo.SumCredits(ctx, studentID, semesterID, status)
-}
-
-func (a *academicEnrollmentProviderAdapter) GetApprovedRetakeRequests(ctx context.Context, studentID, semesterID uuid.UUID) ([]academic.RetakeRequestInfo, error) {
-	courseIDs, err := a.repo.GetApprovedRetakeRequests(ctx, studentID, semesterID)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]academic.RetakeRequestInfo, len(courseIDs))
-	for i, id := range courseIDs {
-		result[i] = academic.RetakeRequestInfo{CourseID: id}
-	}
-	return result, nil
-}
-
-type academicSettingsProviderAdapter struct {
-	db *sqlx.DB
-}
-
-func (a *academicSettingsProviderAdapter) GetFullYearRepeat(ctx context.Context) (bool, error) {
-	var settings struct {
-		FullYearRepeat bool `db:"full_year_repeat"`
-	}
-	query := `SELECT (settings->>'full_year_repeat')::boolean as full_year_repeat FROM settings LIMIT 1`
-	if err := a.db.GetContext(ctx, &settings, query); err != nil {
-		return false, nil
-	}
-	return settings.FullYearRepeat, nil
-}
-
-// Grading package adapters
-
-type gradingTeacherCheckerAdapter struct {
-	repo *course.Repository
-}
-
-func (a *gradingTeacherCheckerAdapter) IsTeacher(offeringID, userID uuid.UUID) (bool, error) {
-	role, err := a.repo.GetTeacherRole(context.Background(), offeringID, userID)
-	if err != nil {
-		return false, err
-	}
-	return role == "teacher", nil
-}
-
-type gradingOfferingAdapter struct {
-	repo *grading.Repository
-}
-
-func (a *gradingOfferingAdapter) OfferingExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return a.repo.OfferingExists(ctx, id)
-}
-
-func (a *gradingOfferingAdapter) GetSemesterStatus(ctx context.Context, offeringID uuid.UUID) (string, error) {
-	return a.repo.GetSemesterStatus(ctx, offeringID)
-}
-
-func (a *gradingOfferingAdapter) GetPassThreshold(ctx context.Context, offeringID uuid.UUID) (int, error) {
-	return a.repo.GetPassThreshold(ctx, offeringID)
-}
-
-type gradingExamScoreAdapter struct {
-	repo *grading.Repository
-}
-
-func (a *gradingExamScoreAdapter) GetStudentExamScores(ctx context.Context, studentID uuid.UUID, examIDs []uuid.UUID) (map[uuid.UUID]grading.ExamScore, error) {
-	return a.repo.GetStudentExamScores(ctx, studentID, examIDs)
-}
-
-func (a *gradingExamScoreAdapter) ExamsBelongToOffering(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
-	return a.repo.ExamsBelongToOffering(ctx, offeringID, examIDs)
-}
-
-func (a *gradingExamScoreAdapter) HasUngradedAttempts(ctx context.Context, offeringID uuid.UUID, examIDs []uuid.UUID) (bool, error) {
-	return a.repo.HasUngradedExamAttempts(ctx, offeringID, examIDs)
-}
-
-type gradingAssignmentScoreAdapter struct {
-	repo *grading.Repository
-}
-
-func (a *gradingAssignmentScoreAdapter) GetStudentAssignmentAverage(ctx context.Context, studentID, offeringID uuid.UUID) (float64, bool, error) {
-	return a.repo.GetStudentAssignmentAverage(ctx, studentID, offeringID)
-}
-
-func (a *gradingAssignmentScoreAdapter) HasUngradedSubmissions(ctx context.Context, offeringID uuid.UUID) (bool, error) {
-	return a.repo.HasUngradedAssignments(ctx, offeringID)
-}
-
-type gradingAttendanceAdapter struct {
-	repo *grading.Repository
-}
-
-func (a *gradingAttendanceAdapter) GetStudentAttendanceRate(ctx context.Context, studentID, offeringID uuid.UUID) (float64, error) {
-	return a.repo.GetStudentAttendanceRate(ctx, studentID, offeringID)
-}
-
-type gradingEnrollmentAdapter struct {
-	repo *grading.Repository
-}
-
-func (a *gradingEnrollmentAdapter) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
-	return a.repo.GetEnrolledStudentIDs(ctx, offeringID)
-}
-
-func (a *gradingEnrollmentAdapter) GetStudentGrades(ctx context.Context, offeringID uuid.UUID) ([]grading.StudentGrade, error) {
-	return a.repo.GetStudentGrades(ctx, offeringID)
-}
-
-func (a *gradingEnrollmentAdapter) UpdateEnrollmentGrade(ctx context.Context, offeringID, studentID uuid.UUID, grade float64, status string) error {
-	return a.repo.UpdateEnrollmentGrade(ctx, offeringID, studentID, grade, status)
-}
-
-func (a *gradingEnrollmentAdapter) ClearEnrollmentGrades(ctx context.Context, offeringID uuid.UUID) error {
-	return a.repo.ClearEnrollmentGrades(ctx, offeringID)
-}
-
-func (a *gradingEnrollmentAdapter) IsOfferingFinalized(ctx context.Context, offeringID uuid.UUID) (bool, error) {
-	return a.repo.IsOfferingFinalized(ctx, offeringID)
 }

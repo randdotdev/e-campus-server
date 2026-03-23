@@ -77,6 +77,19 @@ type EnrollmentResponse struct {
 	FinalGrade     *float64   `json:"final_grade,omitempty"`
 }
 
+type MyEnrollmentResponse struct {
+	ID             uuid.UUID  `json:"id"`
+	OfferingID     uuid.UUID  `json:"offering_id"`
+	CourseName     string     `json:"course_name"`
+	CourseCode     string     `json:"course_code"`
+	SemesterName   string     `json:"semester_name"`
+	EnrollmentType string     `json:"enrollment_type"`
+	Status         string     `json:"status"`
+	EnrolledAt     time.Time  `json:"enrolled_at"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	FinalGrade     *float64   `json:"final_grade,omitempty"`
+}
+
 type RequestResponse struct {
 	ID              uuid.UUID  `json:"id"`
 	Type            string     `json:"type"`
@@ -134,6 +147,29 @@ func ToEnrollmentsResponse(enrollments []Enrollment) []EnrollmentResponse {
 	result := make([]EnrollmentResponse, len(enrollments))
 	for i := range enrollments {
 		result[i] = ToEnrollmentResponse(&enrollments[i])
+	}
+	return result
+}
+
+func ToMyEnrollmentResponse(e *MyEnrollment) MyEnrollmentResponse {
+	return MyEnrollmentResponse{
+		ID:             e.ID,
+		OfferingID:     e.OfferingID,
+		CourseName:     e.CourseName,
+		CourseCode:     e.CourseCode,
+		SemesterName:   e.SemesterName,
+		EnrollmentType: e.EnrollmentType,
+		Status:         e.Status,
+		EnrolledAt:     e.EnrolledAt,
+		CompletedAt:    e.CompletedAt,
+		FinalGrade:     e.FinalGrade,
+	}
+}
+
+func ToMyEnrollmentsResponse(enrollments []MyEnrollment) []MyEnrollmentResponse {
+	result := make([]MyEnrollmentResponse, len(enrollments))
+	for i := range enrollments {
+		result[i] = ToMyEnrollmentResponse(&enrollments[i])
 	}
 	return result
 }
