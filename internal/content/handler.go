@@ -314,11 +314,11 @@ func (h *Handler) AddSchedule(c *gin.Context) {
 		return
 	}
 
-	schedule, err := h.service.AddSchedule(c.Request.Context(), lessonID, req.GroupID, req.ScheduledAt, req.Room)
+	schedule, err := h.service.AddSchedule(c.Request.Context(), lessonID, req.CohortGroupID, req.ScheduledAt, req.Room)
 	if errors.Is(err, ErrLessonNotFound) {
 		response.NotFound(c, "lesson not found")
 	} else if errors.Is(err, ErrGroupNotFound) {
-		response.NotFound(c, "group not found")
+		response.NotFound(c, "cohort group not found")
 	} else if errors.Is(err, ErrDuplicateSchedule) {
 		response.Conflict(c, "schedule for this group already exists")
 	} else if err != nil {

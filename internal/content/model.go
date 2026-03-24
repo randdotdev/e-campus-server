@@ -41,12 +41,12 @@ type LessonAttachment struct {
 }
 
 type LessonSchedule struct {
-	ID          uuid.UUID `db:"id"`
-	LessonID    uuid.UUID `db:"lesson_id"`
-	GroupID     uuid.UUID `db:"group_id"`
-	ScheduledAt time.Time `db:"scheduled_at"`
-	Room        *string   `db:"room"`
-	CreatedAt   time.Time `db:"created_at"`
+	ID            uuid.UUID `db:"id"`
+	LessonID      uuid.UUID `db:"lesson_id"`
+	CohortGroupID uuid.UUID `db:"cohort_group_id"`
+	ScheduledAt   time.Time `db:"scheduled_at"`
+	Room          *string   `db:"room"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 type LessonWithMeta struct {
@@ -61,12 +61,12 @@ type AttachmentInfo struct {
 }
 
 type ScheduleInfo struct {
-	GroupID     uuid.UUID `db:"group_id"`
-	GroupName   string    `db:"group_name"`
-	GroupType   string    `db:"group_type"`
-	ScheduledAt time.Time `db:"scheduled_at"`
-	Room        *string   `db:"room"`
-	IsMine      bool      `db:"-"`
+	CohortGroupID uuid.UUID `db:"cohort_group_id"`
+	GroupName     string    `db:"group_name"`
+	GroupType     string    `db:"group_type"`
+	ScheduledAt   time.Time `db:"scheduled_at"`
+	Room          *string   `db:"room"`
+	IsMine        bool      `db:"-"`
 }
 
 type CalendarEntry struct {

@@ -148,13 +148,6 @@ func run() error {
 	filesHandler := files.NewHandler(filesService, log)
 
 	contentRepo := content.NewRepository(db)
-	contentService := content.NewService(
-		contentRepo,
-		courseRepo,
-		courseRepo,
-		filesRepo,
-	)
-	contentHandler := content.NewHandler(contentService, log)
 
 	enrollmentRepo := enrollment.NewRepository(db)
 
@@ -232,6 +225,14 @@ func run() error {
 	)
 	enrollmentHandler := enrollment.NewHandler(enrollmentService, log)
 
+	contentService := content.NewService(
+		contentRepo,
+		courseRepo,
+		enrollmentService,
+		filesRepo,
+	)
+	contentHandler := content.NewHandler(contentService, log)
+
 	studentRepo := student.NewRepository(db)
 	studentService := student.NewService(
 		studentRepo,
@@ -251,6 +252,7 @@ func run() error {
 		courseRepo,
 		courseRepo,
 		enrollmentRepo,
+		enrollmentService,
 		settingsRepo,
 	)
 	academicHandler := academic.NewHandler(academicService, log)

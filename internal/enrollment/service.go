@@ -33,10 +33,12 @@ type EnrollmentRepository interface {
 	CreateCohortGroup(ctx context.Context, g *CohortGroup) error
 	GetCohortGroupByID(ctx context.Context, id uuid.UUID) (*CohortGroup, error)
 	ListCohortGroups(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroup, error)
+	ListCohortGroupsWithCounts(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroupWithCount, error)
 	DeleteCohortGroup(ctx context.Context, id uuid.UUID) error
 	CohortGroupExists(ctx context.Context, id uuid.UUID) (bool, error)
 	AssignToCohortGroup(ctx context.Context, m *StudentCohortGroup) error
 	RemoveFromCohortGroup(ctx context.Context, studentID, groupID uuid.UUID) error
+	RemoveAllStudentCohortGroups(ctx context.Context, studentID uuid.UUID) error
 	GetStudentCohortGroupIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 
 	// Request operations (pretake/retake)
@@ -300,8 +302,63 @@ func (s *Service) GetStudentCohortGroupIDs(ctx context.Context, studentID uuid.U
 	return s.repo.GetStudentCohortGroupIDs(ctx, studentID)
 }
 
+func (s *Service) CohortGroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return s.repo.CohortGroupExists(ctx, id)
+}
+
 func (s *Service) RemoveFromCohortGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
 	return s.repo.RemoveFromCohortGroup(ctx, studentID, groupID)
+}
+
+// ReassignCohortGroups removes all current cohort group memberships and assigns
+// the student to the smallest theory and practice groups in the new cohort.
+func (s *Service) ReassignCohortGroups(ctx context.Context, studentID, programID uuid.UUID, newCohortYear, stage int) error {
+	// Remove all existing cohort group memberships
+	if err := s.repo.RemoveAllStudentCohortGroups(ctx, studentID); err != nil {
+		return err
+	}
+
+	// Get all groups for the new cohort with member counts (sorted by type, then count)
+	groups, err := s.repo.ListCohortGroupsWithCounts(ctx, programID, newCohortYear, stage)
+	if err != nil {
+		return err
+	}
+
+	// Find smallest group for each type (theory and practice)
+	var smallestTheory, smallestPractice *CohortGroupWithCount
+	for i := range groups {
+		g := &groups[i]
+		if g.Type == GroupTypeTheory && smallestTheory == nil {
+			smallestTheory = g
+		}
+		if g.Type == GroupTypePractice && smallestPractice == nil {
+			smallestPractice = g
+		}
+	}
+
+	// Assign to smallest theory group if exists
+	if smallestTheory != nil {
+		member := &StudentCohortGroup{
+			StudentID:     studentID,
+			CohortGroupID: smallestTheory.ID,
+		}
+		if err := s.repo.AssignToCohortGroup(ctx, member); err != nil {
+			return err
+		}
+	}
+
+	// Assign to smallest practice group if exists
+	if smallestPractice != nil {
+		member := &StudentCohortGroup{
+			StudentID:     studentID,
+			CohortGroupID: smallestPractice.ID,
+		}
+		if err := s.repo.AssignToCohortGroup(ctx, member); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Request operations (pretake/retake)

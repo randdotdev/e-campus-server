@@ -238,19 +238,19 @@ func (r *Repository) ProjectGroupExists(ctx context.Context, id uuid.UUID) (bool
 }
 
 func (r *Repository) AssignToProjectGroup(ctx context.Context, m *ProjectGroupMember) error {
-	query := `INSERT INTO project_group_members (student_id, group_id) VALUES ($1, $2) RETURNING id, assigned_at`
+	query := `INSERT INTO project_group_members (student_id, project_group_id) VALUES ($1, $2) RETURNING id, assigned_at`
 	return r.db.QueryRowxContext(ctx, query, m.StudentID, m.ProjectGroupID).Scan(&m.ID, &m.AssignedAt)
 }
 
 func (r *Repository) RemoveFromProjectGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM project_group_members WHERE student_id = $1 AND group_id = $2`, studentID, groupID)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM project_group_members WHERE student_id = $1 AND project_group_id = $2`, studentID, groupID)
 	return err
 }
 
 func (r *Repository) GetStudentProjectGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	query := `SELECT pgm.group_id FROM project_group_members pgm
-		JOIN project_groups pg ON pg.id = pgm.group_id
+	query := `SELECT pgm.project_group_id FROM project_group_members pgm
+		JOIN project_groups pg ON pg.id = pgm.project_group_id
 		WHERE pgm.student_id = $1 AND pg.offering_id = $2`
 	err := r.db.SelectContext(ctx, &ids, query, studentID, offeringID)
 	return ids, err
@@ -305,6 +305,23 @@ func (r *Repository) GetStudentCohortGroupIDs(ctx context.Context, studentID uui
 	query := `SELECT cohort_group_id FROM student_cohort_groups WHERE student_id = $1`
 	err := r.db.SelectContext(ctx, &ids, query, studentID)
 	return ids, err
+}
+
+func (r *Repository) ListCohortGroupsWithCounts(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroupWithCount, error) {
+	var groups []CohortGroupWithCount
+	query := `
+		SELECT cg.id, cg.program_id, cg.cohort_year, cg.stage, cg.type, cg.name, cg.created_at,
+			COALESCE((SELECT COUNT(*) FROM student_cohort_groups WHERE cohort_group_id = cg.id), 0) as member_count
+		FROM cohort_groups cg
+		WHERE cg.program_id = $1 AND cg.cohort_year = $2 AND cg.stage = $3
+		ORDER BY cg.type, member_count ASC, cg.name`
+	err := r.db.SelectContext(ctx, &groups, query, programID, cohortYear, stage)
+	return groups, err
+}
+
+func (r *Repository) RemoveAllStudentCohortGroups(ctx context.Context, studentID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM student_cohort_groups WHERE student_id = $1`, studentID)
+	return err
 }
 
 // Request operations (pretake/retake)

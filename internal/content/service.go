@@ -48,9 +48,9 @@ type OfferingChecker interface {
 	OfferingExists(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
-type GroupChecker interface {
-	GroupExists(ctx context.Context, id uuid.UUID) (bool, error)
-	GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error)
+type CohortGroupChecker interface {
+	CohortGroupExists(ctx context.Context, id uuid.UUID) (bool, error)
+	GetStudentCohortGroupIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type StoredFileChecker interface {
@@ -58,18 +58,18 @@ type StoredFileChecker interface {
 }
 
 type Service struct {
-	repo     ContentRepository
-	offering OfferingChecker
-	group    GroupChecker
-	file     StoredFileChecker
+	repo        ContentRepository
+	offering    OfferingChecker
+	cohortGroup CohortGroupChecker
+	file        StoredFileChecker
 }
 
-func NewService(repo ContentRepository, offering OfferingChecker, group GroupChecker, file StoredFileChecker) *Service {
+func NewService(repo ContentRepository, offering OfferingChecker, cohortGroup CohortGroupChecker, file StoredFileChecker) *Service {
 	return &Service{
-		repo:     repo,
-		offering: offering,
-		group:    group,
-		file:     file,
+		repo:        repo,
+		offering:    offering,
+		cohortGroup: cohortGroup,
+		file:        file,
 	}
 }
 
@@ -207,11 +207,7 @@ func (s *Service) GetLessonWithMeta(ctx context.Context, id uuid.UUID, studentID
 	}
 
 	if studentID != nil {
-		section, err := s.repo.GetSectionByID(ctx, lesson.SectionID)
-		if err != nil {
-			return nil, err
-		}
-		groupIDs, err := s.group.GetStudentGroupIDs(ctx, *studentID, section.OfferingID)
+		groupIDs, err := s.cohortGroup.GetStudentCohortGroupIDs(ctx, *studentID)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +333,7 @@ func (s *Service) AddSchedule(ctx context.Context, lessonID, groupID uuid.UUID, 
 		return nil, ErrLessonNotFound
 	}
 
-	exists, err := s.group.GroupExists(ctx, groupID)
+	exists, err := s.cohortGroup.CohortGroupExists(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}

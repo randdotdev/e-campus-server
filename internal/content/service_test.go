@@ -222,7 +222,7 @@ func (m *mockContentRepo) ListSchedules(ctx context.Context, lessonID uuid.UUID)
 	var result []ScheduleInfo
 	for _, s := range m.schedules {
 		if s.LessonID == lessonID {
-			result = append(result, ScheduleInfo{GroupID: s.GroupID, ScheduledAt: s.ScheduledAt, Room: s.Room})
+			result = append(result, ScheduleInfo{CohortGroupID: s.CohortGroupID, ScheduledAt: s.ScheduledAt, Room: s.Room})
 		}
 	}
 	return result, nil
@@ -260,17 +260,17 @@ func (m *mockOfferingChecker) OfferingExists(ctx context.Context, id uuid.UUID) 
 	return m.exists, m.err
 }
 
-type mockGroupChecker struct {
+type mockCohortGroupChecker struct {
 	exists   bool
 	groupIDs []uuid.UUID
 	err      error
 }
 
-func (m *mockGroupChecker) GroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
+func (m *mockCohortGroupChecker) CohortGroupExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	return m.exists, m.err
 }
 
-func (m *mockGroupChecker) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
+func (m *mockCohortGroupChecker) GetStudentCohortGroupIDs(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error) {
 	return m.groupIDs, m.err
 }
 
@@ -500,7 +500,7 @@ func TestService_AddSchedule(t *testing.T) {
 		lessonID := uuid.New()
 		groupID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
-		group := &mockGroupChecker{exists: true}
+		group := &mockCohortGroupChecker{exists: true}
 		svc := NewService(repo, nil, group, nil)
 
 		scheduledAt := time.Now().Add(24 * time.Hour)
@@ -518,7 +518,7 @@ func TestService_AddSchedule(t *testing.T) {
 		repo := newMockContentRepo()
 		lessonID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
-		group := &mockGroupChecker{exists: false}
+		group := &mockCohortGroupChecker{exists: false}
 		svc := NewService(repo, nil, group, nil)
 
 		_, err := svc.AddSchedule(ctx, lessonID, uuid.New(), time.Now(), nil)
@@ -541,9 +541,9 @@ func TestService_GetLessonWithMeta(t *testing.T) {
 
 		repo.sections[sectionID] = &Section{ID: sectionID, OfferingID: offeringID}
 		repo.lessons[lessonID] = &Lesson{ID: lessonID, SectionID: sectionID, Title: "Intro"}
-		repo.schedules[uuid.New()] = &LessonSchedule{LessonID: lessonID, GroupID: groupID}
+		repo.schedules[uuid.New()] = &LessonSchedule{LessonID: lessonID, CohortGroupID: groupID}
 
-		group := &mockGroupChecker{groupIDs: []uuid.UUID{groupID}}
+		group := &mockCohortGroupChecker{groupIDs: []uuid.UUID{groupID}}
 		svc := NewService(repo, nil, group, nil)
 
 		lesson, err := svc.GetLessonWithMeta(ctx, lessonID, &studentID)

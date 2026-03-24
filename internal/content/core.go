@@ -73,14 +73,14 @@ func BuildLessonAttachment(lessonID, storedFileID, addedBy uuid.UUID, displayNam
 	}
 }
 
-func BuildLessonSchedule(lessonID, groupID uuid.UUID, scheduledAt time.Time, room *string) *LessonSchedule {
+func BuildLessonSchedule(lessonID, cohortGroupID uuid.UUID, scheduledAt time.Time, room *string) *LessonSchedule {
 	return &LessonSchedule{
-		ID:          uuid.New(),
-		LessonID:    lessonID,
-		GroupID:     groupID,
-		ScheduledAt: scheduledAt,
-		Room:        room,
-		CreatedAt:   time.Now(),
+		ID:            uuid.New(),
+		LessonID:      lessonID,
+		CohortGroupID: cohortGroupID,
+		ScheduledAt:   scheduledAt,
+		Room:          room,
+		CreatedAt:     time.Now(),
 	}
 }
 
@@ -92,7 +92,7 @@ func MarkSchedulesAsMine(schedules []ScheduleInfo, userGroupIDs []uuid.UUID) []S
 	result := make([]ScheduleInfo, len(schedules))
 	for i, s := range schedules {
 		result[i] = s
-		result[i].IsMine = groupSet[s.GroupID]
+		result[i].IsMine = groupSet[s.CohortGroupID]
 	}
 	return result
 }

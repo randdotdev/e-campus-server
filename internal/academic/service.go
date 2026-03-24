@@ -37,6 +37,10 @@ type StudentProvider interface {
 	RecordCohortChange(ctx context.Context, studentID uuid.UUID, fromCohort, toCohort, fromYear, toYear int, reason string) error
 }
 
+type CohortGroupProvider interface {
+	ReassignCohortGroups(ctx context.Context, studentID, programID uuid.UUID, newCohortYear, stage int) error
+}
+
 type StudentInfo struct {
 	ID                uuid.UUID
 	UserID            uuid.UUID
@@ -95,12 +99,13 @@ type SettingsProvider interface {
 }
 
 type Service struct {
-	repo       AcademicRepository
-	students   StudentProvider
-	courses    CourseProvider
-	offerings  OfferingProvider
-	enrollment EnrollmentProvider
-	settings   SettingsProvider
+	repo         AcademicRepository
+	students     StudentProvider
+	courses      CourseProvider
+	offerings    OfferingProvider
+	enrollment   EnrollmentProvider
+	cohortGroups CohortGroupProvider
+	settings     SettingsProvider
 }
 
 func NewService(
@@ -109,15 +114,17 @@ func NewService(
 	courses CourseProvider,
 	offerings OfferingProvider,
 	enrollment EnrollmentProvider,
+	cohortGroups CohortGroupProvider,
 	settings SettingsProvider,
 ) *Service {
 	return &Service{
-		repo:       repo,
-		students:   students,
-		courses:    courses,
-		offerings:  offerings,
-		enrollment: enrollment,
-		settings:   settings,
+		repo:         repo,
+		students:     students,
+		courses:      courses,
+		offerings:    offerings,
+		enrollment:   enrollment,
+		cohortGroups: cohortGroups,
+		settings:     settings,
 	}
 }
 
@@ -750,6 +757,10 @@ func (s *Service) processYearEnd(ctx context.Context, student StudentInfo, passe
 			return outcomeError
 		}
 		if err := s.students.RecordCohortChange(ctx, student.ID, student.CurrentCohortYear, newCohortYear, student.CurrentYear, student.CurrentYear, "failed"); err != nil {
+			return outcomeError
+		}
+		// Reassign cohort groups: remove from old groups and assign to smallest groups in new cohort
+		if err := s.cohortGroups.ReassignCohortGroups(ctx, student.ID, student.ProgramID, newCohortYear, student.CurrentYear); err != nil {
 			return outcomeError
 		}
 		return outcomeRepeated

@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS project_grades;
+DROP TABLE IF EXISTS project_submission_files;
+DROP TABLE IF EXISTS project_submissions;
+DROP TABLE IF EXISTS course_group_members;
+DROP TABLE IF EXISTS course_groups;
+DROP TABLE IF EXISTS project_registrations;
+DROP TABLE IF EXISTS project_attachments;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS team_members;
+DROP TABLE IF EXISTS teams;

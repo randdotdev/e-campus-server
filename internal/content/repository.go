@@ -178,15 +178,15 @@ func (r *Repository) CountAttachmentsByStoredFile(ctx context.Context, storedFil
 // Schedules
 
 func (r *Repository) CreateSchedule(ctx context.Context, s *LessonSchedule) error {
-	query := `INSERT INTO lesson_schedules (id, lesson_id, group_id, scheduled_at, room, created_at)
+	query := `INSERT INTO lesson_schedules (id, lesson_id, cohort_group_id, scheduled_at, room, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err := r.db.ExecContext(ctx, query, s.ID, s.LessonID, s.GroupID, s.ScheduledAt, s.Room, s.CreatedAt)
+	_, err := r.db.ExecContext(ctx, query, s.ID, s.LessonID, s.CohortGroupID, s.ScheduledAt, s.Room, s.CreatedAt)
 	return err
 }
 
 func (r *Repository) GetScheduleByID(ctx context.Context, id uuid.UUID) (*LessonSchedule, error) {
 	var s LessonSchedule
-	query := `SELECT id, lesson_id, group_id, scheduled_at, room, created_at FROM lesson_schedules WHERE id = $1`
+	query := `SELECT id, lesson_id, cohort_group_id, scheduled_at, room, created_at FROM lesson_schedules WHERE id = $1`
 	err := r.db.GetContext(ctx, &s, query, id)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -196,11 +196,11 @@ func (r *Repository) GetScheduleByID(ctx context.Context, id uuid.UUID) (*Lesson
 
 func (r *Repository) ListSchedules(ctx context.Context, lessonID uuid.UUID) ([]ScheduleInfo, error) {
 	var schedules []ScheduleInfo
-	query := `SELECT ls.group_id, g.name as group_name, g.type as group_type, ls.scheduled_at, ls.room
+	query := `SELECT ls.cohort_group_id, cg.name as group_name, cg.type as group_type, ls.scheduled_at, ls.room
 		FROM lesson_schedules ls
-		JOIN groups g ON g.id = ls.group_id
+		JOIN cohort_groups cg ON cg.id = ls.cohort_group_id
 		WHERE ls.lesson_id = $1
-		ORDER BY g.type, g.name`
+		ORDER BY cg.type, cg.name`
 	err := r.db.SelectContext(ctx, &schedules, query, lessonID)
 	return schedules, err
 }
@@ -231,15 +231,15 @@ func (r *Repository) GetClassesInRange(ctx context.Context, studentID uuid.UUID,
 			ls.scheduled_at,
 			l.duration_hours,
 			ls.room,
-			g.name as group_name
+			cg.name as group_name
 		FROM lessons l
 		JOIN sections s ON s.id = l.section_id
 		JOIN lesson_schedules ls ON ls.lesson_id = l.id
-		JOIN groups g ON g.id = ls.group_id
-		JOIN student_groups sg ON sg.group_id = g.id
+		JOIN cohort_groups cg ON cg.id = ls.cohort_group_id
+		JOIN student_cohort_groups scg ON scg.cohort_group_id = cg.id
 		JOIN course_offerings co ON co.id = s.offering_id
 		JOIN courses c ON c.id = co.course_id
-		WHERE sg.student_id = $1
+		WHERE scg.student_id = $1
 			AND ls.scheduled_at >= $2
 			AND ls.scheduled_at < $3
 		ORDER BY ls.scheduled_at`

@@ -68,6 +68,11 @@ type StudentCohortGroup struct {
 	AssignedAt    time.Time `db:"assigned_at"`
 }
 
+type CohortGroupWithCount struct {
+	CohortGroup
+	MemberCount int `db:"member_count"`
+}
+
 type ProjectGroup struct {
 	ID         uuid.UUID `db:"id"`
 	OfferingID uuid.UUID `db:"offering_id"`
@@ -79,7 +84,7 @@ type ProjectGroup struct {
 type ProjectGroupMember struct {
 	ID             uuid.UUID `db:"id"`
 	StudentID      uuid.UUID `db:"student_id"`
-	ProjectGroupID uuid.UUID `db:"group_id"`
+	ProjectGroupID uuid.UUID `db:"project_group_id"`
 	AssignedAt     time.Time `db:"assigned_at"`
 }
 

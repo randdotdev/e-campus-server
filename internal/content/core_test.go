@@ -168,11 +168,11 @@ func TestBuildLessonAttachment(t *testing.T) {
 
 func TestBuildLessonSchedule(t *testing.T) {
 	lessonID := uuid.New()
-	groupID := uuid.New()
+	cohortGroupID := uuid.New()
 	scheduledAt := time.Now().Add(24 * time.Hour)
 	room := "1030"
 
-	schedule := BuildLessonSchedule(lessonID, groupID, scheduledAt, &room)
+	schedule := BuildLessonSchedule(lessonID, cohortGroupID, scheduledAt, &room)
 
 	if schedule.ID == uuid.Nil {
 		t.Error("expected non-nil ID")
@@ -180,8 +180,8 @@ func TestBuildLessonSchedule(t *testing.T) {
 	if schedule.LessonID != lessonID {
 		t.Errorf("LessonID = %v, want %v", schedule.LessonID, lessonID)
 	}
-	if schedule.GroupID != groupID {
-		t.Errorf("GroupID = %v, want %v", schedule.GroupID, groupID)
+	if schedule.CohortGroupID != cohortGroupID {
+		t.Errorf("CohortGroupID = %v, want %v", schedule.CohortGroupID, cohortGroupID)
 	}
 	if !schedule.ScheduledAt.Equal(scheduledAt) {
 		t.Errorf("ScheduledAt = %v, want %v", schedule.ScheduledAt, scheduledAt)
@@ -197,9 +197,9 @@ func TestMarkSchedulesAsMine(t *testing.T) {
 	group3 := uuid.New()
 
 	schedules := []ScheduleInfo{
-		{GroupID: group1, GroupName: "A"},
-		{GroupID: group2, GroupName: "B"},
-		{GroupID: group3, GroupName: "C"},
+		{CohortGroupID: group1, GroupName: "A"},
+		{CohortGroupID: group2, GroupName: "B"},
+		{CohortGroupID: group3, GroupName: "C"},
 	}
 
 	userGroups := []uuid.UUID{group1, group3}

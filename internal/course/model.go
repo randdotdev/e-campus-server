@@ -71,10 +71,10 @@ type Group struct {
 }
 
 type StudentGroup struct {
-	ID         uuid.UUID `db:"id"`
-	StudentID  uuid.UUID `db:"student_id"`
-	GroupID    uuid.UUID `db:"group_id"`
-	AssignedAt time.Time `db:"assigned_at"`
+	ID             uuid.UUID `db:"id"`
+	StudentID      uuid.UUID `db:"student_id"`
+	ProjectGroupID uuid.UUID `db:"project_group_id"`
+	AssignedAt     time.Time `db:"assigned_at"`
 }
 
 const (

@@ -148,9 +148,9 @@ func ToAttachmentListResponse(attachments []AttachmentInfo) []AttachmentResponse
 // Schedule DTOs
 
 type AddScheduleRequest struct {
-	GroupID     uuid.UUID `json:"group_id" validate:"required"`
-	ScheduledAt time.Time `json:"scheduled_at" validate:"required"`
-	Room        *string   `json:"room" validate:"omitempty,max=100"`
+	CohortGroupID uuid.UUID `json:"cohort_group_id" validate:"required"`
+	ScheduledAt   time.Time `json:"scheduled_at" validate:"required"`
+	Room          *string   `json:"room" validate:"omitempty,max=100"`
 }
 
 type UpdateScheduleRequest struct {
@@ -159,12 +159,12 @@ type UpdateScheduleRequest struct {
 }
 
 type ScheduleResponse struct {
-	GroupID     uuid.UUID `json:"group_id"`
-	GroupName   string    `json:"group_name"`
-	GroupType   string    `json:"group_type"`
-	ScheduledAt time.Time `json:"scheduled_at"`
-	Room        *string   `json:"room,omitempty"`
-	IsMine      bool      `json:"is_mine"`
+	CohortGroupID uuid.UUID `json:"cohort_group_id"`
+	GroupName     string    `json:"group_name"`
+	GroupType     string    `json:"group_type"`
+	ScheduledAt   time.Time `json:"scheduled_at"`
+	Room          *string   `json:"room,omitempty"`
+	IsMine        bool      `json:"is_mine"`
 }
 
 func ToScheduleResponse(s ScheduleInfo) ScheduleResponse {

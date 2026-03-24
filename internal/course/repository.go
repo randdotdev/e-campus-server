@@ -30,7 +30,6 @@ type Repository struct {
 
 var (
 	_ content.OfferingChecker    = (*Repository)(nil)
-	_ content.GroupChecker       = (*Repository)(nil)
 	_ qa.OfferingChecker         = (*Repository)(nil)
 	_ grading.TeacherChecker     = (*Repository)(nil)
 	_ assignment.TeacherChecker  = (*Repository)(nil)
@@ -513,23 +512,14 @@ func (r *Repository) GroupExists(ctx context.Context, id uuid.UUID) (bool, error
 }
 
 func (r *Repository) AssignStudentToGroup(ctx context.Context, sg *StudentGroup) error {
-	query := `INSERT INTO project_group_members (id, student_id, group_id, assigned_at) VALUES ($1, $2, $3, $4)`
-	_, err := r.db.ExecContext(ctx, query, sg.ID, sg.StudentID, sg.GroupID, sg.AssignedAt)
+	query := `INSERT INTO project_group_members (id, student_id, project_group_id, assigned_at) VALUES ($1, $2, $3, $4)`
+	_, err := r.db.ExecContext(ctx, query, sg.ID, sg.StudentID, sg.ProjectGroupID, sg.AssignedAt)
 	return err
 }
 
 func (r *Repository) RemoveStudentFromGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM project_group_members WHERE student_id = $1 AND group_id = $2`, studentID, groupID)
+	_, err := r.db.ExecContext(ctx, `DELETE FROM project_group_members WHERE student_id = $1 AND project_group_id = $2`, studentID, groupID)
 	return err
-}
-
-func (r *Repository) GetStudentGroupIDs(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error) {
-	var ids []uuid.UUID
-	query := `SELECT pgm.group_id FROM project_group_members pgm
-		JOIN project_groups pg ON pg.id = pgm.group_id
-		WHERE pgm.student_id = $1 AND pg.offering_id = $2`
-	err := r.db.SelectContext(ctx, &ids, query, studentID, offeringID)
-	return ids, err
 }
 
 func (r *Repository) CourseExists(ctx context.Context, id uuid.UUID) (bool, error) {

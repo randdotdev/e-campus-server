@@ -31,14 +31,16 @@ type mockRepo struct {
 	getStudentProjectGroupIDsFunc func(ctx context.Context, studentID, offeringID uuid.UUID) ([]uuid.UUID, error)
 
 	// Cohort group operations (stubbed)
-	createCohortGroupFunc        func(ctx context.Context, g *CohortGroup) error
-	getCohortGroupByIDFunc       func(ctx context.Context, id uuid.UUID) (*CohortGroup, error)
-	listCohortGroupsFunc         func(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroup, error)
-	deleteCohortGroupFunc        func(ctx context.Context, id uuid.UUID) error
-	cohortGroupExistsFunc        func(ctx context.Context, id uuid.UUID) (bool, error)
-	assignToCohortGroupFunc      func(ctx context.Context, m *StudentCohortGroup) error
-	removeFromCohortGroupFunc    func(ctx context.Context, studentID, groupID uuid.UUID) error
-	getStudentCohortGroupIDsFunc func(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
+	createCohortGroupFunc            func(ctx context.Context, g *CohortGroup) error
+	getCohortGroupByIDFunc           func(ctx context.Context, id uuid.UUID) (*CohortGroup, error)
+	listCohortGroupsFunc             func(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroup, error)
+	listCohortGroupsWithCountsFunc   func(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroupWithCount, error)
+	deleteCohortGroupFunc            func(ctx context.Context, id uuid.UUID) error
+	cohortGroupExistsFunc            func(ctx context.Context, id uuid.UUID) (bool, error)
+	assignToCohortGroupFunc          func(ctx context.Context, m *StudentCohortGroup) error
+	removeFromCohortGroupFunc        func(ctx context.Context, studentID, groupID uuid.UUID) error
+	removeAllStudentCohortGroupsFunc func(ctx context.Context, studentID uuid.UUID) error
+	getStudentCohortGroupIDsFunc     func(ctx context.Context, studentID uuid.UUID) ([]uuid.UUID, error)
 
 	// Request operations
 	createRequestFunc      func(ctx context.Context, req *Request) error
@@ -237,6 +239,20 @@ func (m *mockRepo) GetStudentCohortGroupIDs(ctx context.Context, studentID uuid.
 		return m.getStudentCohortGroupIDsFunc(ctx, studentID)
 	}
 	return []uuid.UUID{}, nil
+}
+
+func (m *mockRepo) ListCohortGroupsWithCounts(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroupWithCount, error) {
+	if m.listCohortGroupsWithCountsFunc != nil {
+		return m.listCohortGroupsWithCountsFunc(ctx, programID, cohortYear, stage)
+	}
+	return []CohortGroupWithCount{}, nil
+}
+
+func (m *mockRepo) RemoveAllStudentCohortGroups(ctx context.Context, studentID uuid.UUID) error {
+	if m.removeAllStudentCohortGroupsFunc != nil {
+		return m.removeAllStudentCohortGroupsFunc(ctx, studentID)
+	}
+	return nil
 }
 
 // Request operations
