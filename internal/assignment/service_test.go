@@ -201,7 +201,7 @@ func (m *mockCourseChecker) setEnrolled(offeringID, studentID uuid.UUID) {
 func TestCreateAssignment(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	userID := uuid.New()
@@ -232,7 +232,7 @@ func TestCreateAssignment(t *testing.T) {
 func TestCreateSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -266,7 +266,7 @@ func TestCreateSubmission(t *testing.T) {
 func TestCreateSubmissionNotEnrolled(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -292,7 +292,7 @@ func TestCreateSubmissionNotEnrolled(t *testing.T) {
 func TestCreateSubmissionNotPublished(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -318,7 +318,7 @@ func TestCreateSubmissionNotPublished(t *testing.T) {
 func TestSubmitSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -351,7 +351,7 @@ func TestSubmitSubmission(t *testing.T) {
 func TestSubmitSubmissionClosed(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -387,7 +387,7 @@ func TestSubmitSubmissionClosed(t *testing.T) {
 func TestSubmitSubmissionAllowLate(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -427,7 +427,7 @@ func TestSubmitSubmissionAllowLate(t *testing.T) {
 func TestDeleteSubmissionDraft(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	studentID := uuid.New()
 
@@ -453,7 +453,7 @@ func TestDeleteSubmissionDraft(t *testing.T) {
 func TestDeleteSubmissionNotDraft(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	studentID := uuid.New()
 	submittedAt := time.Now()
@@ -476,7 +476,7 @@ func TestDeleteSubmissionNotDraft(t *testing.T) {
 func TestGradeSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	graderID := uuid.New()
 	submittedAt := time.Now()
@@ -516,7 +516,7 @@ func TestGradeSubmission(t *testing.T) {
 func TestGradeSubmissionInvalidScore(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	a := &Assignment{
 		ID:       uuid.New(),
@@ -541,7 +541,7 @@ func TestGradeSubmissionInvalidScore(t *testing.T) {
 func TestIsTeacher(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()
@@ -574,7 +574,7 @@ func TestIsTeacher(t *testing.T) {
 func TestIsTeacherOrAssistant(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course)
+	svc := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()

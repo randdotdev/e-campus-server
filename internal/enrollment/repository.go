@@ -176,6 +176,17 @@ func (r *Repository) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.
 	return ids, err
 }
 
+func (r *Repository) GetEnrolledStudentUserIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	query := `
+		SELECT s.user_id
+		FROM course_enrollments e
+		JOIN students s ON e.student_id = s.id
+		WHERE e.offering_id = $1 AND e.status = 'enrolled'`
+	err := r.db.SelectContext(ctx, &ids, query, offeringID)
+	return ids, err
+}
+
 func (r *Repository) GetStudentEnrollments(ctx context.Context, studentID uuid.UUID) ([]Enrollment, error) {
 	var enrollments []Enrollment
 	query := `SELECT * FROM course_enrollments WHERE student_id = $1 ORDER BY enrolled_at DESC`

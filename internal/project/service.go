@@ -83,6 +83,14 @@ type FileOwnershipChecker interface {
 	IsFileOwnedBy(ctx context.Context, fileID, userID uuid.UUID) (bool, error)
 }
 
+type UserIDProvider interface {
+	GetUserIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
+}
+
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
 type Service struct {
 	projects        ProjectRepository
 	attachments     AttachmentRepository
@@ -95,6 +103,8 @@ type Service struct {
 	teachers        TeacherChecker
 	teams           TeamProvider
 	files           FileOwnershipChecker
+	users           UserIDProvider
+	notifier        Notifier
 }
 
 func NewService(
@@ -109,6 +119,8 @@ func NewService(
 	teachers TeacherChecker,
 	teams TeamProvider,
 	files FileOwnershipChecker,
+	users UserIDProvider,
+	notifier Notifier,
 ) *Service {
 	return &Service{
 		projects:        projects,
@@ -122,6 +134,8 @@ func NewService(
 		teachers:        teachers,
 		teams:           teams,
 		files:           files,
+		users:           users,
+		notifier:        notifier,
 	}
 }
 
@@ -593,7 +607,23 @@ func (s *Service) GradeSubmission(ctx context.Context, submissionID, studentID, 
 		GradedAt:     &now,
 	}
 
-	return s.grades.Upsert(ctx, grade)
+	if err := s.grades.Upsert(ctx, grade); err != nil {
+		return err
+	}
+
+	if s.notifier != nil && s.users != nil {
+		userID, err := s.users.GetUserIDByStudentID(ctx, studentID)
+		if err == nil {
+			title := "Project Graded"
+			body := "Your project \"" + p.Title + "\" has been graded."
+			_ = s.notifier.Send(ctx, userID, "project_graded", title, &body, map[string]any{
+				"project_id":    p.ID,
+				"submission_id": submissionID,
+			})
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) GetGrades(ctx context.Context, submissionID uuid.UUID) ([]GradeWithStudent, error) {

@@ -22,12 +22,17 @@ type ApplicationRepository interface {
 	GetProgramAgeRequirements(ctx context.Context, programID uuid.UUID) (*ProgramAgeRequirements, error)
 }
 
-type Service struct {
-	repo ApplicationRepository
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
 }
 
-func NewService(repo ApplicationRepository) *Service {
-	return &Service{repo: repo}
+type Service struct {
+	repo     ApplicationRepository
+	notifier Notifier
+}
+
+func NewService(repo ApplicationRepository, notifier Notifier) *Service {
+	return &Service{repo: repo, notifier: notifier}
 }
 
 // Application operations
@@ -211,7 +216,32 @@ func (s *Service) ReviewApplication(ctx context.Context, reviewerID, appID uuid.
 		return nil, err
 	}
 
+	if s.notifier != nil && app.UserID != nil {
+		title := "Application " + statusDisplayName(app.Status)
+		var body *string
+		if app.ReviewNotes != nil {
+			body = app.ReviewNotes
+		}
+		_ = s.notifier.Send(ctx, *app.UserID, "application_status", title, body, map[string]any{
+			"application_id": app.ID,
+			"status":         app.Status,
+		})
+	}
+
 	return app, nil
+}
+
+func statusDisplayName(status string) string {
+	switch status {
+	case StatusApproved:
+		return "Approved"
+	case StatusRejected:
+		return "Rejected"
+	case StatusNeedsRevision:
+		return "Needs Revision"
+	default:
+		return "Updated"
+	}
 }
 
 func (s *Service) ListApplications(ctx context.Context, params pagination.PageParams, filters ApplicationFilters) ([]Application, bool, error) {

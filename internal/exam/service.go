@@ -3,6 +3,7 @@ package exam
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,16 +49,28 @@ type ExamRepository interface {
 	OfferingExists(ctx context.Context, offeringID uuid.UUID) (bool, error)
 	GetCourseCodeByOffering(ctx context.Context, offeringID uuid.UUID) (string, error)
 	GetStudentByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
+	GetUserIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
 	IsStudentEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 	IsTeacher(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 }
 
-type Service struct {
-	repo ExamRepository
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
+	SendBulk(ctx context.Context, userIDs []uuid.UUID, notifType, title string, body *string, data map[string]any) error
 }
 
-func NewService(repo ExamRepository) *Service {
-	return &Service{repo: repo}
+type EnrolledStudentsProvider interface {
+	GetEnrolledStudentUserIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
+}
+
+type Service struct {
+	repo      ExamRepository
+	notifier  Notifier
+	enrollees EnrolledStudentsProvider
+}
+
+func NewService(repo ExamRepository, notifier Notifier, enrollees EnrolledStudentsProvider) *Service {
+	return &Service{repo: repo, notifier: notifier, enrollees: enrollees}
 }
 
 // Question operations
@@ -362,7 +375,23 @@ func (s *Service) PublishExam(ctx context.Context, id uuid.UUID) error {
 		return ErrNoQuestionsInExam
 	}
 
-	return s.repo.PublishExam(ctx, id)
+	if err := s.repo.PublishExam(ctx, id); err != nil {
+		return err
+	}
+
+	if s.notifier != nil && s.enrollees != nil {
+		userIDs, err := s.enrollees.GetEnrolledStudentUserIDs(ctx, e.OfferingID)
+		if err == nil && len(userIDs) > 0 {
+			body := "A new " + e.Type + " has been published: " + e.Title
+			_ = s.notifier.SendBulk(ctx, userIDs, "exam_published", "New "+e.Type+" Available", &body, map[string]any{
+				"exam_id":     e.ID,
+				"offering_id": e.OfferingID,
+				"type":        e.Type,
+			})
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) CloseExam(ctx context.Context, id uuid.UUID) error {
@@ -561,7 +590,28 @@ func (s *Service) GradeShortAnswers(ctx context.Context, attemptID uuid.UUID, ma
 		return nil, err
 	}
 
+	if s.notifier != nil {
+		userID, err := s.repo.GetUserIDByStudentID(ctx, attempt.StudentID)
+		if err == nil {
+			exam, _ := s.repo.GetExam(ctx, attempt.ExamID)
+			title := "Exam Graded"
+			if exam != nil {
+				title = exam.Title + " Graded"
+			}
+			body := "Your exam has been graded. Score: " + formatScore(totalScore)
+			_ = s.notifier.Send(ctx, userID, "exam_graded", title, &body, map[string]any{
+				"attempt_id": attemptID,
+				"exam_id":    attempt.ExamID,
+				"score":      totalScore,
+			})
+		}
+	}
+
 	return s.repo.GetAttempt(ctx, attemptID)
+}
+
+func formatScore(score float64) string {
+	return fmt.Sprintf("%.1f", score)
 }
 
 func (s *Service) SetVisibility(ctx context.Context, attemptID uuid.UUID, visibility string, visibleAt *time.Time) error {

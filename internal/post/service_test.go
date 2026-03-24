@@ -280,6 +280,7 @@ func newTestService() *Service {
 		newMockUserLookup(),
 		newMockScopeChecker(),
 		newMockMuteChecker(),
+		nil,
 	)
 }
 

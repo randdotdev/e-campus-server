@@ -669,6 +669,16 @@ func (r *Repository) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (
 	return studentID, err
 }
 
+func (r *Repository) GetUserIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error) {
+	var userID uuid.UUID
+	query := `SELECT user_id FROM students WHERE id = $1`
+	err := r.db.GetContext(ctx, &userID, query, studentID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, ErrStudentNotFound
+	}
+	return userID, err
+}
+
 func (r *Repository) IsStudentEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
 	var exists bool
 	query := `

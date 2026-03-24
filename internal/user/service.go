@@ -30,13 +30,18 @@ type UserRepository interface {
 	CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error
 }
 
-type Service struct {
-	repo   UserRepository
-	tokens auth.TokenRepository
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
 }
 
-func NewService(repo UserRepository, tokens auth.TokenRepository) *Service {
-	return &Service{repo: repo, tokens: tokens}
+type Service struct {
+	repo     UserRepository
+	tokens   auth.TokenRepository
+	notifier Notifier
+}
+
+func NewService(repo UserRepository, tokens auth.TokenRepository, notifier Notifier) *Service {
+	return &Service{repo: repo, tokens: tokens, notifier: notifier}
 }
 
 func (s *Service) GetProfile(ctx context.Context, userID uuid.UUID) (*User, error) {
@@ -299,7 +304,16 @@ func (s *Service) AdminSetPassword(ctx context.Context, userID uuid.UUID, passwo
 	}
 
 	// Invalidate all user sessions after password change
-	return s.tokens.DeleteUserTokens(ctx, userID)
+	if err := s.tokens.DeleteUserTokens(ctx, userID); err != nil {
+		return err
+	}
+
+	if s.notifier != nil {
+		body := "Your password has been reset by an administrator. Please log in with your new password."
+		_ = s.notifier.Send(ctx, userID, "password_reset", "Password Reset", &body, nil)
+	}
+
+	return nil
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) error {
@@ -385,6 +399,16 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 	// Invalidate user sessions so they get fresh JWT with new role
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
 
+	if s.notifier != nil {
+		title := "Role Assigned"
+		body := "You have been assigned the role: " + role.Permission + " (" + role.ScopeType + ")"
+		_ = s.notifier.Send(ctx, targetUserID, "role_assigned", title, &body, map[string]any{
+			"role_id":    role.ID,
+			"permission": role.Permission,
+			"scope_type": role.ScopeType,
+		})
+	}
+
 	return role, nil
 }
 
@@ -425,6 +449,11 @@ func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUI
 
 	// Invalidate user sessions so they get fresh JWT without role
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
+
+	if s.notifier != nil {
+		body := "Your role has been removed."
+		_ = s.notifier.Send(ctx, targetUserID, "role_removed", "Role Removed", &body, nil)
+	}
 
 	return nil
 }

@@ -170,7 +170,7 @@ func setupService() (*Service, *mockRepository, *mockLessonChecker, *mockEnrollm
 	repo := newMockRepository()
 	lessons := newMockLessonChecker()
 	enrollment := newMockEnrollmentChecker()
-	service := NewService(repo, lessons, enrollment)
+	service := NewService(repo, lessons, enrollment, nil, nil)
 	return service, repo, lessons, enrollment
 }
 

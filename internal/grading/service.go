@@ -44,6 +44,14 @@ type AttendanceProvider interface {
 	GetStudentAttendanceRate(ctx context.Context, studentID, offeringID uuid.UUID) (float64, error)
 }
 
+type Notifier interface {
+	SendBulk(ctx context.Context, userIDs []uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
+type UserIDProvider interface {
+	GetEnrolledStudentUserIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
+}
+
 type Service struct {
 	repo        GradingRepository
 	offering    OfferingProvider
@@ -51,6 +59,8 @@ type Service struct {
 	assignments AssignmentScoreProvider
 	attendance  AttendanceProvider
 	enrollment  EnrollmentProvider
+	notifier    Notifier
+	users       UserIDProvider
 }
 
 func NewService(
@@ -60,6 +70,8 @@ func NewService(
 	assignments AssignmentScoreProvider,
 	attendance AttendanceProvider,
 	enrollment EnrollmentProvider,
+	notifier Notifier,
+	users UserIDProvider,
 ) *Service {
 	return &Service{
 		repo:        repo,
@@ -68,6 +80,8 @@ func NewService(
 		assignments: assignments,
 		attendance:  attendance,
 		enrollment:  enrollment,
+		notifier:    notifier,
+		users:       users,
 	}
 }
 
@@ -236,6 +250,16 @@ func (s *Service) FinalizeGrades(ctx context.Context, offeringID uuid.UUID) (int
 			return count, err
 		}
 		count++
+	}
+
+	if s.notifier != nil && s.users != nil {
+		userIDs, err := s.users.GetEnrolledStudentUserIDs(ctx, offeringID)
+		if err == nil && len(userIDs) > 0 {
+			body := "Your final grades have been posted."
+			_ = s.notifier.SendBulk(ctx, userIDs, "grade_finalized", "Grades Finalized", &body, map[string]any{
+				"offering_id": offeringID,
+			})
+		}
 	}
 
 	return count, nil

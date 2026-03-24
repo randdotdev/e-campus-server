@@ -60,6 +60,10 @@ type MuteChecker interface {
 	IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error)
 }
 
+type Notifier interface {
+	SendBulk(ctx context.Context, userIDs []uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
 type Service struct {
 	posts       PostRepository
 	likes       LikeRepository
@@ -68,6 +72,7 @@ type Service struct {
 	users       UserLookup
 	scopes      ScopeChecker
 	mutes       MuteChecker
+	notifier    Notifier
 }
 
 func NewService(
@@ -78,6 +83,7 @@ func NewService(
 	users UserLookup,
 	scopes ScopeChecker,
 	mutes MuteChecker,
+	notifier Notifier,
 ) *Service {
 	return &Service{
 		posts:       posts,
@@ -87,6 +93,7 @@ func NewService(
 		users:       users,
 		scopes:      scopes,
 		mutes:       mutes,
+		notifier:    notifier,
 	}
 }
 
@@ -450,7 +457,18 @@ func (s *Service) processMentions(ctx context.Context, postID uuid.UUID, body st
 		return nil
 	}
 
-	return s.mentions.CreateBatch(ctx, postID, userIDs)
+	if err := s.mentions.CreateBatch(ctx, postID, userIDs); err != nil {
+		return err
+	}
+
+	if s.notifier != nil {
+		title := "You were mentioned"
+		_ = s.notifier.SendBulk(ctx, userIDs, "mentioned", title, nil, map[string]any{
+			"post_id": postID,
+		})
+	}
+
+	return nil
 }
 
 func (s *Service) checkMuted(ctx context.Context, userID uuid.UUID, scopeType string, scopeID *uuid.UUID) error {

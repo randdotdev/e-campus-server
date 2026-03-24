@@ -34,17 +34,29 @@ type EnrollmentChecker interface {
 	GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
 }
 
+type UserIDProvider interface {
+	GetUserIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
+}
+
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
 type Service struct {
 	repo       AttendanceRepository
 	lessons    LessonChecker
 	enrollment EnrollmentChecker
+	users      UserIDProvider
+	notifier   Notifier
 }
 
-func NewService(repo AttendanceRepository, lessons LessonChecker, enrollment EnrollmentChecker) *Service {
+func NewService(repo AttendanceRepository, lessons LessonChecker, enrollment EnrollmentChecker, users UserIDProvider, notifier Notifier) *Service {
 	return &Service{
 		repo:       repo,
 		lessons:    lessons,
 		enrollment: enrollment,
+		users:      users,
+		notifier:   notifier,
 	}
 }
 
@@ -208,7 +220,30 @@ func (s *Service) ReviewExcuse(ctx context.Context, excuseID, reviewerID uuid.UU
 	e.ReviewedBy = &reviewerID
 	e.ReviewedAt = &now
 
-	return s.repo.UpdateExcuseRequest(ctx, e)
+	if err := s.repo.UpdateExcuseRequest(ctx, e); err != nil {
+		return err
+	}
+
+	if s.notifier != nil && s.users != nil {
+		userID, err := s.users.GetUserIDByStudentID(ctx, e.StudentID)
+		if err == nil {
+			title := "Excuse Request " + excuseStatusDisplay(status)
+			_ = s.notifier.Send(ctx, userID, "excuse_reviewed", title, note, map[string]any{
+				"excuse_id": e.ID,
+				"lesson_id": e.LessonID,
+				"status":    status,
+			})
+		}
+	}
+
+	return nil
+}
+
+func excuseStatusDisplay(status string) string {
+	if status == ExcuseStatusApproved {
+		return "Approved"
+	}
+	return "Rejected"
 }
 
 func (s *Service) GetPendingExcuses(ctx context.Context, offeringID uuid.UUID) ([]ExcuseRequest, error) {

@@ -216,7 +216,7 @@ func TestGetProfile_Success(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	user, err := svc.GetProfile(context.Background(), userID)
 	if err != nil {
@@ -236,7 +236,7 @@ func TestGetProfile_NotFound(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, err := svc.GetProfile(context.Background(), uuid.New())
 	if !errors.Is(err, ErrUserNotFound) {
@@ -265,7 +265,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	user, err := svc.UpdateProfile(context.Background(), userID, UpdateProfileRequest{
 		FullNameEN: &newName,
@@ -302,7 +302,7 @@ func TestUpdateEmail_Success(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.UpdateEmail(context.Background(), userID, UpdateEmailRequest{
 		Email:    "new@example.com",
@@ -326,7 +326,7 @@ func TestUpdateEmail_SameEmail(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.UpdateEmail(context.Background(), userID, UpdateEmailRequest{
 		Email:    "same@example.com",
@@ -354,7 +354,7 @@ func TestUpdateEmail_InvalidPassword(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.UpdateEmail(context.Background(), userID, UpdateEmailRequest{
 		Email:    "new@example.com",
@@ -385,7 +385,7 @@ func TestUpdateEmail_EmailExists(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.UpdateEmail(context.Background(), userID, UpdateEmailRequest{
 		Email:    "existing@example.com",
@@ -418,7 +418,7 @@ func TestGetSessions_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	sessions, err := svc.GetSessions(context.Background(), userID)
 	if err != nil {
@@ -459,7 +459,7 @@ func TestRevokeSession_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.RevokeSession(context.Background(), userID, sessionID)
 	if err != nil {
@@ -481,7 +481,7 @@ func TestRevokeSession_NotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.RevokeSession(context.Background(), userID, uuid.New())
 	if !errors.Is(err, ErrSessionNotFound) {
@@ -507,7 +507,7 @@ func TestCreateStaffProfile_Success(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	profile, err := svc.CreateStaffProfile(context.Background(), userID, UpdateStaffProfileRequest{
 		HighestDegree: &degree,
@@ -534,7 +534,7 @@ func TestCreateStaffProfile_AlreadyExists(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, err := svc.CreateStaffProfile(context.Background(), userID, UpdateStaffProfileRequest{})
 	if !errors.Is(err, ErrStaffProfileExists) {
@@ -562,7 +562,7 @@ func TestChangePassword_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.ChangePassword(context.Background(), userID, ChangePasswordRequest{
 		CurrentPassword: "currentpassword",
@@ -588,7 +588,7 @@ func TestChangePassword_InvalidPassword(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.ChangePassword(context.Background(), userID, ChangePasswordRequest{
 		CurrentPassword: "wrongpassword",
@@ -610,7 +610,7 @@ func TestChangePassword_SamePassword(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	err := svc.ChangePassword(context.Background(), userID, ChangePasswordRequest{
 		CurrentPassword: "samepassword",
@@ -637,7 +637,7 @@ func TestCreateStaffUser_Success(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	user, profile, _, err := svc.CreateStaffUser(context.Background(), adminID, actorRole, CreateStaffUserRequest{
 		Email:        "new@example.com",
@@ -666,7 +666,7 @@ func TestCreateStaffUser_EmailExists(t *testing.T) {
 	}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "existing@example.com",
@@ -684,7 +684,7 @@ func TestCreateStaffUser_ScopeIDRequired(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
@@ -709,7 +709,7 @@ func TestCreateStaffUser_ScopeIDNotAllowed(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
@@ -732,7 +732,7 @@ func TestCreateStaffUser_CannotManageHigherRole(t *testing.T) {
 	mockRepo := &MockUserRepository{}
 	mockTokens := &MockTokenRepository{}
 
-	svc := NewService(mockRepo, mockTokens)
+	svc := NewService(mockRepo, mockTokens, nil)
 
 	_, _, _, err := svc.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",

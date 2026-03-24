@@ -31,4 +31,10 @@ const (
 	TypeQuestionAnswered  = "question_answered"
 	TypeAnnouncement      = "announcement"
 	TypeEnrollmentChange  = "enrollment_change"
+	TypeRoleAssigned      = "role_assigned"
+	TypeRoleRemoved       = "role_removed"
+	TypePasswordReset     = "password_reset"
+	TypeApplicationStatus = "application_status"
+	TypeExcuseReviewed    = "excuse_reviewed"
+	TypeProjectGraded     = "project_graded"
 )

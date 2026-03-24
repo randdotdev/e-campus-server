@@ -42,17 +42,29 @@ type EnrollmentChecker interface {
 	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 }
 
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
+type UserIDProvider interface {
+	GetUserIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
+}
+
 type Service struct {
 	repo       AssignmentRepository
 	teachers   TeacherChecker
 	enrollment EnrollmentChecker
+	notifier   Notifier
+	users      UserIDProvider
 }
 
-func NewService(repo AssignmentRepository, teachers TeacherChecker, enrollment EnrollmentChecker) *Service {
+func NewService(repo AssignmentRepository, teachers TeacherChecker, enrollment EnrollmentChecker, notifier Notifier, users UserIDProvider) *Service {
 	return &Service{
 		repo:       repo,
 		teachers:   teachers,
 		enrollment: enrollment,
+		notifier:   notifier,
+		users:      users,
 	}
 }
 
@@ -385,6 +397,22 @@ func (s *Service) GradeSubmission(ctx context.Context, submissionID, graderID uu
 
 	if err := s.repo.UpdateSubmission(ctx, sub); err != nil {
 		return nil, err
+	}
+
+	if s.notifier != nil && s.users != nil {
+		userID, err := s.users.GetUserIDByStudentID(ctx, sub.StudentID)
+		if err == nil {
+			title := a.Title + " Graded"
+			body := "Your assignment has been graded."
+			if feedback != nil && *feedback != "" {
+				body = *feedback
+			}
+			_ = s.notifier.Send(ctx, userID, "assignment_graded", title, &body, map[string]any{
+				"assignment_id": a.ID,
+				"submission_id": sub.ID,
+				"score":         score,
+			})
+		}
 	}
 
 	return sub, nil

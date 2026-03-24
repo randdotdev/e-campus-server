@@ -95,15 +95,15 @@ type AttachmentResponse struct {
 }
 
 type RegistrationResponse struct {
-	ID           uuid.UUID  `json:"id"`
-	ProjectID    uuid.UUID  `json:"project_id"`
-	TeamID       uuid.UUID  `json:"team_id"`
-	TeamName     *string    `json:"team_name,omitempty"`
-	LeaderID     uuid.UUID  `json:"leader_id"`
-	LeaderName   string     `json:"leader_name"`
-	MemberCount  int        `json:"member_count"`
-	ProjectTitle string     `json:"project_title"`
-	RegisteredAt time.Time  `json:"registered_at"`
+	ID           uuid.UUID `json:"id"`
+	ProjectID    uuid.UUID `json:"project_id"`
+	TeamID       uuid.UUID `json:"team_id"`
+	TeamName     *string   `json:"team_name,omitempty"`
+	LeaderID     uuid.UUID `json:"leader_id"`
+	LeaderName   string    `json:"leader_name"`
+	MemberCount  int       `json:"member_count"`
+	ProjectTitle string    `json:"project_title"`
+	RegisteredAt time.Time `json:"registered_at"`
 }
 
 type ProjectGroupResponse struct {
@@ -157,10 +157,10 @@ type GradeResponse struct {
 }
 
 type MyGradeResponse struct {
-	Score       *float64   `json:"score"`
-	Feedback    *string    `json:"feedback,omitempty"`
-	GradedAt    *time.Time `json:"graded_at,omitempty"`
-	IsPublic    bool       `json:"is_public"`
+	Score    *float64   `json:"score"`
+	Feedback *string    `json:"feedback,omitempty"`
+	GradedAt *time.Time `json:"graded_at,omitempty"`
+	IsPublic bool       `json:"is_public"`
 }
 
 func ToProjectResponse(p *Project, now time.Time) ProjectResponse {

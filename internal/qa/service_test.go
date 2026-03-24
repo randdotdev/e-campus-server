@@ -166,7 +166,7 @@ func newTestService() (*Service, *mockQuestionRepo, *mockAnswerRepo, *mockReject
 	rRepo := newMockRejectionRepo()
 	offerings := newMockOfferingChecker()
 	mutes := newMockMuteChecker()
-	svc := NewService(qRepo, aRepo, rRepo, &mockQuestionAttachmentRepo{}, &mockAnswerAttachmentRepo{}, offerings, mutes)
+	svc := NewService(qRepo, aRepo, rRepo, &mockQuestionAttachmentRepo{}, &mockAnswerAttachmentRepo{}, offerings, mutes, nil)
 	return svc, qRepo, aRepo, rRepo, offerings, mutes
 }
 

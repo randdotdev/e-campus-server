@@ -58,8 +58,8 @@ func (m *mockProjectRepo) ListPublishedByOffering(_ context.Context, offeringID 
 
 type mockAttachmentRepo struct{}
 
-func (m *mockAttachmentRepo) Add(_ context.Context, _ *ProjectAttachment) error     { return nil }
-func (m *mockAttachmentRepo) Delete(_ context.Context, _ uuid.UUID) error            { return nil }
+func (m *mockAttachmentRepo) Add(_ context.Context, _ *ProjectAttachment) error { return nil }
+func (m *mockAttachmentRepo) Delete(_ context.Context, _ uuid.UUID) error       { return nil }
 func (m *mockAttachmentRepo) GetByProject(_ context.Context, _ uuid.UUID) ([]ProjectAttachment, error) {
 	return nil, nil
 }
@@ -285,6 +285,8 @@ func createTestService() (*Service, *mockProjectRepo, *mockRegistrationRepo, *mo
 		&mockTeacherChecker{isTeacher: true},
 		&mockTeamProvider{members: members, leader: leader},
 		&mockFileChecker{owned: true},
+		nil,
+		nil,
 	)
 
 	return svc, projectRepo, regRepo, groupRepo, subRepo
@@ -513,6 +515,8 @@ func TestService_GradeSubmission(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{},
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{
@@ -562,6 +566,8 @@ func TestService_GradeSubmission(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{},
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{
@@ -932,6 +938,8 @@ func TestService_Register_TeamSize(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{members: []uuid.UUID{uuid.New()}}, // Only 1 member
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{
@@ -969,6 +977,8 @@ func TestService_Register_TeamSize(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{members: members},
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{
@@ -1028,6 +1038,8 @@ func TestService_Register_MembersNotEnrolled(t *testing.T) {
 		&mockTeacherChecker{isTeacher: true},
 		&mockTeamProvider{members: members, leader: leader},
 		&mockFileChecker{owned: true},
+		nil,
+		nil,
 	)
 
 	p := &Project{
@@ -1155,6 +1167,8 @@ func TestService_CreateSubmission_FileNotOwned(t *testing.T) {
 		&mockTeacherChecker{isTeacher: true},
 		&mockTeamProvider{},
 		&mockFileChecker{owned: false}, // File not owned
+		nil,
+		nil,
 	)
 
 	leaderID := uuid.New()
@@ -1313,6 +1327,8 @@ func TestService_CreateProjectGroups(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{members: members, leader: leaderID},
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{
@@ -1365,6 +1381,8 @@ func TestService_CreateProjectGroups(t *testing.T) {
 			&mockTeacherChecker{isTeacher: true},
 			&mockTeamProvider{members: []uuid.UUID{uuid.New()}},
 			&mockFileChecker{owned: true},
+			nil,
+			nil,
 		)
 
 		p := &Project{

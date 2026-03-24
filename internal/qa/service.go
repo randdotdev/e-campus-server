@@ -53,6 +53,10 @@ type MuteChecker interface {
 	IsMuted(ctx context.Context, userID uuid.UUID, offeringID *uuid.UUID) (bool, error)
 }
 
+type Notifier interface {
+	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
+}
+
 type Service struct {
 	questions           QuestionRepository
 	answers             AnswerRepository
@@ -61,6 +65,7 @@ type Service struct {
 	answerAttachments   AnswerAttachmentRepository
 	offerings           OfferingChecker
 	mutes               MuteChecker
+	notifier            Notifier
 }
 
 func NewService(
@@ -71,6 +76,7 @@ func NewService(
 	answerAttachments AnswerAttachmentRepository,
 	offerings OfferingChecker,
 	mutes MuteChecker,
+	notifier Notifier,
 ) *Service {
 	return &Service{
 		questions:           questions,
@@ -80,6 +86,7 @@ func NewService(
 		answerAttachments:   answerAttachments,
 		offerings:           offerings,
 		mutes:               mutes,
+		notifier:            notifier,
 	}
 }
 
@@ -307,6 +314,15 @@ func (s *Service) AnswerQuestion(ctx context.Context, questionID, teacherID uuid
 		}
 	}
 
+	if s.notifier != nil {
+		title := "Question Answered"
+		body := "Your question \"" + q.Title + "\" has been answered."
+		_ = s.notifier.Send(ctx, q.CreatedBy, "question_answered", title, &body, map[string]any{
+			"question_id": q.ID,
+			"offering_id": q.OfferingID,
+		})
+	}
+
 	return q, a, nil
 }
 
@@ -379,7 +395,21 @@ func (s *Service) RejectQuestion(ctx context.Context, questionID, teacherID uuid
 		RejectedAt: now,
 	}
 
-	return s.rejections.Create(ctx, rejection)
+	if err := s.rejections.Create(ctx, rejection); err != nil {
+		return err
+	}
+
+	if s.notifier != nil {
+		title := "Question Rejected"
+		body := "Your question \"" + q.Title + "\" has been rejected: " + reason
+		_ = s.notifier.Send(ctx, q.CreatedBy, "question_answered", title, &body, map[string]any{
+			"question_id": q.ID,
+			"offering_id": q.OfferingID,
+			"rejected":    true,
+		})
+	}
+
+	return nil
 }
 
 func (s *Service) GetAttachmentsForQuestions(ctx context.Context, questionIDs []uuid.UUID) (map[uuid.UUID][]QuestionAttachment, error) {

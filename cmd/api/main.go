@@ -117,7 +117,7 @@ func run() error {
 	authService := auth.NewService(authRepo, userRepo, &cfg.JWT)
 	authHandler := auth.NewHandler(authService, log, cfg.IsProduction())
 
-	userService := user.NewService(userRepo, authRepo)
+	userService := user.NewService(userRepo, authRepo, notificationService)
 	userHandler := user.NewHandler(userService, log)
 
 	subscriptionRepo := subscription.NewRepository(db)
@@ -129,7 +129,7 @@ func run() error {
 	universityHandler := university.NewHandler(universityService, log)
 
 	applicationRepo := application.NewRepository(db)
-	applicationService := application.NewService(applicationRepo)
+	applicationService := application.NewService(applicationRepo, notificationService)
 	applicationHandler := application.NewHandler(applicationService, log)
 
 	courseRepo := course.NewRepository(db)
@@ -139,8 +139,10 @@ func run() error {
 	permissionRepo := permission.NewRepository(db)
 	permission.SetCourseChecker(permissionRepo)
 
+	enrollmentRepo := enrollment.NewRepository(db)
+
 	examRepo := exam.NewRepository(db)
-	examService := exam.NewService(examRepo)
+	examService := exam.NewService(examRepo, notificationService, enrollmentRepo)
 	examHandler := exam.NewHandler(examService, log)
 
 	filesRepo := files.NewRepository(db)
@@ -149,13 +151,13 @@ func run() error {
 
 	contentRepo := content.NewRepository(db)
 
-	enrollmentRepo := enrollment.NewRepository(db)
-
 	attendanceRepo := attendance.NewRepository(db)
 	attendanceService := attendance.NewService(
 		attendanceRepo,
 		contentRepo,
 		enrollmentRepo,
+		examRepo,
+		notificationService,
 	)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 
@@ -164,6 +166,8 @@ func run() error {
 		assignmentRepo,
 		courseRepo,
 		enrollmentRepo,
+		notificationService,
+		examRepo,
 	)
 	assignmentHandler := assignment.NewHandler(assignmentService, log)
 
@@ -187,6 +191,7 @@ func run() error {
 		postUserRepo,
 		postScopeRepo,
 		muteRepo,
+		notificationService,
 	)
 	postHandler := post.NewHandler(postService, log)
 
@@ -215,6 +220,7 @@ func run() error {
 		qaAnswerAttachmentRepo,
 		courseRepo,
 		muteRepo,
+		notificationService,
 	)
 	qaHandler := qa.NewHandler(qaService, log)
 
@@ -265,6 +271,8 @@ func run() error {
 		gradingRepo,
 		gradingRepo,
 		gradingRepo,
+		notificationService,
+		enrollmentRepo,
 	)
 	gradingHandler := grading.NewHandler(gradingService, courseRepo)
 

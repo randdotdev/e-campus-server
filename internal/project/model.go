@@ -46,7 +46,7 @@ type Registration struct {
 
 type RegistrationWithTeam struct {
 	Registration
-	TeamName    *string `db:"team_name"`
+	TeamName    *string   `db:"team_name"`
 	LeaderID    uuid.UUID `db:"leader_id"`
 	LeaderName  string    `db:"leader_name"`
 	MemberCount int       `db:"member_count"`

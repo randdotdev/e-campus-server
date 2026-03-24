@@ -56,9 +56,9 @@ func (m *mockOfferingProvider) GetPassThreshold(_ context.Context, _ uuid.UUID) 
 }
 
 type mockExamProvider struct {
-	scores         map[uuid.UUID]ExamScore
-	belongsTo      bool
-	hasUngraded    bool
+	scores      map[uuid.UUID]ExamScore
+	belongsTo   bool
+	hasUngraded bool
 }
 
 func (m *mockExamProvider) GetStudentExamScores(_ context.Context, _ uuid.UUID, examIDs []uuid.UUID) (map[uuid.UUID]ExamScore, error) {
@@ -136,7 +136,7 @@ func createTestService() (*Service, *mockGradingRepo, *mockOfferingProvider, *mo
 	attendance := &mockAttendanceProvider{}
 	enrollment := &mockEnrollmentProvider{}
 
-	svc := NewService(repo, offering, exams, assignments, attendance, enrollment)
+	svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 	return svc, repo, offering, enrollment
 }
 
@@ -292,7 +292,7 @@ func TestService_FinalizeGrades(t *testing.T) {
 			finalized:  false,
 		}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment)
+		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{{Type: RuleTypeAssignments, Weight: 100}}
@@ -337,7 +337,7 @@ func TestService_FinalizeGrades(t *testing.T) {
 		attendance := &mockAttendanceProvider{}
 		enrollment := &mockEnrollmentProvider{studentIDs: []uuid.UUID{}, finalized: false}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment)
+		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{{Type: RuleTypeAttendance, Weight: 100}}
@@ -468,7 +468,7 @@ func TestService_PreviewGrade(t *testing.T) {
 		attendance := &mockAttendanceProvider{rate: 90}
 		enrollment := &mockEnrollmentProvider{}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment)
+		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{
@@ -497,4 +497,3 @@ func TestService_PreviewGrade(t *testing.T) {
 		}
 	})
 }
-
