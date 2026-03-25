@@ -144,7 +144,7 @@ func TestRegister_Success(t *testing.T) {
 
 	req := RegisterRequest{
 		Email:      "test@example.com",
-		Password:   "password123",
+		Password:   "Password123",
 		FullNameEN: "Test User",
 	}
 
@@ -173,7 +173,7 @@ func TestRegister_EmailExists(t *testing.T) {
 
 	req := RegisterRequest{
 		Email:      "existing@example.com",
-		Password:   "password123",
+		Password:   "Password123",
 		FullNameEN: "Test User",
 	}
 
@@ -185,7 +185,7 @@ func TestRegister_EmailExists(t *testing.T) {
 
 func TestLogin_Success(t *testing.T) {
 	userID := uuid.New()
-	passwordHash, _ := HashPassword("password123")
+	passwordHash, _ := HashPassword("Password123")
 
 	mockUsers := &MockUserStore{
 		GetByEmailFunc: func(ctx context.Context, email string) (*UserData, error) {
@@ -212,7 +212,7 @@ func TestLogin_Success(t *testing.T) {
 
 	req := LoginRequest{
 		Email:    "test@example.com",
-		Password: "password123",
+		Password: "Password123",
 	}
 
 	tokens, user, err := svc.Login(context.Background(), req, "Test Device", "127.0.0.1")
@@ -243,7 +243,7 @@ func TestLogin_InvalidCredentials_UserNotFound(t *testing.T) {
 
 	req := LoginRequest{
 		Email:    "nonexistent@example.com",
-		Password: "password123",
+		Password: "Password123",
 	}
 
 	_, _, err := svc.Login(context.Background(), req, "Test Device", "127.0.0.1")
@@ -271,7 +271,7 @@ func TestLogin_InvalidCredentials_WrongPassword(t *testing.T) {
 
 	req := LoginRequest{
 		Email:    "test@example.com",
-		Password: "wrongpassword",
+		Password: "WrongPass123",
 	}
 
 	_, _, err := svc.Login(context.Background(), req, "Test Device", "127.0.0.1")
@@ -281,7 +281,7 @@ func TestLogin_InvalidCredentials_WrongPassword(t *testing.T) {
 }
 
 func TestLogin_UserInactive(t *testing.T) {
-	passwordHash, _ := HashPassword("password123")
+	passwordHash, _ := HashPassword("Password123")
 
 	mockUsers := &MockUserStore{
 		GetByEmailFunc: func(ctx context.Context, email string) (*UserData, error) {
@@ -299,7 +299,7 @@ func TestLogin_UserInactive(t *testing.T) {
 
 	req := LoginRequest{
 		Email:    "inactive@example.com",
-		Password: "password123",
+		Password: "Password123",
 	}
 
 	_, _, err := svc.Login(context.Background(), req, "Test Device", "127.0.0.1")

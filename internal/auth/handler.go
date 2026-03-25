@@ -40,6 +40,10 @@ func (h *Handler) Register(c *gin.Context) {
 			response.Conflict(c, "email already exists")
 			return
 		}
+		if errors.Is(err, ErrPasswordTooShort) || errors.Is(err, ErrPasswordTooWeak) {
+			response.BadRequest(c, err.Error())
+			return
+		}
 		h.log.Error("register failed", zap.Error(err))
 		response.InternalError(c)
 		return

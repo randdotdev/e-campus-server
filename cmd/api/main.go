@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -282,15 +283,31 @@ func run() error {
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestID())
 	router.Use(middleware.Logger(log))
+	router.Use(middleware.SecurityHeaders())
+	router.Use(middleware.CORS(middleware.CORSConfig{
+		AllowedOrigins:   strings.Split(cfg.CORS.AllowedOrigins, ","),
+		AllowCredentials: true,
+	}))
+	router.Use(middleware.RateLimiter(middleware.RateLimiterConfig{
+		Enabled: cfg.Rate.Enabled,
+		RPS:     cfg.Rate.RPS,
+		Burst:   cfg.Rate.Burst,
+	}))
 
 	router.GET("/health", handleHealth)
+
+	authRateLimiter := middleware.AuthRateLimiter(middleware.AuthRateLimiterConfig{
+		Enabled:       cfg.AuthRate.Enabled,
+		MaxAttempts:   cfg.AuthRate.MaxAttempts,
+		WindowSeconds: cfg.AuthRate.WindowSeconds,
+	})
 
 	v1 := router.Group("/api/v1")
 	{
 		authRoutes := v1.Group("/auth")
 		{
-			authRoutes.POST("/register", authHandler.Register)
-			authRoutes.POST("/login", authHandler.Login)
+			authRoutes.POST("/register", authRateLimiter, authHandler.Register)
+			authRoutes.POST("/login", authRateLimiter, authHandler.Login)
 			authRoutes.POST("/refresh", authHandler.Refresh)
 			authRoutes.POST("/logout", authHandler.Logout)
 		}

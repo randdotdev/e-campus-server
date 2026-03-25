@@ -170,3 +170,58 @@ minio-setup:
 # Initialize .env from example
 env-init:
     cp -n .env.example .env || echo ".env already exists"
+
+# === Production (Nginx) ===
+
+# Install nginx and certbot (run once)
+prod-install:
+    sudo pacman -S nginx certbot certbot-nginx --noconfirm
+
+# Setup nginx config for domain
+prod-setup domain:
+    sudo mkdir -p /var/www/certbot
+    cat nginx.conf | sed "s/\$${DOMAIN}/{{domain}}/g" | sudo tee /etc/nginx/sites-available/ecampus
+    sudo ln -sf /etc/nginx/sites-available/ecampus /etc/nginx/sites-enabled/
+    sudo rm -f /etc/nginx/sites-enabled/default
+    sudo nginx -t && sudo systemctl reload nginx
+
+# Get SSL certificate
+prod-ssl domain email:
+    sudo certbot --nginx -d {{domain}} --non-interactive --agree-tos -m {{email}}
+
+# Full production setup (run once)
+prod-init domain email: (prod-setup domain) (prod-ssl domain email)
+    sudo systemctl enable nginx
+    @echo "Production setup complete for {{domain}}"
+
+# Nginx commands
+nginx-start:
+    sudo systemctl start nginx
+
+nginx-stop:
+    sudo systemctl stop nginx
+
+nginx-restart:
+    sudo systemctl restart nginx
+
+nginx-reload:
+    sudo nginx -t && sudo systemctl reload nginx
+
+nginx-status:
+    sudo systemctl status nginx
+
+nginx-logs:
+    sudo tail -f /var/log/nginx/ecampus.access.log
+
+nginx-errors:
+    sudo tail -f /var/log/nginx/ecampus.error.log
+
+# SSL certificate
+ssl-renew:
+    sudo certbot renew
+
+ssl-test:
+    sudo certbot renew --dry-run
+
+ssl-status:
+    sudo certbot certificates

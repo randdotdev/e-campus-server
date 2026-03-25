@@ -14,6 +14,8 @@ type Config struct {
 	JWT      JWTConfig
 	S3       S3Config
 	Rate     RateConfig
+	CORS     CORSConfig
+	AuthRate AuthRateConfig
 }
 
 type ServerConfig struct {
@@ -28,7 +30,7 @@ type DatabaseConfig struct {
 	User     string `env:"DB_USER" envDefault:"ecampus"`
 	Password string `env:"DB_PASSWORD" envDefault:"ecampus_dev"`
 	Name     string `env:"DB_NAME" envDefault:"ecampus"`
-	SSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
+	SSLMode  string `env:"DB_SSLMODE" envDefault:"prefer"`
 }
 
 func (d DatabaseConfig) DSN() string {
@@ -67,6 +69,16 @@ type RateConfig struct {
 	Enabled bool `env:"RATE_LIMIT_ENABLED" envDefault:"true"`
 	RPS     int  `env:"RATE_LIMIT_RPS" envDefault:"100"`
 	Burst   int  `env:"RATE_LIMIT_BURST" envDefault:"20"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins string `env:"CORS_ORIGINS" envDefault:"http://localhost:3000"`
+}
+
+type AuthRateConfig struct {
+	Enabled       bool `env:"AUTH_RATE_LIMIT_ENABLED" envDefault:"true"`
+	MaxAttempts   int  `env:"AUTH_RATE_MAX_ATTEMPTS" envDefault:"5"`
+	WindowSeconds int  `env:"AUTH_RATE_WINDOW_SECONDS" envDefault:"300"`
 }
 
 func (c *Config) IsDevelopment() bool {

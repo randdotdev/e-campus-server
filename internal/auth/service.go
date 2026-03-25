@@ -28,6 +28,10 @@ func NewService(tokens TokenRepository, users UserStore, jwt *config.JWTConfig) 
 }
 
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (*UserData, error) {
+	if err := ValidatePassword(req.Password); err != nil {
+		return nil, err
+	}
+
 	exists, err := s.users.EmailExists(ctx, req.Email)
 	if err != nil {
 		return nil, err

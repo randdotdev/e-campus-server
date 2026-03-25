@@ -11,6 +11,33 @@ import (
 )
 
 const bcryptCost = 12
+const minPasswordLength = 8
+
+// ValidatePassword checks password strength.
+// Returns nil if valid, error message if invalid.
+func ValidatePassword(password string) error {
+	if len(password) < minPasswordLength {
+		return ErrPasswordTooShort
+	}
+
+	var hasUpper, hasLower, hasDigit bool
+	for _, c := range password {
+		switch {
+		case c >= 'A' && c <= 'Z':
+			hasUpper = true
+		case c >= 'a' && c <= 'z':
+			hasLower = true
+		case c >= '0' && c <= '9':
+			hasDigit = true
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasDigit {
+		return ErrPasswordTooWeak
+	}
+
+	return nil
+}
 
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)

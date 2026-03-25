@@ -11,4 +11,6 @@ var (
 	ErrTokenReused        = errors.New("token reused")
 	ErrUserInactive       = errors.New("user is inactive")
 	ErrUserNotFound       = errors.New("user not found")
+	ErrPasswordTooShort   = errors.New("password must be at least 8 characters")
+	ErrPasswordTooWeak    = errors.New("password must contain uppercase, lowercase, and digit")
 )
