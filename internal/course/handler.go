@@ -288,7 +288,7 @@ func (h *Handler) UpdateOffering(c *gin.Context) {
 // Teacher handlers
 
 func (h *Handler) AddTeacher(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -334,7 +334,7 @@ func (h *Handler) AddTeacher(c *gin.Context) {
 }
 
 func (h *Handler) ListTeachers(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -352,7 +352,7 @@ func (h *Handler) ListTeachers(c *gin.Context) {
 }
 
 func (h *Handler) RemoveTeacher(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -436,7 +436,7 @@ func (h *Handler) CreateSection(c *gin.Context) {
 }
 
 func (h *Handler) ListSections(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return

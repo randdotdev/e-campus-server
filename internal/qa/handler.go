@@ -25,7 +25,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
-	offerings := rg.Group("/offerings/:offering_id")
+	offerings := rg.Group("/offerings/:id")
 	offerings.Use(auth)
 	{
 		offerings.GET("/questions", h.ListQuestions)
@@ -35,20 +35,20 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		offerings.POST("/questions/faq", h.CreateFAQ)
 	}
 
-	questions := rg.Group("/questions")
-	questions.Use(auth)
+	qa := rg.Group("/qa")
+	qa.Use(auth)
 	{
-		questions.GET("/:id", h.GetQuestion)
-		questions.PUT("/:id", h.UpdateQuestion)
-		questions.DELETE("/:id", h.DeleteQuestion)
-		questions.POST("/:id/answer", h.AnswerQuestion)
-		questions.PUT("/:id/answer", h.UpdateAnswer)
-		questions.POST("/:id/reject", h.RejectQuestion)
+		qa.GET("/:id", h.GetQuestion)
+		qa.PUT("/:id", h.UpdateQuestion)
+		qa.DELETE("/:id", h.DeleteQuestion)
+		qa.POST("/:id/answer", h.AnswerQuestion)
+		qa.PUT("/:id/answer", h.UpdateAnswer)
+		qa.POST("/:id/reject", h.RejectQuestion)
 	}
 }
 
 func (h *Handler) AskQuestion(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -87,7 +87,7 @@ func (h *Handler) AskQuestion(c *gin.Context) {
 }
 
 func (h *Handler) CreateFAQ(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -162,7 +162,7 @@ func (h *Handler) GetQuestion(c *gin.Context) {
 }
 
 func (h *Handler) ListQuestions(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -200,7 +200,7 @@ func (h *Handler) ListQuestions(c *gin.Context) {
 }
 
 func (h *Handler) ListFAQ(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -239,7 +239,7 @@ func (h *Handler) ListFAQ(c *gin.Context) {
 }
 
 func (h *Handler) ListPendingQuestions(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return

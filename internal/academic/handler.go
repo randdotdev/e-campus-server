@@ -257,7 +257,7 @@ func (h *Handler) EndSemester(c *gin.Context) {
 }
 
 func (h *Handler) ListCurriculum(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
+	programID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid program_id")
 		return
@@ -282,7 +282,7 @@ func (h *Handler) ListCurriculum(c *gin.Context) {
 }
 
 func (h *Handler) AddToCurriculum(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
+	programID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid program_id")
 		return
@@ -321,7 +321,7 @@ func (h *Handler) RemoveFromCurriculum(c *gin.Context) {
 }
 
 func (h *Handler) ListRequirements(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
+	programID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid program_id")
 		return
@@ -346,7 +346,7 @@ func (h *Handler) ListRequirements(c *gin.Context) {
 }
 
 func (h *Handler) SetRequirement(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
+	programID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid program_id")
 		return

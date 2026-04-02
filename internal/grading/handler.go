@@ -24,7 +24,7 @@ func NewHandler(service *Service, teacher TeacherChecker) *Handler {
 }
 
 func (h *Handler) SaveRules(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -72,7 +72,7 @@ func (h *Handler) SaveRules(c *gin.Context) {
 }
 
 func (h *Handler) GetRules(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -92,7 +92,7 @@ func (h *Handler) GetRules(c *gin.Context) {
 }
 
 func (h *Handler) DeleteRules(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -123,7 +123,7 @@ func (h *Handler) DeleteRules(c *gin.Context) {
 }
 
 func (h *Handler) FinalizeGrades(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -166,7 +166,7 @@ func (h *Handler) FinalizeGrades(c *gin.Context) {
 }
 
 func (h *Handler) DefinalizeGrades(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -200,7 +200,7 @@ func (h *Handler) DefinalizeGrades(c *gin.Context) {
 }
 
 func (h *Handler) GetGrades(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -220,7 +220,7 @@ func (h *Handler) GetGrades(c *gin.Context) {
 }
 
 func (h *Handler) OverrideGrade(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return
@@ -268,7 +268,7 @@ func (h *Handler) OverrideGrade(c *gin.Context) {
 }
 
 func (h *Handler) PreviewGrade(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
 		return

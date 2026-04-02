@@ -72,7 +72,7 @@ type RateConfig struct {
 }
 
 type CORSConfig struct {
-	AllowedOrigins string `env:"CORS_ORIGINS" envDefault:"http://localhost:3000"`
+	AllowedOrigins string `env:"CORS_ORIGINS" envDefault:"http://localhost:5173"`
 }
 
 type AuthRateConfig struct {

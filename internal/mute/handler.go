@@ -26,7 +26,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 }
 
 func (h *Handler) MuteInCourse(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -63,7 +63,7 @@ func (h *Handler) MuteInCourse(c *gin.Context) {
 }
 
 func (h *Handler) ListMutesByOffering(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -241,7 +241,7 @@ func (h *Handler) UnmuteAll(c *gin.Context) {
 		return
 	}
 
-	userID, err := uuid.Parse(c.Param("user_id"))
+	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid user id")
 		return
@@ -265,8 +265,8 @@ func (h *Handler) canManageOffering(c *gin.Context, offeringID uuid.UUID) bool {
 }
 
 func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
-	r.GET("/offerings/:offering_id/mutes", authMiddleware, h.ListMutesByOffering)
-	r.POST("/offerings/:offering_id/mutes", authMiddleware, h.MuteInCourse)
+	r.GET("/offerings/:id/mutes", authMiddleware, h.ListMutesByOffering)
+	r.POST("/offerings/:id/mutes", authMiddleware, h.MuteInCourse)
 	r.DELETE("/mutes/:id", authMiddleware, h.Unmute)
 
 	admin := r.Group("/admin")
@@ -274,6 +274,6 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerF
 	{
 		admin.GET("/mutes", h.ListAllMutes)
 		admin.POST("/mutes", h.MuteUniversityWide)
-		admin.DELETE("/users/:user_id/mutes", h.UnmuteAll)
+		admin.DELETE("/users/:id/mutes", h.UnmuteAll)
 	}
 }

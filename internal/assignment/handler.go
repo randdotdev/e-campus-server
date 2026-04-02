@@ -24,7 +24,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 }
 
 func (h *Handler) CreateAssignment(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -127,7 +127,7 @@ func (h *Handler) GetAssignment(c *gin.Context) {
 }
 
 func (h *Handler) ListAssignments(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -729,7 +729,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerF
 	offerings := r.Group("/offerings")
 	offerings.Use(authMiddleware)
 	{
-		offerings.GET("/:offering_id/assignments", h.ListAssignments)
-		offerings.POST("/:offering_id/assignments", h.CreateAssignment)
+		offerings.GET("/:id/assignments", h.ListAssignments)
+		offerings.POST("/:id/assignments", h.CreateAssignment)
 	}
 }

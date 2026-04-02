@@ -317,9 +317,9 @@ func run() error {
 			public.GET("/about", settingsHandler.GetPublicAbout)
 			public.GET("/colleges", universityHandler.GetPublicColleges)
 			public.GET("/colleges/:id", universityHandler.GetPublicCollege)
-			public.GET("/colleges/:college_id/departments", universityHandler.GetPublicDepartments)
+			public.GET("/colleges/:id/departments", universityHandler.GetPublicDepartments)
 			public.GET("/departments/:id", universityHandler.GetPublicDepartment)
-			public.GET("/departments/:department_id/programs", universityHandler.GetPublicPrograms)
+			public.GET("/departments/:id/programs", universityHandler.GetPublicPrograms)
 		}
 
 		protected := v1.Group("")
@@ -382,8 +382,8 @@ func run() error {
 			protected.PUT("/programs/:id", universityHandler.UpdateProgram)
 
 			// University structure routes - nested (for hierarchical browsing)
-			protected.GET("/colleges/:college_id/departments", universityHandler.ListDepartments)
-			protected.GET("/departments/:department_id/programs", universityHandler.ListPrograms)
+			protected.GET("/colleges/:id/departments", universityHandler.ListDepartments)
+			protected.GET("/departments/:id/programs", universityHandler.ListPrograms)
 
 			// Application routes - user's own applications
 			protected.POST("/applications", applicationHandler.Create)
@@ -412,26 +412,26 @@ func run() error {
 			protected.GET("/offerings/:id/access-level", enrollmentHandler.GetAccessLevel)
 
 			// Teacher routes
-			protected.GET("/offerings/:offering_id/teachers", courseHandler.ListTeachers)
-			protected.POST("/offerings/:offering_id/teachers", courseHandler.AddTeacher)
-			protected.DELETE("/offerings/:offering_id/teachers/:user_id", courseHandler.RemoveTeacher)
+			protected.GET("/offerings/:id/teachers", courseHandler.ListTeachers)
+			protected.POST("/offerings/:id/teachers", courseHandler.AddTeacher)
+			protected.DELETE("/offerings/:id/teachers/:user_id", courseHandler.RemoveTeacher)
 
 			// Enrollment routes
-			protected.GET("/offerings/:offering_id/enrollments", enrollmentHandler.ListEnrollments)
-			protected.POST("/offerings/:offering_id/enrollments", enrollmentHandler.EnrollStudent)
-			protected.DELETE("/offerings/:offering_id/enrollments/:student_id", enrollmentHandler.DropEnrollment)
+			protected.GET("/offerings/:id/enrollments", enrollmentHandler.ListEnrollments)
+			protected.POST("/offerings/:id/enrollments", enrollmentHandler.EnrollStudent)
+			protected.DELETE("/offerings/:id/enrollments/:student_id", enrollmentHandler.DropEnrollment)
 
 			// Project group routes
-			protected.GET("/offerings/:offering_id/groups", enrollmentHandler.ListProjectGroups)
-			protected.POST("/offerings/:offering_id/groups", enrollmentHandler.CreateProjectGroup)
+			protected.GET("/offerings/:id/groups", enrollmentHandler.ListProjectGroups)
+			protected.POST("/offerings/:id/groups", enrollmentHandler.CreateProjectGroup)
 			protected.POST("/groups/assign", enrollmentHandler.AssignToProjectGroup)
-			protected.DELETE("/groups/:group_id/members/:student_id", enrollmentHandler.RemoveFromProjectGroup)
+			protected.DELETE("/groups/:id/members/:student_id", enrollmentHandler.RemoveFromProjectGroup)
 
 			// Cohort group routes
-			protected.GET("/programs/:program_id/cohort-groups", enrollmentHandler.ListCohortGroups)
+			protected.GET("/programs/:id/cohort-groups", enrollmentHandler.ListCohortGroups)
 			protected.POST("/cohort-groups", enrollmentHandler.CreateCohortGroup)
 			protected.POST("/cohort-groups/assign", enrollmentHandler.AssignToCohortGroup)
-			protected.DELETE("/cohort-groups/:group_id/members/:student_id", enrollmentHandler.RemoveFromCohortGroup)
+			protected.DELETE("/cohort-groups/:id/members/:student_id", enrollmentHandler.RemoveFromCohortGroup)
 
 			// Exam routes
 			examHandler.RegisterRoutes(protected, middleware.Auth(authService))
@@ -456,23 +456,23 @@ func run() error {
 			}
 
 			// Content routes (sections, lessons, attachments, schedules)
-			protected.GET("/offerings/:offering_id/sections", contentHandler.ListSections)
+			protected.GET("/offerings/:id/sections", contentHandler.ListSections)
 			protected.POST("/sections", contentHandler.CreateSection)
 			protected.GET("/sections/:id", contentHandler.GetSection)
 			protected.PUT("/sections/:id", contentHandler.UpdateSection)
 			protected.DELETE("/sections/:id", contentHandler.DeleteSection)
 
-			protected.GET("/sections/:section_id/lessons", contentHandler.ListLessons)
+			protected.GET("/sections/:id/lessons", contentHandler.ListLessons)
 			protected.POST("/lessons", contentHandler.CreateLesson)
 			protected.GET("/lessons/:id", contentHandler.GetLesson)
 			protected.PUT("/lessons/:id", contentHandler.UpdateLesson)
 			protected.DELETE("/lessons/:id", contentHandler.DeleteLesson)
 
-			protected.POST("/lessons/:lesson_id/attachments", contentHandler.AddAttachment)
+			protected.POST("/lessons/:id/attachments", contentHandler.AddAttachment)
 			protected.DELETE("/attachments/:id", contentHandler.RemoveAttachment)
-			protected.GET("/lessons/:lesson_id/attachments/:display_name/url", contentHandler.GetAttachmentURL)
+			protected.GET("/lessons/:id/attachments/:display_name/url", contentHandler.GetAttachmentURL)
 
-			protected.POST("/lessons/:lesson_id/schedules", contentHandler.AddSchedule)
+			protected.POST("/lessons/:id/schedules", contentHandler.AddSchedule)
 			protected.PUT("/schedules/:id", contentHandler.UpdateSchedule)
 			protected.DELETE("/schedules/:id", contentHandler.RemoveSchedule)
 
@@ -540,13 +540,13 @@ func run() error {
 			protected.POST("/semesters/:id/end", academicHandler.EndSemester)
 
 			// Curriculum routes
-			protected.GET("/programs/:program_id/curriculum", academicHandler.ListCurriculum)
-			protected.POST("/programs/:program_id/curriculum", academicHandler.AddToCurriculum)
+			protected.GET("/programs/:id/curriculum", academicHandler.ListCurriculum)
+			protected.POST("/programs/:id/curriculum", academicHandler.AddToCurriculum)
 			protected.DELETE("/curriculum/:id", academicHandler.RemoveFromCurriculum)
 
 			// Requirements routes
-			protected.GET("/programs/:program_id/requirements", academicHandler.ListRequirements)
-			protected.POST("/programs/:program_id/requirements", academicHandler.SetRequirement)
+			protected.GET("/programs/:id/requirements", academicHandler.ListRequirements)
+			protected.POST("/programs/:id/requirements", academicHandler.SetRequirement)
 
 			// Student routes
 			protected.GET("/students", studentHandler.ListStudents)
@@ -557,21 +557,21 @@ func run() error {
 			protected.GET("/students/:id/transcript", studentHandler.GetTranscript)
 			protected.GET("/students/:id/leaves", studentHandler.ListLeaves)
 			protected.POST("/students/:id/leave", studentHandler.RequestLeave)
-			protected.PUT("/leaves/:leave_id/approve", studentHandler.ApproveLeave)
-			protected.PUT("/leaves/:leave_id/end", studentHandler.EndLeave)
+			protected.PUT("/leaves/:id/approve", studentHandler.ApproveLeave)
+			protected.PUT("/leaves/:id/end", studentHandler.EndLeave)
 			protected.GET("/students/:id/history", studentHandler.ListCohortHistory)
 			protected.GET("/me/student", studentHandler.GetMyStudentRecord)
 			protected.GET("/me/transcript", studentHandler.GetMyTranscript)
 
 			// Grading routes
-			protected.PUT("/offerings/:offering_id/grading-rules", gradingHandler.SaveRules)
-			protected.GET("/offerings/:offering_id/grading-rules", gradingHandler.GetRules)
-			protected.DELETE("/offerings/:offering_id/grading-rules", gradingHandler.DeleteRules)
-			protected.POST("/offerings/:offering_id/finalize-grades", gradingHandler.FinalizeGrades)
-			protected.DELETE("/offerings/:offering_id/finalize-grades", gradingHandler.DefinalizeGrades)
-			protected.GET("/offerings/:offering_id/grades", gradingHandler.GetGrades)
-			protected.PUT("/offerings/:offering_id/grades/:student_id", gradingHandler.OverrideGrade)
-			protected.GET("/offerings/:offering_id/grades/:student_id/preview", gradingHandler.PreviewGrade)
+			protected.PUT("/offerings/:id/grading-rules", gradingHandler.SaveRules)
+			protected.GET("/offerings/:id/grading-rules", gradingHandler.GetRules)
+			protected.DELETE("/offerings/:id/grading-rules", gradingHandler.DeleteRules)
+			protected.POST("/offerings/:id/finalize-grades", gradingHandler.FinalizeGrades)
+			protected.DELETE("/offerings/:id/finalize-grades", gradingHandler.DefinalizeGrades)
+			protected.GET("/offerings/:id/grades", gradingHandler.GetGrades)
+			protected.PUT("/offerings/:id/grades/:student_id", gradingHandler.OverrideGrade)
+			protected.GET("/offerings/:id/grades/:student_id/preview", gradingHandler.PreviewGrade)
 			protected.GET("/offerings/:id/my-grade", gradingHandler.GetMyGrade)
 
 			// Notification routes

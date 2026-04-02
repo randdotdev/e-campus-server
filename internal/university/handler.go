@@ -452,7 +452,7 @@ func (h *Handler) parseDepartmentFilters(c *gin.Context) (DepartmentFilters, err
 		IsActive: pagination.ParseBool(c, "is_active"),
 	}
 	// Check path param first, then query param
-	collegeIDStr := c.Param("college_id")
+	collegeIDStr := c.Param("id")
 	if collegeIDStr == "" {
 		collegeIDStr = c.Query("college_id")
 	}
@@ -471,7 +471,7 @@ func (h *Handler) parseProgramFilters(c *gin.Context) (ProgramFilters, error) {
 		IsActive: pagination.ParseBool(c, "is_active"),
 	}
 	// Check path param first, then query param
-	deptIDStr := c.Param("department_id")
+	deptIDStr := c.Param("id")
 	if deptIDStr == "" {
 		deptIDStr = c.Query("department_id")
 	}
@@ -545,7 +545,7 @@ func (h *Handler) GetPublicCollege(c *gin.Context) {
 
 func (h *Handler) GetPublicDepartments(c *gin.Context) {
 	lang := c.DefaultQuery("lang", "en")
-	collegeID, err := uuid.Parse(c.Param("college_id"))
+	collegeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid college id")
 		return
@@ -606,7 +606,7 @@ func (h *Handler) GetPublicDepartment(c *gin.Context) {
 
 func (h *Handler) GetPublicPrograms(c *gin.Context) {
 	lang := c.DefaultQuery("lang", "en")
-	deptID, err := uuid.Parse(c.Param("department_id"))
+	deptID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid department id")
 		return

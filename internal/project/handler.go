@@ -24,7 +24,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 }
 
 func (h *Handler) CreateProject(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -139,7 +139,7 @@ func (h *Handler) GetProject(c *gin.Context) {
 }
 
 func (h *Handler) ListProjects(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -435,7 +435,7 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 		return
 	}
 
-	groupID, err := uuid.Parse(c.Param("group_id"))
+	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid group id")
 		return
@@ -861,7 +861,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerF
 	offerings := r.Group("/offerings")
 	offerings.Use(authMiddleware)
 	{
-		offerings.GET("/:offering_id/projects", h.ListProjects)
-		offerings.POST("/:offering_id/projects", h.CreateProject)
+		offerings.GET("/:id/projects", h.ListProjects)
+		offerings.POST("/:id/projects", h.CreateProject)
 	}
 }

@@ -188,7 +188,7 @@ func (h *Handler) RequestLeave(c *gin.Context) {
 }
 
 func (h *Handler) ApproveLeave(c *gin.Context) {
-	leaveID, err := uuid.Parse(c.Param("leave_id"))
+	leaveID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid leave_id")
 		return
@@ -206,7 +206,7 @@ func (h *Handler) ApproveLeave(c *gin.Context) {
 }
 
 func (h *Handler) EndLeave(c *gin.Context) {
-	leaveID, err := uuid.Parse(c.Param("leave_id"))
+	leaveID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid leave_id")
 		return

@@ -59,7 +59,7 @@ func (h *Handler) GetSection(c *gin.Context) {
 }
 
 func (h *Handler) ListSections(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -163,7 +163,7 @@ func (h *Handler) GetLesson(c *gin.Context) {
 }
 
 func (h *Handler) ListLessons(c *gin.Context) {
-	sectionID, err := uuid.Parse(c.Param("section_id"))
+	sectionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid section id")
 		return
@@ -229,7 +229,7 @@ func (h *Handler) DeleteLesson(c *gin.Context) {
 // Attachment handlers
 
 func (h *Handler) AddAttachment(c *gin.Context) {
-	lessonID, err := uuid.Parse(c.Param("lesson_id"))
+	lessonID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid lesson id")
 		return
@@ -276,7 +276,7 @@ func (h *Handler) RemoveAttachment(c *gin.Context) {
 }
 
 func (h *Handler) GetAttachmentURL(c *gin.Context) {
-	lessonID, err := uuid.Parse(c.Param("lesson_id"))
+	lessonID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid lesson id")
 		return
@@ -302,7 +302,7 @@ func (h *Handler) GetAttachmentURL(c *gin.Context) {
 // Schedule handlers
 
 func (h *Handler) AddSchedule(c *gin.Context) {
-	lessonID, err := uuid.Parse(c.Param("lesson_id"))
+	lessonID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid lesson id")
 		return

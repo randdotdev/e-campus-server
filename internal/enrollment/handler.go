@@ -24,7 +24,7 @@ func NewHandler(svc *Service, log *zap.Logger) *Handler {
 // Enrollment handlers
 
 func (h *Handler) ListEnrollments(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -64,7 +64,7 @@ func (h *Handler) ListEnrollments(c *gin.Context) {
 }
 
 func (h *Handler) EnrollStudent(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -118,7 +118,7 @@ func (h *Handler) GetAccessLevel(c *gin.Context) {
 }
 
 func (h *Handler) DropEnrollment(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -141,7 +141,7 @@ func (h *Handler) DropEnrollment(c *gin.Context) {
 // Project group handlers
 
 func (h *Handler) ListProjectGroups(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -158,7 +158,7 @@ func (h *Handler) ListProjectGroups(c *gin.Context) {
 }
 
 func (h *Handler) CreateProjectGroup(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -201,7 +201,7 @@ func (h *Handler) RemoveFromProjectGroup(c *gin.Context) {
 		return
 	}
 
-	groupID, err := uuid.Parse(c.Param("group_id"))
+	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid group id")
 		return
@@ -218,7 +218,7 @@ func (h *Handler) RemoveFromProjectGroup(c *gin.Context) {
 // Cohort group handlers
 
 func (h *Handler) ListCohortGroups(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
+	programID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid program id")
 		return
@@ -284,7 +284,7 @@ func (h *Handler) RemoveFromCohortGroup(c *gin.Context) {
 		return
 	}
 
-	groupID, err := uuid.Parse(c.Param("group_id"))
+	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid group id")
 		return

@@ -236,7 +236,7 @@ func (h *Handler) GetExam(c *gin.Context) {
 }
 
 func (h *Handler) ListExams(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
@@ -897,13 +897,13 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerF
 	offerings := r.Group("/offerings")
 	offerings.Use(authMiddleware)
 	{
-		offerings.GET("/:offering_id/exams", h.ListExams)
-		offerings.POST("/:offering_id/exams", h.createExamWithOfferingID)
+		offerings.GET("/:id/exams", h.ListExams)
+		offerings.POST("/:id/exams", h.createExamWithOfferingID)
 	}
 }
 
 func (h *Handler) createExamWithOfferingID(c *gin.Context) {
-	offeringID, err := uuid.Parse(c.Param("offering_id"))
+	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
