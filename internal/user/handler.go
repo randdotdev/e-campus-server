@@ -161,6 +161,24 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	response.NoContent(c)
 }
 
+func (h *Handler) RevokeOtherSessions(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	keepSessionID, err := uuid.Parse(c.Query("keep"))
+	if err != nil {
+		response.BadRequest(c, "invalid session id")
+		return
+	}
+
+	if err := h.service.RevokeOtherSessions(c.Request.Context(), userID, keepSessionID); err != nil {
+		h.log.Error("revoke other sessions failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.NoContent(c)
+}
+
 // Admin handlers
 
 func (h *Handler) GetUser(c *gin.Context) {

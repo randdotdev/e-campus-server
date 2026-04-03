@@ -331,6 +331,7 @@ func run() error {
 			protected.GET("/me/role", userHandler.GetMyRole)
 			protected.GET("/me/sessions", userHandler.GetMySessions)
 			protected.DELETE("/me/sessions/:id", userHandler.RevokeSession)
+			protected.DELETE("/me/sessions/others", userHandler.RevokeOtherSessions)
 			protected.PUT("/me/password", userHandler.ChangePassword)
 
 			admin := protected.Group("/admin")

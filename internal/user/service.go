@@ -58,13 +58,25 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req Updat
 		user.FullNameEN = *req.FullNameEN
 	}
 	if req.FullNameLocal != nil {
-		user.FullNameLocal = req.FullNameLocal
+		if *req.FullNameLocal == "" {
+			user.FullNameLocal = nil
+		} else {
+			user.FullNameLocal = req.FullNameLocal
+		}
 	}
 	if req.AvatarURL != nil {
-		user.AvatarURL = req.AvatarURL
+		if *req.AvatarURL == "" {
+			user.AvatarURL = nil
+		} else {
+			user.AvatarURL = req.AvatarURL
+		}
 	}
 	if req.Phone != nil {
-		user.Phone = req.Phone
+		if *req.Phone == "" {
+			user.Phone = nil
+		} else {
+			user.Phone = req.Phone
+		}
 	}
 
 	if err := s.repo.Update(ctx, user); err != nil {
@@ -153,6 +165,23 @@ func (s *Service) RevokeSession(ctx context.Context, userID, sessionID uuid.UUID
 	}
 
 	return ErrSessionNotFound
+}
+
+func (s *Service) RevokeOtherSessions(ctx context.Context, userID, keepSessionID uuid.UUID) error {
+	tokens, err := s.tokens.GetUserSessions(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, token := range tokens {
+		if token.ID != keepSessionID {
+			if err := s.tokens.DeleteToken(ctx, token.TokenHash); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) GetStaffProfile(ctx context.Context, userID uuid.UUID) (*StaffProfile, error) {
