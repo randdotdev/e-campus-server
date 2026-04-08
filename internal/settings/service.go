@@ -195,6 +195,7 @@ type SettingsUpdates struct {
 type PreferencesUpdates struct {
 	Language           *string
 	Timezone           *string
+	Theme              *string
 	EmailNotifications *bool
 	PushNotifications  *bool
 }

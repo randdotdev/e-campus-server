@@ -104,6 +104,7 @@ func DefaultPreferences(userID uuid.UUID) *UserPreferences {
 		UserID:             userID,
 		Language:           LanguageEnglish,
 		Timezone:           "UTC",
+		Theme:              "system",
 		EmailNotifications: true,
 		PushNotifications:  true,
 	}
@@ -139,6 +140,9 @@ func ApplyPreferencesUpdates(current *UserPreferences, updates PreferencesUpdate
 	}
 	if updates.Timezone != nil {
 		result.Timezone = *updates.Timezone
+	}
+	if updates.Theme != nil {
+		result.Theme = *updates.Theme
 	}
 	if updates.EmailNotifications != nil {
 		result.EmailNotifications = *updates.EmailNotifications

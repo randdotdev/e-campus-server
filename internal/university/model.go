@@ -47,14 +47,14 @@ func (l LocalizedText) Get(lang string) string {
 }
 
 type College struct {
-	ID          uuid.UUID `db:"id"`
-	NameEN      string    `db:"name_en"`
-	NameLocal   *string   `db:"name_local"`
-	Code        string    `db:"code"`
-	Description *string   `db:"description"`
-	IsActive    bool      `db:"is_active"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          uuid.UUID     `db:"id"`
+	NameEN      string        `db:"name_en"`
+	NameLocal   *string       `db:"name_local"`
+	Code        string        `db:"code"`
+	Description LocalizedText `db:"description"`
+	IsActive    bool          `db:"is_active"`
+	CreatedAt   time.Time     `db:"created_at"`
+	UpdatedAt   time.Time     `db:"updated_at"`
 
 	About   LocalizedText `db:"about"`
 	Founded *int          `db:"founded"`
@@ -64,15 +64,15 @@ type College struct {
 }
 
 type Department struct {
-	ID          uuid.UUID `db:"id"`
-	CollegeID   uuid.UUID `db:"college_id"`
-	NameEN      string    `db:"name_en"`
-	NameLocal   *string   `db:"name_local"`
-	Code        string    `db:"code"`
-	Description *string   `db:"description"`
-	IsActive    bool      `db:"is_active"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          uuid.UUID     `db:"id"`
+	CollegeID   uuid.UUID     `db:"college_id"`
+	NameEN      string        `db:"name_en"`
+	NameLocal   *string       `db:"name_local"`
+	Code        string        `db:"code"`
+	Description LocalizedText `db:"description"`
+	IsActive    bool          `db:"is_active"`
+	CreatedAt   time.Time     `db:"created_at"`
+	UpdatedAt   time.Time     `db:"updated_at"`
 
 	About   LocalizedText `db:"about"`
 	Founded *int          `db:"founded"`

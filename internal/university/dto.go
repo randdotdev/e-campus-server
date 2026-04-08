@@ -29,7 +29,7 @@ type CreateCollegeRequest struct {
 	NameEN      string            `json:"name_en" binding:"required,min=2,max=255"`
 	NameLocal   *string           `json:"name_local" binding:"omitempty,max=255"`
 	Code        string            `json:"code" binding:"required,min=2,max=20"`
-	Description *string           `json:"description"`
+	Description map[string]string `json:"description"`
 	About       map[string]string `json:"about"`
 	Founded     *int              `json:"founded"`
 	Phone       *string           `json:"phone"`
@@ -41,7 +41,7 @@ type UpdateCollegeRequest struct {
 	NameEN      *string           `json:"name_en" binding:"omitempty,min=2,max=255"`
 	NameLocal   *string           `json:"name_local" binding:"omitempty,max=255"`
 	Code        *string           `json:"code" binding:"omitempty,min=2,max=20"`
-	Description *string           `json:"description"`
+	Description map[string]string `json:"description"`
 	IsActive    *bool             `json:"is_active"`
 	About       map[string]string `json:"about"`
 	Founded     *int              `json:"founded"`
@@ -56,7 +56,7 @@ type CollegeResponse struct {
 	NameEN      string            `json:"name_en"`
 	NameLocal   *string           `json:"name_local,omitempty"`
 	Code        string            `json:"code"`
-	Description *string           `json:"description,omitempty"`
+	Description map[string]string `json:"description,omitempty"`
 	IsActive    bool              `json:"is_active"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
@@ -139,7 +139,7 @@ type CreateDepartmentRequest struct {
 	NameEN      string            `json:"name_en" binding:"required,min=2,max=255"`
 	NameLocal   *string           `json:"name_local" binding:"omitempty,max=255"`
 	Code        string            `json:"code" binding:"required,min=2,max=20"`
-	Description *string           `json:"description"`
+	Description map[string]string `json:"description"`
 	About       map[string]string `json:"about"`
 	Founded     *int              `json:"founded"`
 	Phone       *string           `json:"phone"`
@@ -151,7 +151,7 @@ type UpdateDepartmentRequest struct {
 	NameEN      *string           `json:"name_en" binding:"omitempty,min=2,max=255"`
 	NameLocal   *string           `json:"name_local" binding:"omitempty,max=255"`
 	Code        *string           `json:"code" binding:"omitempty,min=2,max=20"`
-	Description *string           `json:"description"`
+	Description map[string]string `json:"description"`
 	IsActive    *bool             `json:"is_active"`
 	About       map[string]string `json:"about"`
 	Founded     *int              `json:"founded"`
@@ -167,7 +167,7 @@ type DepartmentResponse struct {
 	NameEN      string            `json:"name_en"`
 	NameLocal   *string           `json:"name_local,omitempty"`
 	Code        string            `json:"code"`
-	Description *string           `json:"description,omitempty"`
+	Description map[string]string `json:"description,omitempty"`
 	IsActive    bool              `json:"is_active"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`

@@ -54,6 +54,7 @@ type UpdateSettingsRequest struct {
 type UpdatePreferencesRequest struct {
 	Language           *string `json:"language" binding:"omitempty,oneof=en ku ar"`
 	Timezone           *string `json:"timezone"`
+	Theme              *string `json:"theme" binding:"omitempty,oneof=light dark system"`
 	EmailNotifications *bool   `json:"email_notifications"`
 	PushNotifications  *bool   `json:"push_notifications"`
 }
@@ -86,6 +87,7 @@ type InstitutionPublicResponse struct {
 type PreferencesResponse struct {
 	Language           string    `json:"language"`
 	Timezone           string    `json:"timezone"`
+	Theme              string    `json:"theme"`
 	EmailNotifications bool      `json:"email_notifications"`
 	PushNotifications  bool      `json:"push_notifications"`
 	UpdatedAt          time.Time `json:"updated_at"`
@@ -132,6 +134,7 @@ func ToPreferencesResponse(p *UserPreferences) PreferencesResponse {
 	return PreferencesResponse{
 		Language:           p.Language,
 		Timezone:           p.Timezone,
+		Theme:              p.Theme,
 		EmailNotifications: p.EmailNotifications,
 		PushNotifications:  p.PushNotifications,
 		UpdatedAt:          p.UpdatedAt,
