@@ -104,7 +104,7 @@ func TestCreateApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -131,7 +131,7 @@ func TestCreateApplication_ProgramNotFound(t *testing.T) {
 			return false, ErrProgramNotFound
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -155,7 +155,7 @@ func TestCreateApplication_ProgramInactive(t *testing.T) {
 			return false, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -183,7 +183,7 @@ func TestCreateApplication_AgeTooYoung(t *testing.T) {
 			return &ProgramAgeRequirements{MinAge: &minAge}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -211,7 +211,7 @@ func TestCreateApplication_AgeTooOld(t *testing.T) {
 			return &ProgramAgeRequirements{MaxAge: &maxAge}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -241,7 +241,7 @@ func TestCreateApplication_DuplicateApplication(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -277,7 +277,7 @@ func TestUpdateApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{
 		Academic: map[string]any{"gpa": 3.5},
@@ -306,7 +306,7 @@ func TestUpdateApplication_NotOwner(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{}
 
@@ -329,7 +329,7 @@ func TestUpdateApplication_WrongStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{}
 
@@ -360,7 +360,7 @@ func TestWithdrawApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	err := svc.WithdrawApplication(context.Background(), userID, appID)
 	if err != nil {
@@ -382,7 +382,7 @@ func TestWithdrawApplication_NotOwner(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	err := svc.WithdrawApplication(context.Background(), otherUserID, appID)
 	if !errors.Is(err, ErrAccessDenied) {
@@ -403,7 +403,7 @@ func TestWithdrawApplication_AlreadyApproved(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	err := svc.WithdrawApplication(context.Background(), userID, appID)
 	if !errors.Is(err, ErrCannotWithdraw) {
@@ -430,7 +430,7 @@ func TestReviewApplication_Approve(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusApproved,
@@ -464,7 +464,7 @@ func TestReviewApplication_CannotReviewOwn(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusApproved,
@@ -490,7 +490,7 @@ func TestReviewApplication_InvalidCurrentStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusRejected,
@@ -499,6 +499,75 @@ func TestReviewApplication_InvalidCurrentStatus(t *testing.T) {
 	_, err := svc.ReviewApplication(context.Background(), reviewerID, appID, req)
 	if !errors.Is(err, ErrInvalidStatus) {
 		t.Errorf("expected ErrInvalidStatus, got %v", err)
+	}
+}
+
+type mockStudentCreator struct {
+	called bool
+	err    error
+}
+
+func (m *mockStudentCreator) CreateStudentFromApplication(_ context.Context, _, _ uuid.UUID, _ int, _, _ string) error {
+	m.called = true
+	return m.err
+}
+
+func TestReviewApplication_ApproveCreatesStudent(t *testing.T) {
+	reviewerID := uuid.New()
+	applicantID := uuid.New()
+	appID := uuid.New()
+	programID := uuid.New()
+
+	mock := &MockRepository{
+		GetByIDFunc: func(ctx context.Context, id uuid.UUID) (*Application, error) {
+			return &Application{
+				ID:            appID,
+				UserID:        &applicantID,
+				ProgramID:     programID,
+				AdmissionYear: 2026,
+				Shift:         "morning",
+				Tuition:       "full",
+				Status:        StatusPending,
+			}, nil
+		},
+		UpdateFunc: func(ctx context.Context, app *Application) error { return nil },
+	}
+	creator := &mockStudentCreator{}
+	svc := NewService(mock, nil, creator)
+
+	_, err := svc.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !creator.called {
+		t.Error("expected studentCreator to be called on approval")
+	}
+}
+
+func TestReviewApplication_ApproveStudentCreationFailureIsNonFatal(t *testing.T) {
+	reviewerID := uuid.New()
+	applicantID := uuid.New()
+	appID := uuid.New()
+
+	mock := &MockRepository{
+		GetByIDFunc: func(ctx context.Context, id uuid.UUID) (*Application, error) {
+			return &Application{
+				ID:     appID,
+				UserID: &applicantID,
+				Status: StatusPending,
+			}, nil
+		},
+		UpdateFunc: func(ctx context.Context, app *Application) error { return nil },
+	}
+	creator := &mockStudentCreator{err: errors.New("db error")}
+	svc := NewService(mock, nil, creator)
+
+	app, err := svc.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
+	if err != nil {
+		t.Fatalf("student creation failure should not fail approval, got: %v", err)
+	}
+	if app.Status != StatusApproved {
+		t.Errorf("expected status approved, got %q", app.Status)
 	}
 }
 
@@ -516,7 +585,7 @@ func TestReviewApplication_InvalidTargetStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil)
+	svc := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusWithdrawn, // invalid review status

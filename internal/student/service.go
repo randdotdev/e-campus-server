@@ -101,6 +101,22 @@ func (s *Service) CreateStudent(ctx context.Context, req CreateStudentRequest) (
 	return student, nil
 }
 
+func (s *Service) CreateStudentFromApplication(
+	ctx context.Context,
+	userID, programID uuid.UUID,
+	admissionYear int,
+	shift, tuition string,
+) error {
+	_, err := s.CreateStudent(ctx, CreateStudentRequest{
+		UserID:        userID,
+		ProgramID:     programID,
+		AdmissionYear: admissionYear,
+		Shift:         shift,
+		Tuition:       tuition,
+	})
+	return err
+}
+
 func (s *Service) GetStudent(ctx context.Context, id uuid.UUID) (*Student, error) {
 	return s.repo.GetStudent(ctx, id)
 }

@@ -9,14 +9,13 @@ import (
 
 func TestToCollegeResponse(t *testing.T) {
 	nameLocal := "کۆلێژی زانست"
-	desc := "Science college"
 
 	college := &College{
 		ID:          uuid.New(),
 		NameEN:      "College of Science",
 		NameLocal:   &nameLocal,
 		Code:        "SCI",
-		Description: &desc,
+		Description: LocalizedText{"en": "Science college"},
 		IsActive:    true,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),

@@ -129,8 +129,18 @@ func run() error {
 	universityService := university.NewService(universityRepo, subscriptionService)
 	universityHandler := university.NewHandler(universityService, log)
 
+	enrollmentRepo := enrollment.NewRepository(db)
+
+	studentRepo := student.NewRepository(db)
+	studentService := student.NewService(
+		studentRepo,
+		universityRepo,
+		enrollmentRepo,
+	)
+	studentHandler := student.NewHandler(studentService, log)
+
 	applicationRepo := application.NewRepository(db)
-	applicationService := application.NewService(applicationRepo, notificationService)
+	applicationService := application.NewService(applicationRepo, notificationService, studentService)
 	applicationHandler := application.NewHandler(applicationService, log)
 
 	courseRepo := course.NewRepository(db)
@@ -139,8 +149,6 @@ func run() error {
 
 	permissionRepo := permission.NewRepository(db)
 	permission.SetCourseChecker(permissionRepo)
-
-	enrollmentRepo := enrollment.NewRepository(db)
 
 	examRepo := exam.NewRepository(db)
 	examService := exam.NewService(examRepo, notificationService, enrollmentRepo)
@@ -239,14 +247,6 @@ func run() error {
 		filesRepo,
 	)
 	contentHandler := content.NewHandler(contentService, log)
-
-	studentRepo := student.NewRepository(db)
-	studentService := student.NewService(
-		studentRepo,
-		universityRepo,
-		enrollmentRepo,
-	)
-	studentHandler := student.NewHandler(studentService, log)
 
 	settingsRepo := settings.NewRepository(db)
 	settingsService := settings.NewService(settingsRepo, settingsRepo)

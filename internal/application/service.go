@@ -26,13 +26,22 @@ type Notifier interface {
 	Send(ctx context.Context, userID uuid.UUID, notifType, title string, body *string, data map[string]any) error
 }
 
-type Service struct {
-	repo     ApplicationRepository
-	notifier Notifier
+type StudentCreator interface {
+	CreateStudentFromApplication(ctx context.Context, userID, programID uuid.UUID, admissionYear int, shift, tuition string) error
 }
 
-func NewService(repo ApplicationRepository, notifier Notifier) *Service {
-	return &Service{repo: repo, notifier: notifier}
+type Service struct {
+	repo           ApplicationRepository
+	notifier       Notifier
+	studentCreator StudentCreator
+}
+
+func NewService(repo ApplicationRepository, notifier Notifier, studentCreator StudentCreator) *Service {
+	return &Service{
+		repo:           repo,
+		notifier:       notifier,
+		studentCreator: studentCreator,
+	}
 }
 
 // Application operations
@@ -214,6 +223,17 @@ func (s *Service) ReviewApplication(ctx context.Context, reviewerID, appID uuid.
 
 	if err := s.repo.Update(ctx, app); err != nil {
 		return nil, err
+	}
+
+	if req.Status == StatusApproved && app.UserID != nil && s.studentCreator != nil {
+		_ = s.studentCreator.CreateStudentFromApplication(
+			ctx,
+			*app.UserID,
+			app.ProgramID,
+			app.AdmissionYear,
+			app.Shift,
+			app.Tuition,
+		)
 	}
 
 	if s.notifier != nil && app.UserID != nil {
