@@ -33,9 +33,17 @@ func (r *Repository) CreateStudent(ctx context.Context, s *Student) error {
 	).Scan(&s.ID, &s.EnrolledAt, &s.CreatedAt)
 }
 
-func (r *Repository) GetStudent(ctx context.Context, id uuid.UUID) (*Student, error) {
-	var s Student
-	query := `SELECT * FROM students WHERE id = $1`
+const studentWithUserSelect = `
+	SELECT s.id, s.user_id, s.program_id, s.admission_year,
+		s.current_cohort_year, s.current_year, s.shift, s.tuition, s.status,
+		s.enrolled_at, s.created_at,
+		u.full_name_en AS name_en, u.full_name_local AS name_local
+	FROM students s
+	JOIN users u ON s.user_id = u.id`
+
+func (r *Repository) GetStudent(ctx context.Context, id uuid.UUID) (*StudentSummary, error) {
+	var s StudentSummary
+	query := studentWithUserSelect + ` WHERE s.id = $1`
 	err := r.db.GetContext(ctx, &s, query, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrStudentNotFound
@@ -46,9 +54,9 @@ func (r *Repository) GetStudent(ctx context.Context, id uuid.UUID) (*Student, er
 	return &s, nil
 }
 
-func (r *Repository) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*Student, error) {
-	var s Student
-	query := `SELECT * FROM students WHERE user_id = $1`
+func (r *Repository) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*StudentSummary, error) {
+	var s StudentSummary
+	query := studentWithUserSelect + ` WHERE s.user_id = $1`
 	err := r.db.GetContext(ctx, &s, query, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrStudentNotFound
@@ -59,12 +67,27 @@ func (r *Repository) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (
 	return &s, nil
 }
 
-func (r *Repository) ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]Student, bool, error) {
-	var students []Student
+func (r *Repository) ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]StudentSummary, bool, error) {
+	var students []StudentSummary
+
+	joins := "JOIN users u ON s.user_id = u.id"
+	if filters.CohortGroupID != nil {
+		joins += " JOIN student_cohort_groups scg ON scg.student_id = s.id"
+	}
 
 	var conditions []string
 	var args []interface{}
 	argIndex := 1
+
+	if params.Cursor != "" {
+		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
+		if err != nil {
+			return nil, false, err
+		}
+		conditions = append(conditions, fmt.Sprintf("(s.created_at, s.id) < ($%d, $%d)", argIndex, argIndex+1))
+		args = append(args, createdAt, id)
+		argIndex += 2
+	}
 
 	if filters.ProgramID != nil {
 		conditions = append(conditions, fmt.Sprintf("s.program_id = $%d", argIndex))
@@ -91,9 +114,14 @@ func (r *Repository) ListStudents(ctx context.Context, params pagination.PagePar
 		args = append(args, *filters.Shift)
 		argIndex++
 	}
+	if filters.CohortGroupID != nil {
+		conditions = append(conditions, fmt.Sprintf("scg.cohort_group_id = $%d", argIndex))
+		args = append(args, *filters.CohortGroupID)
+		argIndex++
+	}
 	if filters.Query != nil && *filters.Query != "" {
 		conditions = append(conditions, fmt.Sprintf("(u.full_name_en ILIKE $%d OR u.email ILIKE $%d)", argIndex, argIndex))
-		args = append(args, "%"+*filters.Query+"%")
+		args = append(args, "%"+pagination.EscapeLike(*filters.Query)+"%")
 		argIndex++
 	}
 
@@ -102,12 +130,16 @@ func (r *Repository) ListStudents(ctx context.Context, params pagination.PagePar
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query := `
-		SELECT s.* FROM students s
-		JOIN users u ON s.user_id = u.id
-		` + whereClause + `
-		ORDER BY s.created_at DESC
-		LIMIT $` + fmt.Sprintf("%d", argIndex)
+	query := fmt.Sprintf(`
+		SELECT s.id, s.user_id, s.program_id, s.admission_year,
+			s.current_cohort_year, s.current_year, s.shift, s.tuition, s.status,
+			s.enrolled_at, s.created_at,
+			u.full_name_en AS name_en, u.full_name_local AS name_local
+		FROM students s
+		%s
+		%s
+		ORDER BY s.created_at DESC, s.id DESC
+		LIMIT $%d`, joins, whereClause, argIndex)
 
 	args = append(args, params.Limit+1)
 
@@ -123,13 +155,27 @@ func (r *Repository) ListStudents(ctx context.Context, params pagination.PagePar
 	return students, hasMore, nil
 }
 
-func (r *Repository) UpdateStudent(ctx context.Context, s *Student) error {
+func (r *Repository) UpdateStudent(ctx context.Context, s *StudentSummary) error {
 	query := `
 		UPDATE students
 		SET current_cohort_year = $2, current_year = $3, shift = $4, tuition = $5, status = $6
 		WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, s.ID, s.CurrentCohortYear, s.CurrentYear, s.Shift, s.Tuition, s.Status)
 	return err
+}
+
+func (r *Repository) ListCohortYears(ctx context.Context, programID uuid.UUID) ([]CohortYearSummary, error) {
+	var summaries []CohortYearSummary
+	query := `
+		SELECT current_cohort_year AS cohort_year, COUNT(*) AS student_count
+		FROM students
+		WHERE program_id = $1
+		GROUP BY current_cohort_year
+		ORDER BY current_cohort_year DESC`
+	if err := r.db.SelectContext(ctx, &summaries, query, programID); err != nil {
+		return nil, err
+	}
+	return summaries, nil
 }
 
 func (r *Repository) StudentExistsByUserID(ctx context.Context, userID uuid.UUID) (bool, error) {
@@ -141,11 +187,11 @@ func (r *Repository) StudentExistsByUserID(ctx context.Context, userID uuid.UUID
 
 func (r *Repository) CreateLeave(ctx context.Context, l *Leave) error {
 	query := `
-		INSERT INTO student_leaves (student_id, type, academic_year_id, reason, start_date, end_date, approved_by, approved_at, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO student_leaves (student_id, type, academic_year_id, reason, start_date, end_date, closed_at, approved_by, approved_at, notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at`
 	return r.db.QueryRowxContext(ctx, query,
-		l.StudentID, l.Type, l.AcademicYearID, l.Reason, l.StartDate, l.EndDate, l.ApprovedBy, l.ApprovedAt, l.Notes,
+		l.StudentID, l.Type, l.AcademicYearID, l.Reason, l.StartDate, l.EndDate, l.ClosedAt, l.ApprovedBy, l.ApprovedAt, l.Notes,
 	).Scan(&l.ID, &l.CreatedAt)
 }
 
@@ -174,15 +220,15 @@ func (r *Repository) ListLeaves(ctx context.Context, studentID uuid.UUID) ([]Lea
 func (r *Repository) UpdateLeave(ctx context.Context, l *Leave) error {
 	query := `
 		UPDATE student_leaves
-		SET end_date = $2, approved_by = $3, approved_at = $4, notes = $5
+		SET end_date = $2, closed_at = $3, approved_by = $4, approved_at = $5, notes = $6
 		WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, l.ID, l.EndDate, l.ApprovedBy, l.ApprovedAt, l.Notes)
+	_, err := r.db.ExecContext(ctx, query, l.ID, l.EndDate, l.ClosedAt, l.ApprovedBy, l.ApprovedAt, l.Notes)
 	return err
 }
 
 func (r *Repository) GetActiveLeave(ctx context.Context, studentID uuid.UUID) (*Leave, error) {
 	var l Leave
-	query := `SELECT * FROM student_leaves WHERE student_id = $1 AND end_date IS NULL ORDER BY created_at DESC LIMIT 1`
+	query := `SELECT * FROM student_leaves WHERE student_id = $1 AND closed_at IS NULL ORDER BY created_at DESC LIMIT 1`
 	err := r.db.GetContext(ctx, &l, query, studentID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

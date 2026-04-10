@@ -31,7 +31,8 @@ type MockAcademicRepository struct {
 	CurriculumExistsFunc      func(ctx context.Context, programID, courseID uuid.UUID, cohortYear, stage int, semester string) (bool, error)
 	SetRequirementFunc        func(ctx context.Context, r *SemesterRequirement) error
 	GetRequirementFunc        func(ctx context.Context, programID uuid.UUID, cohortYear, stage int, semester string) (*SemesterRequirement, error)
-	ListRequirementsFunc      func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]SemesterRequirement, error)
+	ListRequirementsFunc        func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]SemesterRequirement, error)
+	ListCurriculumItemsFunc     func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error)
 }
 
 func (m *MockAcademicRepository) CreateAcademicYear(ctx context.Context, ay *AcademicYear) error {
@@ -176,6 +177,13 @@ func (m *MockAcademicRepository) ListRequirements(ctx context.Context, programID
 		return m.ListRequirementsFunc(ctx, programID, cohortYear)
 	}
 	return []SemesterRequirement{}, nil
+}
+
+func (m *MockAcademicRepository) ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error) {
+	if m.ListCurriculumItemsFunc != nil {
+		return m.ListCurriculumItemsFunc(ctx, programID, cohortYear)
+	}
+	return []CurriculumItem{}, nil
 }
 
 type MockStudentProvider struct {

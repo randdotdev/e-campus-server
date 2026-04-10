@@ -22,6 +22,7 @@ type AcademicRepository interface {
 	AddCurriculum(ctx context.Context, c *Curriculum) error
 	GetCurriculum(ctx context.Context, programID uuid.UUID, cohortYear, stage int, semester string) ([]Curriculum, error)
 	ListCurriculum(ctx context.Context, programID uuid.UUID, cohortYear int) ([]Curriculum, error)
+	ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error)
 	RemoveCurriculum(ctx context.Context, id uuid.UUID) error
 	CurriculumExists(ctx context.Context, programID, courseID uuid.UUID, cohortYear, stage int, semester string) (bool, error)
 	SetRequirement(ctx context.Context, r *SemesterRequirement) error
@@ -369,6 +370,10 @@ func (s *Service) ListCurriculum(ctx context.Context, programID uuid.UUID, cohor
 	return s.repo.ListCurriculum(ctx, programID, cohortYear)
 }
 
+func (s *Service) ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error) {
+	return s.repo.ListCurriculumItems(ctx, programID, cohortYear)
+}
+
 func (s *Service) RemoveFromCurriculum(ctx context.Context, id uuid.UUID) error {
 	return s.repo.RemoveCurriculum(ctx, id)
 }
@@ -410,6 +415,10 @@ func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, p
 	sem, err := s.repo.GetSemester(ctx, semesterID)
 	if err != nil {
 		return nil, err
+	}
+
+	if sem.Status != SemesterStatusUpcoming && sem.Status != SemesterStatusActive {
+		return nil, ErrSemesterNotActive
 	}
 
 	result := &GenerateOfferingsResult{}
@@ -486,6 +495,10 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 	sem, err := s.repo.GetSemester(ctx, semesterID)
 	if err != nil {
 		return nil, err
+	}
+
+	if sem.Status != SemesterStatusUpcoming && sem.Status != SemesterStatusActive {
+		return nil, ErrSemesterNotActive
 	}
 
 	result := &BulkEnrollResult{
@@ -600,6 +613,8 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 					CourseCode:  course.Code,
 					Type:        enrollType,
 				})
+			} else {
+				result.Errors++
 			}
 		}
 
@@ -615,6 +630,10 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 
 		for _, req := range retakeRequests {
 			if curriculumCourseIDs[req.CourseID] {
+				continue
+			}
+
+			if passedSet[req.CourseID] {
 				continue
 			}
 
@@ -642,6 +661,8 @@ func (s *Service) BulkEnroll(ctx context.Context, semesterID uuid.UUID, programI
 					CourseCode:  course.Code,
 					Type:        "retake",
 				})
+			} else {
+				result.Errors++
 			}
 		}
 	}
@@ -705,6 +726,10 @@ func (s *Service) EndSemester(ctx context.Context, semesterID uuid.UUID) (*EndSe
 		}
 	}
 
+	if sem.Semester == SemesterTypeFall || sem.Semester == SemesterTypeSummer {
+		result.Warning = "year-end progression does not run on fall or summer semesters; student records are unchanged"
+	}
+
 	sem.Status = SemesterStatusArchived
 	if err := s.repo.UpdateSemester(ctx, sem); err != nil {
 		return nil, err
@@ -765,6 +790,10 @@ func (s *Service) processYearEnd(ctx context.Context, student StudentInfo, passe
 		}
 		return outcomeRepeated
 	}
+
+	// full_year_repeat=false: student stays in same cohort/year to retake failed courses.
+	// Still record a history entry so there is an audit trail of the failure.
+	_ = s.students.RecordCohortChange(ctx, student.ID, student.CurrentCohortYear, student.CurrentCohortYear, student.CurrentYear, student.CurrentYear, "failed")
 
 	return outcomeUnchanged
 }

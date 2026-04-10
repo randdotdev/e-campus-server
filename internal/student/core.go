@@ -41,7 +41,7 @@ func GradeToPoints(grade float64) float64 {
 	}
 }
 
-func BuildTranscript(data *TranscriptData, student *Student, totalCredits int) *Transcript {
+func BuildTranscript(data *TranscriptData, student *StudentSummary, totalCredits int) *Transcript {
 	if data == nil {
 		return &Transcript{
 			Student: TranscriptStudent{

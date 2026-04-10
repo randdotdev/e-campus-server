@@ -54,6 +54,14 @@ func (h *Handler) ListStudents(c *gin.Context) {
 	if shift := c.Query("shift"); shift != "" {
 		filters.Shift = &shift
 	}
+	if id := c.Query("cohort_group_id"); id != "" {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			response.BadRequest(c, "invalid cohort_group_id")
+			return
+		}
+		filters.CohortGroupID = &parsed
+	}
 	if params.Query != "" {
 		filters.Query = &params.Query
 	}
@@ -75,6 +83,23 @@ func (h *Handler) ListStudents(c *gin.Context) {
 	}
 
 	response.OK(c, result)
+}
+
+func (h *Handler) ListCohortYears(c *gin.Context) {
+	programID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid program id")
+		return
+	}
+
+	summaries, err := h.svc.ListCohortYears(c.Request.Context(), programID)
+	if err != nil {
+		h.log.Error("list cohort years failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ToCohortYearsResponse(summaries))
 }
 
 func (h *Handler) CreateStudent(c *gin.Context) {

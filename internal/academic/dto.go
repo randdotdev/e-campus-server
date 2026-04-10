@@ -184,6 +184,50 @@ func ToCurriculumsResponse(cs []Curriculum) []CurriculumResponse {
 	return result
 }
 
+// CurriculumItemResponse includes joined course details.
+type CurriculumItemResponse struct {
+	ID              uuid.UUID `json:"id"`
+	ProgramID       uuid.UUID `json:"program_id"`
+	CohortYear      int       `json:"cohort_year"`
+	Stage           int       `json:"stage"`
+	Semester        string    `json:"semester"`
+	CourseID        uuid.UUID `json:"course_id"`
+	CourseCode      string    `json:"course_code"`
+	CourseNameEN    string    `json:"course_name_en"`
+	CourseNameLocal *string   `json:"course_name_local,omitempty"`
+	CourseCredits   int       `json:"course_credits"`
+	IsRequired      bool      `json:"is_required"`
+	CreatedAt       string    `json:"created_at"`
+}
+
+func ToCurriculumItemResponse(item *CurriculumItem) *CurriculumItemResponse {
+	if item == nil {
+		return nil
+	}
+	return &CurriculumItemResponse{
+		ID:              item.ID,
+		ProgramID:       item.ProgramID,
+		CohortYear:      item.CohortYear,
+		Stage:           item.Stage,
+		Semester:        item.Semester,
+		CourseID:        item.CourseID,
+		CourseCode:      item.CourseCode,
+		CourseNameEN:    item.CourseNameEN,
+		CourseNameLocal: item.CourseNameLocal,
+		CourseCredits:   item.CourseCredits,
+		IsRequired:      item.IsRequired,
+		CreatedAt:       item.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func ToCurriculumItemsResponse(items []CurriculumItem) []CurriculumItemResponse {
+	result := make([]CurriculumItemResponse, len(items))
+	for i, item := range items {
+		result[i] = *ToCurriculumItemResponse(&item)
+	}
+	return result
+}
+
 // Semester Requirements DTOs
 
 type SetRequirementRequest struct {

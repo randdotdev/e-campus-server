@@ -10,11 +10,12 @@ import (
 
 type StudentRepository interface {
 	CreateStudent(ctx context.Context, s *Student) error
-	GetStudent(ctx context.Context, id uuid.UUID) (*Student, error)
-	GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*Student, error)
-	ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]Student, bool, error)
-	UpdateStudent(ctx context.Context, s *Student) error
+	GetStudent(ctx context.Context, id uuid.UUID) (*StudentSummary, error)
+	GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*StudentSummary, error)
+	ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]StudentSummary, bool, error)
+	UpdateStudent(ctx context.Context, s *StudentSummary) error
 	StudentExistsByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+	ListCohortYears(ctx context.Context, programID uuid.UUID) ([]CohortYearSummary, error)
 
 	CreateLeave(ctx context.Context, l *Leave) error
 	GetLeave(ctx context.Context, id uuid.UUID) (*Leave, error)
@@ -66,7 +67,7 @@ func NewService(repo StudentRepository, program ProgramProvider, enrollment Enro
 	return &Service{repo: repo, program: program, enrollment: enrollment}
 }
 
-func (s *Service) CreateStudent(ctx context.Context, req CreateStudentRequest) (*Student, error) {
+func (s *Service) CreateStudent(ctx context.Context, req CreateStudentRequest) (*StudentSummary, error) {
 	exists, err := s.program.ProgramExists(ctx, req.ProgramID)
 	if err != nil {
 		return nil, err
@@ -98,7 +99,7 @@ func (s *Service) CreateStudent(ctx context.Context, req CreateStudentRequest) (
 		return nil, err
 	}
 
-	return student, nil
+	return s.repo.GetStudent(ctx, student.ID)
 }
 
 func (s *Service) CreateStudentFromApplication(
@@ -117,19 +118,23 @@ func (s *Service) CreateStudentFromApplication(
 	return err
 }
 
-func (s *Service) GetStudent(ctx context.Context, id uuid.UUID) (*Student, error) {
+func (s *Service) GetStudent(ctx context.Context, id uuid.UUID) (*StudentSummary, error) {
 	return s.repo.GetStudent(ctx, id)
 }
 
-func (s *Service) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*Student, error) {
+func (s *Service) GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*StudentSummary, error) {
 	return s.repo.GetStudentByUserID(ctx, userID)
 }
 
-func (s *Service) ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]Student, bool, error) {
+func (s *Service) ListStudents(ctx context.Context, params pagination.PageParams, filters StudentFilters) ([]StudentSummary, bool, error) {
 	return s.repo.ListStudents(ctx, params, filters)
 }
 
-func (s *Service) UpdateStudent(ctx context.Context, id uuid.UUID, req UpdateStudentRequest) (*Student, error) {
+func (s *Service) ListCohortYears(ctx context.Context, programID uuid.UUID) ([]CohortYearSummary, error) {
+	return s.repo.ListCohortYears(ctx, programID)
+}
+
+func (s *Service) UpdateStudent(ctx context.Context, id uuid.UUID, req UpdateStudentRequest) (*StudentSummary, error) {
 	student, err := s.repo.GetStudent(ctx, id)
 	if err != nil {
 		return nil, err
@@ -155,7 +160,7 @@ func (s *Service) UpdateStudent(ctx context.Context, id uuid.UUID, req UpdateStu
 	return student, nil
 }
 
-func (s *Service) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) (*Student, error) {
+func (s *Service) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) (*StudentSummary, error) {
 	if !IsValidStatus(status) {
 		return nil, ErrInvalidStatus
 	}
@@ -234,14 +239,16 @@ func (s *Service) ApproveLeave(ctx context.Context, leaveID, approverID uuid.UUI
 		return nil, nil, err
 	}
 
-	if leave.Type != LeaveTypeShort && len(semesterIDs) > 0 {
+	if leave.Type != LeaveTypeShort {
 		student, err := s.repo.GetStudent(ctx, leave.StudentID)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if err := s.enrollment.WithdrawEnrollmentsForLeave(ctx, student.UserID, semesterIDs); err != nil {
-			return nil, nil, err
+		if len(semesterIDs) > 0 {
+			if err := s.enrollment.WithdrawEnrollmentsForLeave(ctx, student.UserID, semesterIDs); err != nil {
+				return nil, nil, err
+			}
 		}
 
 		student.Status = StatusOnLeave
@@ -259,12 +266,12 @@ func (s *Service) EndLeave(ctx context.Context, leaveID uuid.UUID) (*Leave, erro
 		return nil, err
 	}
 
-	if leave.EndDate != nil {
+	if leave.ClosedAt != nil {
 		return nil, ErrLeaveEnded
 	}
 
 	now := time.Now()
-	leave.EndDate = &now
+	leave.ClosedAt = &now
 
 	if err := s.repo.UpdateLeave(ctx, leave); err != nil {
 		return nil, err

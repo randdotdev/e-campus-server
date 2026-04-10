@@ -88,7 +88,7 @@ func TestGradeToPoints(t *testing.T) {
 }
 
 func TestBuildTranscript_NilData(t *testing.T) {
-	student := &Student{
+	student := &StudentSummary{
 		AdmissionYear: 2022,
 		Status:        StatusActive,
 	}
@@ -128,7 +128,7 @@ func TestBuildTranscript_WithEnrollments(t *testing.T) {
 		},
 	}
 
-	student := &Student{
+	student := &StudentSummary{
 		AdmissionYear: 2022,
 		Status:        StatusActive,
 	}
@@ -170,7 +170,7 @@ func TestBuildTranscript_FailedCourse(t *testing.T) {
 		},
 	}
 
-	student := &Student{
+	student := &StudentSummary{
 		AdmissionYear: 2022,
 		Status:        StatusActive,
 	}

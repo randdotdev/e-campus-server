@@ -271,14 +271,14 @@ func (h *Handler) ListCurriculum(c *gin.Context) {
 		}
 	}
 
-	curriculum, err := h.svc.ListCurriculum(c.Request.Context(), programID, cohortYear)
+	items, err := h.svc.ListCurriculumItems(c.Request.Context(), programID, cohortYear)
 	if err != nil {
 		h.log.Error("list curriculum failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
 
-	response.OK(c, ToCurriculumsResponse(curriculum))
+	response.OK(c, ToCurriculumItemsResponse(items))
 }
 
 func (h *Handler) AddToCurriculum(c *gin.Context) {
@@ -429,6 +429,8 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 	case errors.Is(err, ErrSemesterArchived):
 		response.BadRequest(c, err.Error())
 	case errors.Is(err, ErrOfferingsNotFinalized):
+		response.BadRequest(c, err.Error())
+	case errors.Is(err, ErrSemesterNotActive):
 		response.BadRequest(c, err.Error())
 	default:
 		h.log.Error("academic handler error", zap.Error(err))

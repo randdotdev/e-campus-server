@@ -78,6 +78,22 @@ type Curriculum struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
+// CurriculumItem is a read model that joins curriculum with course details.
+type CurriculumItem struct {
+	ID              uuid.UUID `db:"id"`
+	ProgramID       uuid.UUID `db:"program_id"`
+	CohortYear      int       `db:"cohort_year"`
+	Stage           int       `db:"stage"`
+	Semester        string    `db:"semester"`
+	IsRequired      bool      `db:"is_required"`
+	CreatedAt       time.Time `db:"created_at"`
+	CourseID        uuid.UUID `db:"course_id"`
+	CourseCode      string    `db:"course_code"`
+	CourseNameEN    string    `db:"course_name_en"`
+	CourseNameLocal *string   `db:"course_name_local"`
+	CourseCredits   int       `db:"course_credits"`
+}
+
 type SemesterRequirement struct {
 	ID         uuid.UUID `db:"id"`
 	ProgramID  uuid.UUID `db:"program_id"`
@@ -94,6 +110,7 @@ type BulkEnrollResult struct {
 	Enrolled int            `json:"enrolled"`
 	Skipped  int            `json:"skipped"`
 	Blocked  int            `json:"blocked"`
+	Errors   int            `json:"errors"`
 	Details  *EnrollDetails `json:"details,omitempty"`
 }
 
@@ -142,9 +159,10 @@ type OfferingRecord struct {
 }
 
 type EndSemesterResult struct {
-	Processed int `json:"processed"`
-	Promoted  int `json:"promoted"`
-	Repeated  int `json:"repeated"`
-	Unchanged int `json:"unchanged"`
-	Errors    int `json:"errors"`
+	Processed int    `json:"processed"`
+	Promoted  int    `json:"promoted"`
+	Repeated  int    `json:"repeated"`
+	Unchanged int    `json:"unchanged"`
+	Errors    int    `json:"errors"`
+	Warning   string `json:"warning,omitempty"`
 }

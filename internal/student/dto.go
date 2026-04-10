@@ -45,11 +45,13 @@ type StudentResponse struct {
 	Shift             string    `json:"shift"`
 	Tuition           string    `json:"tuition"`
 	Status            string    `json:"status"`
+	NameEN            string    `json:"name_en"`
+	NameLocal         *string   `json:"name_local,omitempty"`
 	EnrolledAt        string    `json:"enrolled_at"`
 	CreatedAt         string    `json:"created_at"`
 }
 
-func ToStudentResponse(s *Student) *StudentResponse {
+func ToStudentResponse(s *StudentSummary) *StudentResponse {
 	if s == nil {
 		return nil
 	}
@@ -63,15 +65,37 @@ func ToStudentResponse(s *Student) *StudentResponse {
 		Shift:             s.Shift,
 		Tuition:           s.Tuition,
 		Status:            s.Status,
+		NameEN:            s.NameEN,
+		NameLocal:         s.NameLocal,
 		EnrolledAt:        s.EnrolledAt.Format(time.RFC3339),
 		CreatedAt:         s.CreatedAt.Format(time.RFC3339),
 	}
 }
 
-func ToStudentsResponse(students []Student) []StudentResponse {
+func ToStudentsResponse(students []StudentSummary) []StudentResponse {
 	result := make([]StudentResponse, len(students))
 	for i, s := range students {
 		result[i] = *ToStudentResponse(&s)
+	}
+	return result
+}
+
+type CohortYearResponse struct {
+	CohortYear   int `json:"cohort_year"`
+	StudentCount int `json:"student_count"`
+}
+
+func ToCohortYearResponse(s *CohortYearSummary) CohortYearResponse {
+	return CohortYearResponse{
+		CohortYear:   s.CohortYear,
+		StudentCount: s.StudentCount,
+	}
+}
+
+func ToCohortYearsResponse(summaries []CohortYearSummary) []CohortYearResponse {
+	result := make([]CohortYearResponse, len(summaries))
+	for i, s := range summaries {
+		result[i] = ToCohortYearResponse(&s)
 	}
 	return result
 }
@@ -85,6 +109,7 @@ type LeaveResponse struct {
 	Reason         string      `json:"reason"`
 	StartDate      *string     `json:"start_date,omitempty"`
 	EndDate        *string     `json:"end_date,omitempty"`
+	ClosedAt       *string     `json:"closed_at,omitempty"`
 	ApprovedBy     *uuid.UUID  `json:"approved_by,omitempty"`
 	ApprovedAt     *string     `json:"approved_at,omitempty"`
 	Notes          *string     `json:"notes,omitempty"`
@@ -113,6 +138,10 @@ func ToLeaveResponse(l *Leave, semesterIDs []uuid.UUID) *LeaveResponse {
 	if l.EndDate != nil {
 		str := l.EndDate.Format("2006-01-02")
 		resp.EndDate = &str
+	}
+	if l.ClosedAt != nil {
+		str := l.ClosedAt.Format(time.RFC3339)
+		resp.ClosedAt = &str
 	}
 	if l.ApprovedAt != nil {
 		str := l.ApprovedAt.Format(time.RFC3339)

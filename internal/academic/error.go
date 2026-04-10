@@ -17,4 +17,5 @@ var (
 	ErrSemesterNotFinalized    = errors.New("semester not finalized")
 	ErrSemesterArchived        = errors.New("semester is archived")
 	ErrOfferingsNotFinalized   = errors.New("not all offerings are finalized")
+	ErrSemesterNotActive       = errors.New("semester must be upcoming or active")
 )

@@ -182,14 +182,62 @@ func (r *Repository) GetCurriculum(ctx context.Context, programID uuid.UUID, coh
 
 func (r *Repository) ListCurriculum(ctx context.Context, programID uuid.UUID, cohortYear int) ([]Curriculum, error) {
 	var cs []Curriculum
-	query := `
-		SELECT * FROM program_curriculum
-		WHERE program_id = $1 AND cohort_year = $2
-		ORDER BY stage, semester, created_at`
-	if err := r.db.SelectContext(ctx, &cs, query, programID, cohortYear); err != nil {
-		return nil, err
+	if cohortYear > 0 {
+		query := `
+			SELECT * FROM program_curriculum
+			WHERE program_id = $1 AND cohort_year = $2
+			ORDER BY stage, semester, created_at`
+		if err := r.db.SelectContext(ctx, &cs, query, programID, cohortYear); err != nil {
+			return nil, err
+		}
+	} else {
+		query := `
+			SELECT * FROM program_curriculum
+			WHERE program_id = $1
+			ORDER BY cohort_year, stage, semester, created_at`
+		if err := r.db.SelectContext(ctx, &cs, query, programID); err != nil {
+			return nil, err
+		}
 	}
 	return cs, nil
+}
+
+func (r *Repository) ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error) {
+	var items []CurriculumItem
+	if cohortYear > 0 {
+		query := `
+			SELECT
+				pc.id, pc.program_id, pc.cohort_year, pc.stage, pc.semester,
+				pc.course_id, pc.is_required, pc.created_at,
+				c.code AS course_code,
+				c.name_en AS course_name_en,
+				c.name_local AS course_name_local,
+				c.credits AS course_credits
+			FROM program_curriculum pc
+			JOIN courses c ON pc.course_id = c.id
+			WHERE pc.program_id = $1 AND pc.cohort_year = $2
+			ORDER BY pc.stage, pc.semester, pc.created_at`
+		if err := r.db.SelectContext(ctx, &items, query, programID, cohortYear); err != nil {
+			return nil, err
+		}
+	} else {
+		query := `
+			SELECT
+				pc.id, pc.program_id, pc.cohort_year, pc.stage, pc.semester,
+				pc.course_id, pc.is_required, pc.created_at,
+				c.code AS course_code,
+				c.name_en AS course_name_en,
+				c.name_local AS course_name_local,
+				c.credits AS course_credits
+			FROM program_curriculum pc
+			JOIN courses c ON pc.course_id = c.id
+			WHERE pc.program_id = $1
+			ORDER BY pc.cohort_year, pc.stage, pc.semester, pc.created_at`
+		if err := r.db.SelectContext(ctx, &items, query, programID); err != nil {
+			return nil, err
+		}
+	}
+	return items, nil
 }
 
 func (r *Repository) RemoveCurriculum(ctx context.Context, id uuid.UUID) error {

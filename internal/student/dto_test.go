@@ -20,7 +20,7 @@ func TestToStudentResponse(t *testing.T) {
 		programID := uuid.New()
 		now := time.Now()
 
-		s := &Student{
+		s := &StudentSummary{
 			ID:                id,
 			UserID:            userID,
 			ProgramID:         programID,
@@ -71,7 +71,7 @@ func TestToStudentResponse(t *testing.T) {
 
 func TestToStudentsResponse(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
-		result := ToStudentsResponse([]Student{})
+		result := ToStudentsResponse([]StudentSummary{})
 		if len(result) != 0 {
 			t.Errorf("len = %d, want 0", len(result))
 		}
@@ -79,7 +79,7 @@ func TestToStudentsResponse(t *testing.T) {
 
 	t.Run("multiple students", func(t *testing.T) {
 		now := time.Now()
-		students := []Student{
+		students := []StudentSummary{
 			{ID: uuid.New(), Status: StatusActive, EnrolledAt: now, CreatedAt: now},
 			{ID: uuid.New(), Status: StatusGraduated, EnrolledAt: now, CreatedAt: now},
 		}

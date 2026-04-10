@@ -46,6 +46,7 @@ type Leave struct {
 	Reason         string     `db:"reason"`
 	StartDate      *time.Time `db:"start_date"`
 	EndDate        *time.Time `db:"end_date"`
+	ClosedAt       *time.Time `db:"closed_at"`
 	ApprovedBy     *uuid.UUID `db:"approved_by"`
 	ApprovedAt     *time.Time `db:"approved_at"`
 	Notes          *string    `db:"notes"`
@@ -118,10 +119,34 @@ type TranscriptTotals struct {
 }
 
 type StudentFilters struct {
-	ProgramID  *uuid.UUID
-	CohortYear *int
-	Stage      *int
-	Status     *string
-	Shift      *string
-	Query      *string
+	ProgramID    *uuid.UUID
+	CohortYear   *int
+	Stage        *int
+	Status       *string
+	Shift        *string
+	CohortGroupID *uuid.UUID
+	Query        *string
+}
+
+// StudentSummary is a read model that includes joined user display fields.
+type StudentSummary struct {
+	ID                uuid.UUID `db:"id"`
+	UserID            uuid.UUID `db:"user_id"`
+	ProgramID         uuid.UUID `db:"program_id"`
+	AdmissionYear     int       `db:"admission_year"`
+	CurrentCohortYear int       `db:"current_cohort_year"`
+	CurrentYear       int       `db:"current_year"`
+	Shift             string    `db:"shift"`
+	Tuition           string    `db:"tuition"`
+	Status            string    `db:"status"`
+	EnrolledAt        time.Time `db:"enrolled_at"`
+	CreatedAt         time.Time `db:"created_at"`
+	NameEN            string    `db:"name_en"`
+	NameLocal         *string   `db:"name_local"`
+}
+
+// CohortYearSummary holds cohort year with student count for a program.
+type CohortYearSummary struct {
+	CohortYear   int `db:"cohort_year"`
+	StudentCount int `db:"student_count"`
 }
