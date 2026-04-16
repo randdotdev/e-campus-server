@@ -114,13 +114,14 @@ type ProjectGroupResponse struct {
 }
 
 type CohortGroupResponse struct {
-	ID         uuid.UUID `json:"id"`
-	ProgramID  uuid.UUID `json:"program_id"`
-	CohortYear int       `json:"cohort_year"`
-	Stage      int       `json:"stage"`
-	Type       string    `json:"type"`
-	Name       string    `json:"name"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID          uuid.UUID `json:"id"`
+	ProgramID   uuid.UUID `json:"program_id"`
+	CohortYear  int       `json:"cohort_year"`
+	Stage       int       `json:"stage"`
+	Type        string    `json:"type"`
+	Name        string    `json:"name"`
+	MemberCount int       `json:"member_count"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type CreateRequestResponse struct {
@@ -234,10 +235,31 @@ func ToCohortGroupResponse(g *CohortGroup) CohortGroupResponse {
 	}
 }
 
+func ToCohortGroupWithCountResponse(g *CohortGroupWithCount) CohortGroupResponse {
+	return CohortGroupResponse{
+		ID:          g.ID,
+		ProgramID:   g.ProgramID,
+		CohortYear:  g.CohortYear,
+		Stage:       g.Stage,
+		Type:        g.Type,
+		Name:        g.Name,
+		MemberCount: g.MemberCount,
+		CreatedAt:   g.CreatedAt,
+	}
+}
+
 func ToCohortGroupsResponse(groups []CohortGroup) []CohortGroupResponse {
 	result := make([]CohortGroupResponse, len(groups))
 	for i := range groups {
 		result[i] = ToCohortGroupResponse(&groups[i])
+	}
+	return result
+}
+
+func ToCohortGroupsWithCountResponse(groups []CohortGroupWithCount) []CohortGroupResponse {
+	result := make([]CohortGroupResponse, len(groups))
+	for i := range groups {
+		result[i] = ToCohortGroupWithCountResponse(&groups[i])
 	}
 	return result
 }

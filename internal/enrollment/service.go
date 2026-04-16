@@ -282,6 +282,10 @@ func (s *Service) ListCohortGroups(ctx context.Context, programID uuid.UUID, coh
 	return s.repo.ListCohortGroups(ctx, programID, cohortYear, stage)
 }
 
+func (s *Service) ListCohortGroupsWithCounts(ctx context.Context, programID uuid.UUID, cohortYear, stage int) ([]CohortGroupWithCount, error) {
+	return s.repo.ListCohortGroupsWithCounts(ctx, programID, cohortYear, stage)
+}
+
 func (s *Service) AssignToCohortGroup(ctx context.Context, studentID, groupID uuid.UUID) error {
 	exists, err := s.repo.CohortGroupExists(ctx, groupID)
 	if err != nil {

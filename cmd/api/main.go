@@ -549,6 +549,9 @@ func run() error {
 			protected.GET("/programs/:id/requirements", academicHandler.ListRequirements)
 			protected.POST("/programs/:id/requirements", academicHandler.SetRequirement)
 
+			// Cohort routes
+			protected.GET("/programs/:id/cohorts", studentHandler.ListCohortYears)
+
 			// Student routes
 			protected.GET("/students", studentHandler.ListStudents)
 			protected.POST("/students", studentHandler.CreateStudent)

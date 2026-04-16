@@ -236,14 +236,14 @@ func (h *Handler) ListCohortGroups(c *gin.Context) {
 		return
 	}
 
-	groups, err := h.svc.ListCohortGroups(c.Request.Context(), programID, cohortYear, stage)
+	groups, err := h.svc.ListCohortGroupsWithCounts(c.Request.Context(), programID, cohortYear, stage)
 	if err != nil {
 		h.log.Error("list cohort groups failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
 
-	response.OK(c, ToCohortGroupsResponse(groups))
+	response.OK(c, ToCohortGroupsWithCountResponse(groups))
 }
 
 func (h *Handler) CreateCohortGroup(c *gin.Context) {
