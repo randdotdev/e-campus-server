@@ -23,6 +23,7 @@ type AcademicRepository interface {
 	GetCurriculum(ctx context.Context, programID uuid.UUID, cohortYear, stage int, semester string) ([]Curriculum, error)
 	ListCurriculum(ctx context.Context, programID uuid.UUID, cohortYear int) ([]Curriculum, error)
 	ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error)
+	GetCurriculumByID(ctx context.Context, id uuid.UUID) (*Curriculum, error)
 	RemoveCurriculum(ctx context.Context, id uuid.UUID) error
 	CurriculumExists(ctx context.Context, programID, courseID uuid.UUID, cohortYear, stage int, semester string) (bool, error)
 	SetRequirement(ctx context.Context, r *SemesterRequirement) error
@@ -372,6 +373,10 @@ func (s *Service) ListCurriculum(ctx context.Context, programID uuid.UUID, cohor
 
 func (s *Service) ListCurriculumItems(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error) {
 	return s.repo.ListCurriculumItems(ctx, programID, cohortYear)
+}
+
+func (s *Service) GetCurriculumByID(ctx context.Context, id uuid.UUID) (*Curriculum, error) {
+	return s.repo.GetCurriculumByID(ctx, id)
 }
 
 func (s *Service) RemoveFromCurriculum(ctx context.Context, id uuid.UUID) error {

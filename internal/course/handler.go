@@ -7,9 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -31,12 +30,12 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 func (h *Handler) CreateCourse(c *gin.Context) {
 	var req CreateCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, req.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, req.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -116,14 +115,14 @@ func (h *Handler) UpdateCourse(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -160,7 +159,7 @@ func (h *Handler) GetSiblingCourses(c *gin.Context) {
 func (h *Handler) CreateOffering(c *gin.Context) {
 	var req CreateOfferingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -174,8 +173,8 @@ func (h *Handler) CreateOffering(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -264,14 +263,14 @@ func (h *Handler) UpdateOffering(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateOfferingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -311,14 +310,14 @@ func (h *Handler) AddTeacher(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req AddTeacherRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -381,8 +380,8 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminDepartment(c, course.DepartmentID) {
-		response.Forbidden(c, "department admin access required")
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -402,23 +401,12 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 func (h *Handler) CreateSection(c *gin.Context) {
 	var req CreateSectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	teacher, err := h.service.GetTeacherRole(c.Request.Context(), req.OfferingID, userID)
-	if errors.Is(err, ErrTeacherNotFound) {
-		response.Forbidden(c, "not a teacher of this course")
-		return
-	} else if err != nil {
-		h.log.Error("get teacher role failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	if !CanTeacherManage(teacher.Role) {
-		response.Forbidden(c, "insufficient teacher permissions")
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, req.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -488,25 +476,14 @@ func (h *Handler) UpdateSection(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	teacher, err := h.service.GetTeacherRole(c.Request.Context(), section.OfferingID, userID)
-	if errors.Is(err, ErrTeacherNotFound) {
-		response.Forbidden(c, "not a teacher of this course")
-		return
-	} else if err != nil {
-		h.log.Error("get teacher role failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	if !CanTeacherManage(teacher.Role) {
-		response.Forbidden(c, "insufficient teacher permissions")
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, section.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateSectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -537,19 +514,8 @@ func (h *Handler) DeleteSection(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	teacher, err := h.service.GetTeacherRole(c.Request.Context(), section.OfferingID, userID)
-	if errors.Is(err, ErrTeacherNotFound) {
-		response.Forbidden(c, "not a teacher of this course")
-		return
-	} else if err != nil {
-		h.log.Error("get teacher role failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	if !CanTeacherManage(teacher.Role) {
-		response.Forbidden(c, "insufficient teacher permissions")
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, section.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 

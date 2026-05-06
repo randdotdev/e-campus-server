@@ -42,7 +42,7 @@ type CreateStaffUserRequest struct {
 type CreateRoleRequest struct {
 	TitleEN    *string    `json:"title_en" binding:"omitempty,max=100"`
 	TitleLocal *string    `json:"title_local" binding:"omitempty,max=100"`
-	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
+	Level      string     `json:"level" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
 }
@@ -50,7 +50,7 @@ type CreateRoleRequest struct {
 type AssignRoleRequest struct {
 	TitleEN    *string    `json:"title_en" binding:"omitempty,max=100"`
 	TitleLocal *string    `json:"title_local" binding:"omitempty,max=100"`
-	Permission string     `json:"permission" binding:"required,oneof=super_admin admin operator viewer"`
+	Level      string     `json:"level" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=platform university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
 }
@@ -112,7 +112,7 @@ type RoleResponse struct {
 	ID         uuid.UUID  `json:"id"`
 	TitleEN    *string    `json:"title_en,omitempty"`
 	TitleLocal *string    `json:"title_local,omitempty"`
-	Permission string     `json:"permission"`
+	Level      string     `json:"level"`
 	ScopeType  string     `json:"scope_type"`
 	ScopeID    *uuid.UUID `json:"scope_id,omitempty"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
@@ -179,7 +179,7 @@ func ToRoleResponse(r *Role) *RoleResponse {
 		ID:         r.ID,
 		TitleEN:    r.TitleEN,
 		TitleLocal: r.TitleLocal,
-		Permission: r.Permission,
+		Level:      r.Level,
 		ScopeType:  r.ScopeType,
 		ScopeID:    r.ScopeID,
 		ExpiresAt:  r.ExpiresAt,

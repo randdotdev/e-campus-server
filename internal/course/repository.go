@@ -14,7 +14,6 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/assignment"
 	"github.com/ranjdotdev/e-campus-server/internal/content"
 	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
-	"github.com/ranjdotdev/e-campus-server/internal/grading"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
 )
@@ -31,12 +30,11 @@ type Repository struct {
 var (
 	_ content.OfferingChecker    = (*Repository)(nil)
 	_ qa.OfferingChecker         = (*Repository)(nil)
-	_ grading.TeacherChecker     = (*Repository)(nil)
 	_ assignment.TeacherChecker  = (*Repository)(nil)
-	_ enrollment.OfferingChecker = (*Repository)(nil)
-	_ enrollment.CourseChecker   = (*Repository)(nil)
-	_ academic.OfferingProvider  = (*Repository)(nil)
-	_ academic.CourseProvider    = (*Repository)(nil)
+	_ enrollment.OfferingChecker  = (*Repository)(nil)
+	_ enrollment.CourseChecker  = (*Repository)(nil)
+	_ academic.OfferingProvider = (*Repository)(nil)
+	_ academic.CourseProvider   = (*Repository)(nil)
 )
 
 func NewRepository(db *sqlx.DB) *Repository {
@@ -75,54 +73,51 @@ func (r *Repository) GetCourse(ctx context.Context, id uuid.UUID) (*Course, erro
 }
 
 func (r *Repository) ListCourses(ctx context.Context, params pagination.PageParams, filters CourseFilters) ([]Course, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM courses WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d)", argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR code ILIKE $%d)", argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.DepartmentID != nil {
-		query.WriteString(fmt.Sprintf(" AND department_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("department_id = $%d", argN))
 		args = append(args, *filters.DepartmentID)
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
-
 	if filters.HasRequires != nil {
 		if *filters.HasRequires {
-			query.WriteString(" AND requires IS NOT NULL")
+			conditions = append(conditions, "requires IS NOT NULL")
 		} else {
-			query.WriteString(" AND requires IS NULL")
+			conditions = append(conditions, "requires IS NULL")
 		}
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM courses %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var courses []Course
-	if err := r.db.SelectContext(ctx, &courses, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &courses, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -209,58 +204,54 @@ func (r *Repository) GetOffering(ctx context.Context, id uuid.UUID) (*Offering, 
 }
 
 func (r *Repository) ListOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]Offering, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM course_offerings WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if filters.CourseID != nil {
-		query.WriteString(fmt.Sprintf(" AND course_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("course_id = $%d", argN))
 		args = append(args, *filters.CourseID)
 		argN++
 	}
-
 	if filters.SemesterID != nil {
-		query.WriteString(fmt.Sprintf(" AND semester_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("semester_id = $%d", argN))
 		args = append(args, *filters.SemesterID)
 		argN++
 	}
-
 	if filters.Shift != nil {
-		query.WriteString(fmt.Sprintf(" AND shift = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("shift = $%d", argN))
 		args = append(args, *filters.Shift)
 		argN++
 	}
-
 	if filters.CohortYear != nil {
-		query.WriteString(fmt.Sprintf(" AND cohort_year = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("cohort_year = $%d", argN))
 		args = append(args, *filters.CohortYear)
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM course_offerings %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var offerings []Offering
-	if err := r.db.SelectContext(ctx, &offerings, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &offerings, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -375,6 +366,23 @@ func (r *Repository) TeacherExists(ctx context.Context, offeringID, userID uuid.
 	query := `SELECT EXISTS(SELECT 1 FROM course_teachers WHERE offering_id = $1 AND user_id = $2)`
 	err := r.db.GetContext(ctx, &exists, query, offeringID, userID)
 	return exists, err
+}
+
+func (r *Repository) GetTeacherOfferingsForUser(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]string, error) {
+	type row struct {
+		OfferingID uuid.UUID `db:"offering_id"`
+		Role       string    `db:"role"`
+	}
+	var rows []row
+	query := `SELECT offering_id, role FROM course_teachers WHERE user_id = $1`
+	if err := r.db.SelectContext(ctx, &rows, query, userID); err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]string, len(rows))
+	for _, r := range rows {
+		result[r.OfferingID] = r.Role
+	}
+	return result, nil
 }
 
 // Section operations
@@ -660,3 +668,22 @@ func (r *Repository) GetCoursePrerequisite(ctx context.Context, courseID uuid.UU
 	}
 	return requires, nil
 }
+
+func (r *Repository) DeptForOffering(ctx context.Context, offeringID uuid.UUID) (uuid.UUID, error) {
+	var deptID uuid.UUID
+	err := r.db.GetContext(ctx, &deptID, `
+		SELECT c.department_id
+		FROM course_offerings o
+		JOIN courses c ON c.id = o.course_id
+		WHERE o.id = $1
+	`, offeringID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, ErrOfferingNotFound
+		}
+		return uuid.Nil, err
+	}
+	return deptID, nil
+}
+
+

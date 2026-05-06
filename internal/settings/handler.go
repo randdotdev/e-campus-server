@@ -5,22 +5,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	svc *Service
+	service *Service
 	log *zap.Logger
 }
 
-func NewHandler(svc *Service, log *zap.Logger) *Handler {
-	return &Handler{svc: svc, log: log}
+func NewHandler(service *Service, log *zap.Logger) *Handler {
+	return &Handler{service: service, log: log}
 }
 
 func (h *Handler) GetSettings(c *gin.Context) {
-	settings, err := h.svc.Get(c.Request.Context())
+	settings, err := h.service.Get(c.Request.Context())
 	if errors.Is(err, ErrSettingsNotFound) {
 		response.NotFound(c, "settings not found")
 		return
@@ -35,21 +35,21 @@ func (h *Handler) GetSettings(c *gin.Context) {
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	userID := middleware.GetUserID(c)
 	updates := ToSettingsUpdates(req)
 
-	result, err := h.svc.UpdatePartial(c.Request.Context(), updates, userID)
+	result, err := h.service.UpdatePartial(c.Request.Context(), updates, userID)
 	if errors.Is(err, ErrMissingInstitutionName) {
 		response.BadRequest(c, "institution name is required")
 		return
@@ -72,7 +72,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 }
 
 func (h *Handler) GetInstitution(c *gin.Context) {
-	settings, err := h.svc.Get(c.Request.Context())
+	settings, err := h.service.Get(c.Request.Context())
 	if err != nil {
 		h.log.Error("get institution failed", zap.Error(err))
 		response.InternalError(c)
@@ -83,14 +83,14 @@ func (h *Handler) GetInstitution(c *gin.Context) {
 }
 
 func (h *Handler) UpdateInstitution(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateInstitutionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *Handler) UpdateInstitution(c *gin.Context) {
 		},
 	}
 
-	result, err := h.svc.UpdatePartial(c.Request.Context(), updates, userID)
+	result, err := h.service.UpdatePartial(c.Request.Context(), updates, userID)
 	if err != nil {
 		h.log.Error("update institution failed", zap.Error(err))
 		response.InternalError(c)
@@ -123,7 +123,7 @@ func (h *Handler) UpdateInstitution(c *gin.Context) {
 }
 
 func (h *Handler) GetFeatures(c *gin.Context) {
-	features, err := h.svc.GetFeatures(c.Request.Context())
+	features, err := h.service.GetFeatures(c.Request.Context())
 	if err != nil {
 		h.log.Error("get features failed", zap.Error(err))
 		response.InternalError(c)
@@ -134,14 +134,14 @@ func (h *Handler) GetFeatures(c *gin.Context) {
 }
 
 func (h *Handler) UpdateFeatures(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateFeaturesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *Handler) UpdateFeatures(c *gin.Context) {
 		},
 	}
 
-	result, err := h.svc.UpdatePartial(c.Request.Context(), updates, userID)
+	result, err := h.service.UpdatePartial(c.Request.Context(), updates, userID)
 	if err != nil {
 		h.log.Error("update features failed", zap.Error(err))
 		response.InternalError(c)
@@ -171,7 +171,7 @@ func (h *Handler) UpdateFeatures(c *gin.Context) {
 func (h *Handler) GetMyPreferences(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
-	prefs, err := h.svc.GetPreferences(c.Request.Context(), userID)
+	prefs, err := h.service.GetPreferences(c.Request.Context(), userID)
 	if err != nil {
 		h.log.Error("get preferences failed", zap.Error(err))
 		response.InternalError(c)
@@ -186,12 +186,12 @@ func (h *Handler) UpdateMyPreferences(c *gin.Context) {
 
 	var req UpdatePreferencesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	updates := ToPreferencesUpdates(req)
-	prefs, err := h.svc.UpdatePreferences(c.Request.Context(), userID, updates)
+	prefs, err := h.service.UpdatePreferences(c.Request.Context(), userID, updates)
 	if errors.Is(err, ErrInvalidLanguage) {
 		response.BadRequest(c, "invalid language")
 		return
@@ -208,7 +208,7 @@ func (h *Handler) UpdateMyPreferences(c *gin.Context) {
 func (h *Handler) GetPublicAbout(c *gin.Context) {
 	lang := c.DefaultQuery("lang", "en")
 
-	settings, err := h.svc.Get(c.Request.Context())
+	settings, err := h.service.Get(c.Request.Context())
 	if err != nil {
 		h.log.Error("get public about failed", zap.Error(err))
 		response.InternalError(c)

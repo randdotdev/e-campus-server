@@ -72,6 +72,10 @@ type CourseChecker interface {
 	GetCourseInfo(ctx context.Context, id uuid.UUID) (*CourseInfo, error)
 }
 
+type AuthzInvalidator interface {
+	InvalidateCourseRoles(ctx context.Context, studentID uuid.UUID) error
+}
+
 type OfferingInfo struct {
 	ID         uuid.UUID `db:"id"`
 	CourseID   uuid.UUID `db:"course_id"`
@@ -90,13 +94,15 @@ type Service struct {
 	repo     EnrollmentRepository
 	offering OfferingChecker
 	course   CourseChecker
+	authz    AuthzInvalidator
 }
 
-func NewService(repo EnrollmentRepository, offering OfferingChecker, course CourseChecker) *Service {
+func NewService(repo EnrollmentRepository, offering OfferingChecker, course CourseChecker, authz AuthzInvalidator) *Service {
 	return &Service{
 		repo:     repo,
 		offering: offering,
 		course:   course,
+		authz:    authz,
 	}
 }
 
@@ -134,6 +140,8 @@ func (s *Service) EnrollStudent(ctx context.Context, offeringID uuid.UUID, req E
 	if err := s.repo.CreateEnrollment(ctx, enrollment); err != nil {
 		return nil, err
 	}
+
+	_ = s.authz.InvalidateCourseRoles(ctx, req.StudentID)
 
 	return enrollment, nil
 }
@@ -203,7 +211,13 @@ func (s *Service) DropEnrollment(ctx context.Context, offeringID, studentID uuid
 	if enrollment == nil {
 		return ErrNotEnrolled
 	}
-	return s.repo.DropEnrollment(ctx, enrollment.ID)
+	if err := s.repo.DropEnrollment(ctx, enrollment.ID); err != nil {
+		return err
+	}
+
+	_ = s.authz.InvalidateCourseRoles(ctx, studentID)
+
+	return nil
 }
 
 // Project group operations

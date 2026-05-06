@@ -273,7 +273,7 @@ func createTestService() (*Service, *mockProjectRepo, *mockRegistrationRepo, *mo
 	leader := uuid.New()
 	members := []uuid.UUID{leader, uuid.New(), uuid.New()}
 
-	svc := NewService(
+	service := NewService(
 		projectRepo,
 		&mockAttachmentRepo{},
 		regRepo,
@@ -289,12 +289,12 @@ func createTestService() (*Service, *mockProjectRepo, *mockRegistrationRepo, *mo
 		nil,
 	)
 
-	return svc, projectRepo, regRepo, groupRepo, subRepo
+	return service, projectRepo, regRepo, groupRepo, subRepo
 }
 
 func TestService_CreateProject(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	p := &Project{
 		OfferingID: uuid.New(),
@@ -306,7 +306,7 @@ func TestService_CreateProject(t *testing.T) {
 		Visibility: VisibilityHidden,
 	}
 
-	err := svc.CreateProject(ctx, p)
+	err := service.CreateProject(ctx, p)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestService_CreateProject(t *testing.T) {
 
 func TestService_GetProject(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	t.Run("found", func(t *testing.T) {
 		p := &Project{
@@ -336,7 +336,7 @@ func TestService_GetProject(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		got, err := svc.GetProject(ctx, p.ID)
+		got, err := service.GetProject(ctx, p.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -346,7 +346,7 @@ func TestService_GetProject(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := svc.GetProject(ctx, uuid.New())
+		_, err := service.GetProject(ctx, uuid.New())
 		if !errors.Is(err, ErrProjectNotFound) {
 			t.Errorf("expected ErrProjectNotFound, got %v", err)
 		}
@@ -357,7 +357,7 @@ func TestService_Register(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, projectRepo, regRepo, _, _ := createTestService()
+		service, projectRepo, regRepo, _, _ := createTestService()
 
 		p := &Project{
 			ID:         uuid.New(),
@@ -372,7 +372,7 @@ func TestService_Register(t *testing.T) {
 		projectRepo.projects[p.ID] = p
 
 		teamID := uuid.New()
-		err := svc.Register(ctx, p.ID, teamID, "Our Project")
+		err := service.Register(ctx, p.ID, teamID, "Our Project")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -383,7 +383,7 @@ func TestService_Register(t *testing.T) {
 	})
 
 	t.Run("already registered", func(t *testing.T) {
-		svc, projectRepo, regRepo, _, _ := createTestService()
+		service, projectRepo, regRepo, _, _ := createTestService()
 
 		p := &Project{
 			ID:         uuid.New(),
@@ -400,14 +400,14 @@ func TestService_Register(t *testing.T) {
 		teamID := uuid.New()
 		regRepo.registrations[regRepo.key(p.ID, teamID)] = true
 
-		err := svc.Register(ctx, p.ID, teamID, "Our Project")
+		err := service.Register(ctx, p.ID, teamID, "Our Project")
 		if !errors.Is(err, ErrAlreadyRegistered) {
 			t.Errorf("expected ErrAlreadyRegistered, got %v", err)
 		}
 	})
 
 	t.Run("registration closed", func(t *testing.T) {
-		svc, projectRepo, _, _, _ := createTestService()
+		service, projectRepo, _, _, _ := createTestService()
 
 		deadline := time.Now().Add(-time.Hour)
 		p := &Project{
@@ -423,7 +423,7 @@ func TestService_Register(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.Register(ctx, p.ID, uuid.New(), "Our Project")
+		err := service.Register(ctx, p.ID, uuid.New(), "Our Project")
 		if !errors.Is(err, ErrRegistrationClosed) {
 			t.Errorf("expected ErrRegistrationClosed, got %v", err)
 		}
@@ -434,7 +434,7 @@ func TestService_CreateSubmission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{
@@ -456,7 +456,7 @@ func TestService_CreateSubmission(t *testing.T) {
 		groupRepo.groups[g.ID] = g
 
 		content := "Our submission"
-		sub, err := svc.CreateSubmission(ctx, p.ID, g.ID, leaderID, &content, nil)
+		sub, err := service.CreateSubmission(ctx, p.ID, g.ID, leaderID, &content, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -467,7 +467,7 @@ func TestService_CreateSubmission(t *testing.T) {
 	})
 
 	t.Run("not group leader", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, _ := createTestService()
+		service, projectRepo, _, groupRepo, _ := createTestService()
 
 		p := &Project{
 			ID:         uuid.New(),
@@ -488,7 +488,7 @@ func TestService_CreateSubmission(t *testing.T) {
 		groupRepo.groups[g.ID] = g
 
 		content := "Our submission"
-		_, err := svc.CreateSubmission(ctx, p.ID, g.ID, uuid.New(), &content, nil)
+		_, err := service.CreateSubmission(ctx, p.ID, g.ID, uuid.New(), &content, nil)
 		if !errors.Is(err, ErrNotGroupLeader) {
 			t.Errorf("expected ErrNotGroupLeader, got %v", err)
 		}
@@ -503,7 +503,7 @@ func TestService_GradeSubmission(t *testing.T) {
 		subRepo := newMockSubmissionRepo()
 		gradeRepo := newMockGradeRepo()
 
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			newMockRegistrationRepo(),
@@ -536,7 +536,7 @@ func TestService_GradeSubmission(t *testing.T) {
 		graderID := uuid.New()
 		feedback := "Good work"
 
-		err := svc.GradeSubmission(ctx, sub.ID, studentID, graderID, 85, &feedback)
+		err := service.GradeSubmission(ctx, sub.ID, studentID, graderID, 85, &feedback)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -554,7 +554,7 @@ func TestService_GradeSubmission(t *testing.T) {
 		projectRepo := newMockProjectRepo()
 		subRepo := newMockSubmissionRepo()
 
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			newMockRegistrationRepo(),
@@ -583,7 +583,7 @@ func TestService_GradeSubmission(t *testing.T) {
 		}
 		subRepo.submissions[sub.ID] = sub
 
-		err := svc.GradeSubmission(ctx, sub.ID, uuid.New(), uuid.New(), 150, nil)
+		err := service.GradeSubmission(ctx, sub.ID, uuid.New(), uuid.New(), 150, nil)
 		if !errors.Is(err, ErrInvalidScore) {
 			t.Errorf("expected ErrInvalidScore, got %v", err)
 		}
@@ -592,7 +592,7 @@ func TestService_GradeSubmission(t *testing.T) {
 
 func TestService_UpdateProject(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	t.Run("success", func(t *testing.T) {
 		p := &Project{
@@ -608,7 +608,7 @@ func TestService_UpdateProject(t *testing.T) {
 
 		newTitle := "Updated Title"
 		newScore := 150.0
-		updated, err := svc.UpdateProject(ctx, p.ID, ProjectUpdates{
+		updated, err := service.UpdateProject(ctx, p.ID, ProjectUpdates{
 			Title:    &newTitle,
 			MaxScore: &newScore,
 		})
@@ -624,7 +624,7 @@ func TestService_UpdateProject(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := svc.UpdateProject(ctx, uuid.New(), ProjectUpdates{})
+		_, err := service.UpdateProject(ctx, uuid.New(), ProjectUpdates{})
 		if !errors.Is(err, ErrProjectNotFound) {
 			t.Errorf("expected ErrProjectNotFound, got %v", err)
 		}
@@ -633,7 +633,7 @@ func TestService_UpdateProject(t *testing.T) {
 
 func TestService_DeleteProject(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	t.Run("success", func(t *testing.T) {
 		p := &Project{
@@ -643,7 +643,7 @@ func TestService_DeleteProject(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.DeleteProject(ctx, p.ID)
+		err := service.DeleteProject(ctx, p.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -653,7 +653,7 @@ func TestService_DeleteProject(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		err := svc.DeleteProject(ctx, uuid.New())
+		err := service.DeleteProject(ctx, uuid.New())
 		if !errors.Is(err, ErrProjectNotFound) {
 			t.Errorf("expected ErrProjectNotFound, got %v", err)
 		}
@@ -662,7 +662,7 @@ func TestService_DeleteProject(t *testing.T) {
 
 func TestService_ListProjects(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	offeringID := uuid.New()
 	p1 := &Project{ID: uuid.New(), OfferingID: offeringID, Title: "Project 1"}
@@ -672,7 +672,7 @@ func TestService_ListProjects(t *testing.T) {
 	projectRepo.projects[p2.ID] = p2
 	projectRepo.projects[p3.ID] = p3
 
-	projects, err := svc.ListProjects(ctx, offeringID)
+	projects, err := service.ListProjects(ctx, offeringID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -683,7 +683,7 @@ func TestService_ListProjects(t *testing.T) {
 
 func TestService_ListPublishedProjects(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	offeringID := uuid.New()
 	future := time.Now().Add(time.Hour * 24)
@@ -696,7 +696,7 @@ func TestService_ListPublishedProjects(t *testing.T) {
 	projectRepo.projects[p2.ID] = p2
 	projectRepo.projects[p3.ID] = p3
 
-	projects, err := svc.ListPublishedProjects(ctx, offeringID)
+	projects, err := service.ListPublishedProjects(ctx, offeringID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -709,7 +709,7 @@ func TestService_Unregister(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, projectRepo, regRepo, _, _ := createTestService()
+		service, projectRepo, regRepo, _, _ := createTestService()
 
 		p := &Project{
 			ID:         uuid.New(),
@@ -721,7 +721,7 @@ func TestService_Unregister(t *testing.T) {
 		teamID := uuid.New()
 		regRepo.registrations[regRepo.key(p.ID, teamID)] = true
 
-		err := svc.Unregister(ctx, p.ID, teamID)
+		err := service.Unregister(ctx, p.ID, teamID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -731,12 +731,12 @@ func TestService_Unregister(t *testing.T) {
 	})
 
 	t.Run("not registered", func(t *testing.T) {
-		svc, projectRepo, _, _, _ := createTestService()
+		service, projectRepo, _, _, _ := createTestService()
 
 		p := &Project{ID: uuid.New(), OfferingID: uuid.New()}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.Unregister(ctx, p.ID, uuid.New())
+		err := service.Unregister(ctx, p.ID, uuid.New())
 		if !errors.Is(err, ErrNotRegistered) {
 			t.Errorf("expected ErrNotRegistered, got %v", err)
 		}
@@ -745,7 +745,7 @@ func TestService_Unregister(t *testing.T) {
 
 func TestService_FinalizeProjectGroup(t *testing.T) {
 	ctx := context.Background()
-	svc, _, _, groupRepo, _ := createTestService()
+	service, _, _, groupRepo, _ := createTestService()
 
 	t.Run("success", func(t *testing.T) {
 		g := &ProjectGroup{
@@ -755,7 +755,7 @@ func TestService_FinalizeProjectGroup(t *testing.T) {
 		}
 		groupRepo.groups[g.ID] = g
 
-		err := svc.FinalizeProjectGroup(ctx, g.ID)
+		err := service.FinalizeProjectGroup(ctx, g.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -765,7 +765,7 @@ func TestService_FinalizeProjectGroup(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		err := svc.FinalizeProjectGroup(ctx, uuid.New())
+		err := service.FinalizeProjectGroup(ctx, uuid.New())
 		if !errors.Is(err, ErrGroupNotFound) {
 			t.Errorf("expected ErrGroupNotFound, got %v", err)
 		}
@@ -776,7 +776,7 @@ func TestService_SubmitSubmission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{
@@ -801,7 +801,7 @@ func TestService_SubmitSubmission(t *testing.T) {
 		}
 		subRepo.submissions[sub.ID] = sub
 
-		result, err := svc.SubmitSubmission(ctx, sub.ID, leaderID)
+		result, err := service.SubmitSubmission(ctx, sub.ID, leaderID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -814,7 +814,7 @@ func TestService_SubmitSubmission(t *testing.T) {
 	})
 
 	t.Run("already submitted", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{ID: uuid.New(), Deadline: time.Now().Add(time.Hour)}
@@ -832,14 +832,14 @@ func TestService_SubmitSubmission(t *testing.T) {
 		}
 		subRepo.submissions[sub.ID] = sub
 
-		_, err := svc.SubmitSubmission(ctx, sub.ID, leaderID)
+		_, err := service.SubmitSubmission(ctx, sub.ID, leaderID)
 		if !errors.Is(err, ErrAlreadySubmitted) {
 			t.Errorf("expected ErrAlreadySubmitted, got %v", err)
 		}
 	})
 
 	t.Run("deadline passed", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{
@@ -861,14 +861,14 @@ func TestService_SubmitSubmission(t *testing.T) {
 		}
 		subRepo.submissions[sub.ID] = sub
 
-		_, err := svc.SubmitSubmission(ctx, sub.ID, leaderID)
+		_, err := service.SubmitSubmission(ctx, sub.ID, leaderID)
 		if !errors.Is(err, ErrSubmissionsClosed) {
 			t.Errorf("expected ErrSubmissionsClosed, got %v", err)
 		}
 	})
 
 	t.Run("no content", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{ID: uuid.New(), Deadline: time.Now().Add(time.Hour)}
@@ -885,7 +885,7 @@ func TestService_SubmitSubmission(t *testing.T) {
 		}
 		subRepo.submissions[sub.ID] = sub
 
-		_, err := svc.SubmitSubmission(ctx, sub.ID, leaderID)
+		_, err := service.SubmitSubmission(ctx, sub.ID, leaderID)
 		if !errors.Is(err, ErrNoContent) {
 			t.Errorf("expected ErrNoContent, got %v", err)
 		}
@@ -894,7 +894,7 @@ func TestService_SubmitSubmission(t *testing.T) {
 
 func TestService_PublishScores(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	t.Run("success", func(t *testing.T) {
 		p := &Project{
@@ -904,7 +904,7 @@ func TestService_PublishScores(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.PublishScores(ctx, p.ID)
+		err := service.PublishScores(ctx, p.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -914,7 +914,7 @@ func TestService_PublishScores(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		err := svc.PublishScores(ctx, uuid.New())
+		err := service.PublishScores(ctx, uuid.New())
 		if !errors.Is(err, ErrProjectNotFound) {
 			t.Errorf("expected ErrProjectNotFound, got %v", err)
 		}
@@ -926,7 +926,7 @@ func TestService_Register_TeamSize(t *testing.T) {
 
 	t.Run("team too small", func(t *testing.T) {
 		projectRepo := newMockProjectRepo()
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			newMockRegistrationRepo(),
@@ -952,7 +952,7 @@ func TestService_Register_TeamSize(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.Register(ctx, p.ID, uuid.New(), "Title")
+		err := service.Register(ctx, p.ID, uuid.New(), "Title")
 		if !errors.Is(err, ErrTeamTooSmall) {
 			t.Errorf("expected ErrTeamTooSmall, got %v", err)
 		}
@@ -965,7 +965,7 @@ func TestService_Register_TeamSize(t *testing.T) {
 			members[i] = uuid.New()
 		}
 
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			newMockRegistrationRepo(),
@@ -991,7 +991,7 @@ func TestService_Register_TeamSize(t *testing.T) {
 		}
 		projectRepo.projects[p.ID] = p
 
-		err := svc.Register(ctx, p.ID, uuid.New(), "Title")
+		err := service.Register(ctx, p.ID, uuid.New(), "Title")
 		if !errors.Is(err, ErrTeamTooLarge) {
 			t.Errorf("expected ErrTeamTooLarge, got %v", err)
 		}
@@ -1000,7 +1000,7 @@ func TestService_Register_TeamSize(t *testing.T) {
 
 func TestService_Register_NotPublished(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, _ := createTestService()
+	service, projectRepo, _, _, _ := createTestService()
 
 	future := time.Now().Add(time.Hour * 24)
 	p := &Project{
@@ -1013,7 +1013,7 @@ func TestService_Register_NotPublished(t *testing.T) {
 	}
 	projectRepo.projects[p.ID] = p
 
-	err := svc.Register(ctx, p.ID, uuid.New(), "Title")
+	err := service.Register(ctx, p.ID, uuid.New(), "Title")
 	if !errors.Is(err, ErrNotPublished) {
 		t.Errorf("expected ErrNotPublished, got %v", err)
 	}
@@ -1026,7 +1026,7 @@ func TestService_Register_MembersNotEnrolled(t *testing.T) {
 	leader := uuid.New()
 	members := []uuid.UUID{leader, uuid.New(), uuid.New()}
 
-	svc := NewService(
+	service := NewService(
 		projectRepo,
 		&mockAttachmentRepo{},
 		newMockRegistrationRepo(),
@@ -1052,7 +1052,7 @@ func TestService_Register_MembersNotEnrolled(t *testing.T) {
 	}
 	projectRepo.projects[p.ID] = p
 
-	err := svc.Register(ctx, p.ID, uuid.New(), "Title")
+	err := service.Register(ctx, p.ID, uuid.New(), "Title")
 	if !errors.Is(err, ErrMembersNotEnrolled) {
 		t.Errorf("expected ErrMembersNotEnrolled, got %v", err)
 	}
@@ -1062,7 +1062,7 @@ func TestService_UpdateSubmission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{ID: uuid.New(), OfferingID: uuid.New()}
@@ -1081,7 +1081,7 @@ func TestService_UpdateSubmission(t *testing.T) {
 		subRepo.submissions[sub.ID] = sub
 
 		newContent := "Updated content"
-		updated, err := svc.UpdateSubmission(ctx, sub.ID, leaderID, &newContent, nil)
+		updated, err := service.UpdateSubmission(ctx, sub.ID, leaderID, &newContent, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1094,7 +1094,7 @@ func TestService_UpdateSubmission(t *testing.T) {
 	})
 
 	t.Run("already submitted", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		leaderID := uuid.New()
 		p := &Project{ID: uuid.New()}
@@ -1113,14 +1113,14 @@ func TestService_UpdateSubmission(t *testing.T) {
 		subRepo.submissions[sub.ID] = sub
 
 		content := "New content"
-		_, err := svc.UpdateSubmission(ctx, sub.ID, leaderID, &content, nil)
+		_, err := service.UpdateSubmission(ctx, sub.ID, leaderID, &content, nil)
 		if !errors.Is(err, ErrAlreadySubmitted) {
 			t.Errorf("expected ErrAlreadySubmitted, got %v", err)
 		}
 	})
 
 	t.Run("not group leader", func(t *testing.T) {
-		svc, projectRepo, _, groupRepo, subRepo := createTestService()
+		service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 		p := &Project{ID: uuid.New()}
 		projectRepo.projects[p.ID] = p
@@ -1132,17 +1132,17 @@ func TestService_UpdateSubmission(t *testing.T) {
 		subRepo.submissions[sub.ID] = sub
 
 		content := "Content"
-		_, err := svc.UpdateSubmission(ctx, sub.ID, uuid.New(), &content, nil)
+		_, err := service.UpdateSubmission(ctx, sub.ID, uuid.New(), &content, nil)
 		if !errors.Is(err, ErrNotGroupLeader) {
 			t.Errorf("expected ErrNotGroupLeader, got %v", err)
 		}
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc, _, _, _, _ := createTestService()
+		service, _, _, _, _ := createTestService()
 
 		content := "Content"
-		_, err := svc.UpdateSubmission(ctx, uuid.New(), uuid.New(), &content, nil)
+		_, err := service.UpdateSubmission(ctx, uuid.New(), uuid.New(), &content, nil)
 		if !errors.Is(err, ErrSubmissionNotFound) {
 			t.Errorf("expected ErrSubmissionNotFound, got %v", err)
 		}
@@ -1155,7 +1155,7 @@ func TestService_CreateSubmission_FileNotOwned(t *testing.T) {
 	projectRepo := newMockProjectRepo()
 	groupRepo := newMockGroupRepo()
 
-	svc := NewService(
+	service := NewService(
 		projectRepo,
 		&mockAttachmentRepo{},
 		newMockRegistrationRepo(),
@@ -1179,7 +1179,7 @@ func TestService_CreateSubmission_FileNotOwned(t *testing.T) {
 	groupRepo.groups[g.ID] = g
 
 	files := []FileInput{{StoredFileID: uuid.New(), DisplayName: "test.pdf"}}
-	_, err := svc.CreateSubmission(ctx, p.ID, g.ID, leaderID, nil, files)
+	_, err := service.CreateSubmission(ctx, p.ID, g.ID, leaderID, nil, files)
 	if !errors.Is(err, ErrFileNotOwned) {
 		t.Errorf("expected ErrFileNotOwned, got %v", err)
 	}
@@ -1187,7 +1187,7 @@ func TestService_CreateSubmission_FileNotOwned(t *testing.T) {
 
 func TestService_CreateSubmission_AlreadySubmitted(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, groupRepo, subRepo := createTestService()
+	service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 	leaderID := uuid.New()
 	p := &Project{ID: uuid.New(), OfferingID: uuid.New()}
@@ -1201,7 +1201,7 @@ func TestService_CreateSubmission_AlreadySubmitted(t *testing.T) {
 	subRepo.submissions[existing.ID] = existing
 
 	content := "New submission"
-	_, err := svc.CreateSubmission(ctx, p.ID, g.ID, leaderID, &content, nil)
+	_, err := service.CreateSubmission(ctx, p.ID, g.ID, leaderID, &content, nil)
 	if !errors.Is(err, ErrAlreadySubmitted) {
 		t.Errorf("expected ErrAlreadySubmitted, got %v", err)
 	}
@@ -1209,7 +1209,7 @@ func TestService_CreateSubmission_AlreadySubmitted(t *testing.T) {
 
 func TestService_SubmitSubmission_NotGroupLeader(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, groupRepo, subRepo := createTestService()
+	service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 	p := &Project{ID: uuid.New(), Deadline: time.Now().Add(time.Hour)}
 	projectRepo.projects[p.ID] = p
@@ -1221,7 +1221,7 @@ func TestService_SubmitSubmission_NotGroupLeader(t *testing.T) {
 	sub := &Submission{ID: uuid.New(), ProjectID: p.ID, ProjectGroupID: g.ID, Content: &content}
 	subRepo.submissions[sub.ID] = sub
 
-	_, err := svc.SubmitSubmission(ctx, sub.ID, uuid.New()) // Different user
+	_, err := service.SubmitSubmission(ctx, sub.ID, uuid.New()) // Different user
 	if !errors.Is(err, ErrNotGroupLeader) {
 		t.Errorf("expected ErrNotGroupLeader, got %v", err)
 	}
@@ -1229,7 +1229,7 @@ func TestService_SubmitSubmission_NotGroupLeader(t *testing.T) {
 
 func TestService_SubmitSubmission_AllowLate(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, groupRepo, subRepo := createTestService()
+	service, projectRepo, _, groupRepo, subRepo := createTestService()
 
 	leaderID := uuid.New()
 	p := &Project{
@@ -1246,7 +1246,7 @@ func TestService_SubmitSubmission_AllowLate(t *testing.T) {
 	sub := &Submission{ID: uuid.New(), ProjectID: p.ID, ProjectGroupID: g.ID, Content: &content}
 	subRepo.submissions[sub.ID] = sub
 
-	result, err := svc.SubmitSubmission(ctx, sub.ID, leaderID)
+	result, err := service.SubmitSubmission(ctx, sub.ID, leaderID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1257,9 +1257,9 @@ func TestService_SubmitSubmission_AllowLate(t *testing.T) {
 
 func TestService_GradeSubmission_NotFound(t *testing.T) {
 	ctx := context.Background()
-	svc, _, _, _, _ := createTestService()
+	service, _, _, _, _ := createTestService()
 
-	err := svc.GradeSubmission(ctx, uuid.New(), uuid.New(), uuid.New(), 85, nil)
+	err := service.GradeSubmission(ctx, uuid.New(), uuid.New(), uuid.New(), 85, nil)
 	if !errors.Is(err, ErrSubmissionNotFound) {
 		t.Errorf("expected ErrSubmissionNotFound, got %v", err)
 	}
@@ -1267,7 +1267,7 @@ func TestService_GradeSubmission_NotFound(t *testing.T) {
 
 func TestService_GradeSubmission_NegativeScore(t *testing.T) {
 	ctx := context.Background()
-	svc, projectRepo, _, _, subRepo := createTestService()
+	service, projectRepo, _, _, subRepo := createTestService()
 
 	p := &Project{ID: uuid.New(), MaxScore: 100}
 	projectRepo.projects[p.ID] = p
@@ -1275,7 +1275,7 @@ func TestService_GradeSubmission_NegativeScore(t *testing.T) {
 	sub := &Submission{ID: uuid.New(), ProjectID: p.ID}
 	subRepo.submissions[sub.ID] = sub
 
-	err := svc.GradeSubmission(ctx, sub.ID, uuid.New(), uuid.New(), -10, nil)
+	err := service.GradeSubmission(ctx, sub.ID, uuid.New(), uuid.New(), -10, nil)
 	if !errors.Is(err, ErrInvalidScore) {
 		t.Errorf("expected ErrInvalidScore, got %v", err)
 	}
@@ -1283,7 +1283,7 @@ func TestService_GradeSubmission_NegativeScore(t *testing.T) {
 
 func TestService_AddAttachment(t *testing.T) {
 	ctx := context.Background()
-	svc, _, _, _, _ := createTestService()
+	service, _, _, _, _ := createTestService()
 
 	a := &ProjectAttachment{
 		ProjectID:    uuid.New(),
@@ -1291,7 +1291,7 @@ func TestService_AddAttachment(t *testing.T) {
 		DisplayName:  "spec.pdf",
 	}
 
-	err := svc.AddAttachment(ctx, a)
+	err := service.AddAttachment(ctx, a)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1315,7 +1315,7 @@ func TestService_CreateProjectGroups(t *testing.T) {
 		teamID := uuid.New()
 		members := []uuid.UUID{leaderID, uuid.New(), uuid.New()}
 
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			regRepo,
@@ -1354,7 +1354,7 @@ func TestService_CreateProjectGroups(t *testing.T) {
 			},
 		}
 
-		err := svc.CreateProjectGroups(ctx, p.ID)
+		err := service.CreateProjectGroups(ctx, p.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1369,7 +1369,7 @@ func TestService_CreateProjectGroups(t *testing.T) {
 		regRepo := newMockRegistrationRepo()
 		groupRepo := newMockGroupRepo()
 
-		svc := NewService(
+		service := NewService(
 			projectRepo,
 			&mockAttachmentRepo{},
 			regRepo,
@@ -1401,7 +1401,7 @@ func TestService_CreateProjectGroups(t *testing.T) {
 			},
 		}
 
-		err := svc.CreateProjectGroups(ctx, p.ID)
+		err := service.CreateProjectGroups(ctx, p.ID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -1412,9 +1412,9 @@ func TestService_CreateProjectGroups(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc, _, _, _, _ := createTestService()
+		service, _, _, _, _ := createTestService()
 
-		err := svc.CreateProjectGroups(ctx, uuid.New())
+		err := service.CreateProjectGroups(ctx, uuid.New())
 		if !errors.Is(err, ErrProjectNotFound) {
 			t.Errorf("expected ErrProjectNotFound, got %v", err)
 		}
@@ -1425,9 +1425,9 @@ func TestService_GetMySubmission(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("not group member", func(t *testing.T) {
-		svc, _, _, _, _ := createTestService()
+		service, _, _, _, _ := createTestService()
 
-		_, err := svc.GetMySubmission(ctx, uuid.New(), uuid.New())
+		_, err := service.GetMySubmission(ctx, uuid.New(), uuid.New())
 		if !errors.Is(err, ErrNotGroupMember) {
 			t.Errorf("expected ErrNotGroupMember, got %v", err)
 		}

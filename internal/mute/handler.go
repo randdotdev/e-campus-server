@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -32,14 +32,15 @@ func (h *Handler) MuteInCourse(c *gin.Context) {
 		return
 	}
 
-	if !h.canManageOffering(c, offeringID) {
-		response.Forbidden(c, "not authorized to manage mutes for this course")
+	// muting is moderation, not teaching — check enrollment.update so scope admins can also mute
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req MuteInCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -69,8 +70,8 @@ func (h *Handler) ListMutesByOffering(c *gin.Context) {
 		return
 	}
 
-	if !h.canManageOffering(c, offeringID) {
-		response.Forbidden(c, "not authorized to view mutes for this course")
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -120,14 +121,18 @@ func (h *Handler) Unmute(c *gin.Context) {
 		return
 	}
 
+	// The mute record carries its own scope. A course mute requires offering-update
+	// rights on that specific offering; a university-wide mute requires user-update
+	// rights at institutional scope. We fetch first so the authz check matches
+	// exactly how the mute was originally applied.
 	if mute.ScopeType == ScopeCourse && mute.ScopeID != nil {
-		if !h.canManageOffering(c, *mute.ScopeID) {
-			response.Forbidden(c, "not authorized to unmute in this course")
+		if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate, *mute.ScopeID) {
+			response.Forbidden(c, "insufficient permissions")
 			return
 		}
 	} else if mute.ScopeType == ScopeUniversity {
-		if !permission.CanAdminUniversity(c) {
-			response.Forbidden(c, "university admin access required")
+		if !authz.Check(c, authz.ResourceUser, authz.ActionUpdate) {
+			response.Forbidden(c, "insufficient permissions")
 			return
 		}
 	}
@@ -146,14 +151,14 @@ func (h *Handler) Unmute(c *gin.Context) {
 }
 
 func (h *Handler) MuteUniversityWide(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceUser, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req MuteUniversityWideRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -175,8 +180,8 @@ func (h *Handler) MuteUniversityWide(c *gin.Context) {
 }
 
 func (h *Handler) ListAllMutes(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceUser, authz.ActionList) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -236,8 +241,8 @@ func (h *Handler) ListAllMutes(c *gin.Context) {
 }
 
 func (h *Handler) UnmuteAll(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceUser, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -258,10 +263,6 @@ func (h *Handler) UnmuteAll(c *gin.Context) {
 	} else {
 		response.OK(c, UnmuteAllResponse{UnmutedCount: count})
 	}
-}
-
-func (h *Handler) canManageOffering(c *gin.Context, offeringID uuid.UUID) bool {
-	return permission.CanAdminUniversity(c) || permission.IsOfferingStaff(c, offeringID)
 }
 
 func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {

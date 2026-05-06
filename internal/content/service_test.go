@@ -251,6 +251,56 @@ func (m *mockContentRepo) GetClassesInRange(ctx context.Context, studentID uuid.
 	return []CalendarEntry{}, nil
 }
 
+func (m *mockContentRepo) GetOfferingIDBySectionID(ctx context.Context, sectionID uuid.UUID) (uuid.UUID, error) {
+	if m.err != nil {
+		return uuid.UUID{}, m.err
+	}
+	if s, ok := m.sections[sectionID]; ok {
+		return s.OfferingID, nil
+	}
+	return uuid.UUID{}, nil
+}
+
+func (m *mockContentRepo) GetOfferingIDByLessonID(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, error) {
+	if m.err != nil {
+		return uuid.UUID{}, m.err
+	}
+	if l, ok := m.lessons[lessonID]; ok {
+		if s, ok := m.sections[l.SectionID]; ok {
+			return s.OfferingID, nil
+		}
+	}
+	return uuid.UUID{}, nil
+}
+
+func (m *mockContentRepo) GetOfferingIDByAttachmentID(ctx context.Context, attachmentID uuid.UUID) (uuid.UUID, error) {
+	if m.err != nil {
+		return uuid.UUID{}, m.err
+	}
+	if a, ok := m.attachments[attachmentID]; ok {
+		if l, ok := m.lessons[a.LessonID]; ok {
+			if s, ok := m.sections[l.SectionID]; ok {
+				return s.OfferingID, nil
+			}
+		}
+	}
+	return uuid.UUID{}, nil
+}
+
+func (m *mockContentRepo) GetOfferingIDByScheduleID(ctx context.Context, scheduleID uuid.UUID) (uuid.UUID, error) {
+	if m.err != nil {
+		return uuid.UUID{}, m.err
+	}
+	if sch, ok := m.schedules[scheduleID]; ok {
+		if l, ok := m.lessons[sch.LessonID]; ok {
+			if s, ok := m.sections[l.SectionID]; ok {
+				return s.OfferingID, nil
+			}
+		}
+	}
+	return uuid.UUID{}, nil
+}
+
 type mockOfferingChecker struct {
 	exists bool
 	err    error
@@ -290,9 +340,9 @@ func TestService_CreateSection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		repo := newMockContentRepo()
 		offering := &mockOfferingChecker{exists: true}
-		svc := NewService(repo, offering, nil, nil)
+		service := NewService(repo, offering, nil, nil)
 
-		section, err := svc.CreateSection(ctx, offeringID, "Week 1", nil)
+		section, err := service.CreateSection(ctx, offeringID, "Week 1", nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -307,9 +357,9 @@ func TestService_CreateSection(t *testing.T) {
 	t.Run("offering not found", func(t *testing.T) {
 		repo := newMockContentRepo()
 		offering := &mockOfferingChecker{exists: false}
-		svc := NewService(repo, offering, nil, nil)
+		service := NewService(repo, offering, nil, nil)
 
-		_, err := svc.CreateSection(ctx, offeringID, "Week 1", nil)
+		_, err := service.CreateSection(ctx, offeringID, "Week 1", nil)
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("expected ErrOfferingNotFound, got %v", err)
 		}
@@ -323,9 +373,9 @@ func TestService_GetSection(t *testing.T) {
 		repo := newMockContentRepo()
 		sectionID := uuid.New()
 		repo.sections[sectionID] = &Section{ID: sectionID, Title: "Week 1"}
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		section, err := svc.GetSection(ctx, sectionID)
+		section, err := service.GetSection(ctx, sectionID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -336,9 +386,9 @@ func TestService_GetSection(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		repo := newMockContentRepo()
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		_, err := svc.GetSection(ctx, uuid.New())
+		_, err := service.GetSection(ctx, uuid.New())
 		if !errors.Is(err, ErrSectionNotFound) {
 			t.Errorf("expected ErrSectionNotFound, got %v", err)
 		}
@@ -353,9 +403,9 @@ func TestService_DeleteSection(t *testing.T) {
 		sectionID := uuid.New()
 		repo.sections[sectionID] = &Section{ID: sectionID}
 		repo.sectionEmpty = true
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		err := svc.DeleteSection(ctx, sectionID)
+		err := service.DeleteSection(ctx, sectionID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -369,9 +419,9 @@ func TestService_DeleteSection(t *testing.T) {
 		sectionID := uuid.New()
 		repo.sections[sectionID] = &Section{ID: sectionID}
 		repo.sectionEmpty = false
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		err := svc.DeleteSection(ctx, sectionID)
+		err := service.DeleteSection(ctx, sectionID)
 		if !errors.Is(err, ErrSectionNotEmpty) {
 			t.Errorf("expected ErrSectionNotEmpty, got %v", err)
 		}
@@ -385,9 +435,9 @@ func TestService_CreateLesson(t *testing.T) {
 		repo := newMockContentRepo()
 		sectionID := uuid.New()
 		repo.sections[sectionID] = &Section{ID: sectionID}
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		lesson, err := svc.CreateLesson(ctx, sectionID, "Introduction")
+		lesson, err := service.CreateLesson(ctx, sectionID, "Introduction")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -401,9 +451,9 @@ func TestService_CreateLesson(t *testing.T) {
 
 	t.Run("section not found", func(t *testing.T) {
 		repo := newMockContentRepo()
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		_, err := svc.CreateLesson(ctx, uuid.New(), "Introduction")
+		_, err := service.CreateLesson(ctx, uuid.New(), "Introduction")
 		if !errors.Is(err, ErrSectionNotFound) {
 			t.Errorf("expected ErrSectionNotFound, got %v", err)
 		}
@@ -417,11 +467,11 @@ func TestService_UpdateLesson(t *testing.T) {
 		repo := newMockContentRepo()
 		lessonID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID, Title: "Old", Mode: LessonModeAsync}
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
 		newTitle := "New"
 		newMode := LessonModeInClass
-		lesson, err := svc.UpdateLesson(ctx, lessonID, &newTitle, nil, &newMode, nil, nil, nil, nil, nil)
+		lesson, err := service.UpdateLesson(ctx, lessonID, &newTitle, nil, &newMode, nil, nil, nil, nil, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -437,10 +487,10 @@ func TestService_UpdateLesson(t *testing.T) {
 		repo := newMockContentRepo()
 		lessonID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID, Mode: LessonModeAsync}
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
 		invalidMode := "invalid"
-		_, err := svc.UpdateLesson(ctx, lessonID, nil, nil, &invalidMode, nil, nil, nil, nil, nil)
+		_, err := service.UpdateLesson(ctx, lessonID, nil, nil, &invalidMode, nil, nil, nil, nil, nil)
 		if !errors.Is(err, ErrInvalidMode) {
 			t.Errorf("expected ErrInvalidMode, got %v", err)
 		}
@@ -457,9 +507,9 @@ func TestService_AddAttachment(t *testing.T) {
 		userID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
 		file := &mockStoredFileChecker{exists: true}
-		svc := NewService(repo, nil, nil, file)
+		service := NewService(repo, nil, nil, file)
 
-		att, err := svc.AddAttachment(ctx, lessonID, storedFileID, userID, "lecture.mp4")
+		att, err := service.AddAttachment(ctx, lessonID, storedFileID, userID, "lecture.mp4")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -470,9 +520,9 @@ func TestService_AddAttachment(t *testing.T) {
 
 	t.Run("lesson not found", func(t *testing.T) {
 		repo := newMockContentRepo()
-		svc := NewService(repo, nil, nil, nil)
+		service := NewService(repo, nil, nil, nil)
 
-		_, err := svc.AddAttachment(ctx, uuid.New(), uuid.New(), uuid.New(), "lecture.mp4")
+		_, err := service.AddAttachment(ctx, uuid.New(), uuid.New(), uuid.New(), "lecture.mp4")
 		if !errors.Is(err, ErrLessonNotFound) {
 			t.Errorf("expected ErrLessonNotFound, got %v", err)
 		}
@@ -483,9 +533,9 @@ func TestService_AddAttachment(t *testing.T) {
 		lessonID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
 		file := &mockStoredFileChecker{exists: false}
-		svc := NewService(repo, nil, nil, file)
+		service := NewService(repo, nil, nil, file)
 
-		_, err := svc.AddAttachment(ctx, lessonID, uuid.New(), uuid.New(), "lecture.mp4")
+		_, err := service.AddAttachment(ctx, lessonID, uuid.New(), uuid.New(), "lecture.mp4")
 		if !errors.Is(err, ErrStoredFileNotFound) {
 			t.Errorf("expected ErrStoredFileNotFound, got %v", err)
 		}
@@ -501,11 +551,11 @@ func TestService_AddSchedule(t *testing.T) {
 		groupID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
 		group := &mockCohortGroupChecker{exists: true}
-		svc := NewService(repo, nil, group, nil)
+		service := NewService(repo, nil, group, nil)
 
 		scheduledAt := time.Now().Add(24 * time.Hour)
 		room := "1030"
-		schedule, err := svc.AddSchedule(ctx, lessonID, groupID, scheduledAt, &room)
+		schedule, err := service.AddSchedule(ctx, lessonID, groupID, scheduledAt, &room)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -519,9 +569,9 @@ func TestService_AddSchedule(t *testing.T) {
 		lessonID := uuid.New()
 		repo.lessons[lessonID] = &Lesson{ID: lessonID}
 		group := &mockCohortGroupChecker{exists: false}
-		svc := NewService(repo, nil, group, nil)
+		service := NewService(repo, nil, group, nil)
 
-		_, err := svc.AddSchedule(ctx, lessonID, uuid.New(), time.Now(), nil)
+		_, err := service.AddSchedule(ctx, lessonID, uuid.New(), time.Now(), nil)
 		if !errors.Is(err, ErrGroupNotFound) {
 			t.Errorf("expected ErrGroupNotFound, got %v", err)
 		}
@@ -544,9 +594,9 @@ func TestService_GetLessonWithMeta(t *testing.T) {
 		repo.schedules[uuid.New()] = &LessonSchedule{LessonID: lessonID, CohortGroupID: groupID}
 
 		group := &mockCohortGroupChecker{groupIDs: []uuid.UUID{groupID}}
-		svc := NewService(repo, nil, group, nil)
+		service := NewService(repo, nil, group, nil)
 
-		lesson, err := svc.GetLessonWithMeta(ctx, lessonID, &studentID)
+		lesson, err := service.GetLessonWithMeta(ctx, lessonID, &studentID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

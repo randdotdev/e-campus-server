@@ -201,7 +201,7 @@ func (m *mockCourseChecker) setEnrolled(offeringID, studentID uuid.UUID) {
 func TestCreateAssignment(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	userID := uuid.New()
@@ -214,7 +214,7 @@ func TestCreateAssignment(t *testing.T) {
 		CreatedBy:  &userID,
 	}
 
-	err := svc.CreateAssignment(context.Background(), a)
+	err := service.CreateAssignment(context.Background(), a)
 	if err != nil {
 		t.Fatalf("CreateAssignment() error = %v", err)
 	}
@@ -223,7 +223,7 @@ func TestCreateAssignment(t *testing.T) {
 		t.Error("CreateAssignment() did not set ID")
 	}
 
-	got, _ := svc.GetAssignment(context.Background(), a.ID)
+	got, _ := service.GetAssignment(context.Background(), a.ID)
 	if got == nil {
 		t.Error("GetAssignment() returned nil")
 	}
@@ -232,7 +232,7 @@ func TestCreateAssignment(t *testing.T) {
 func TestCreateSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -250,7 +250,7 @@ func TestCreateSubmission(t *testing.T) {
 	course.setEnrolled(offeringID, studentID)
 
 	content := "My submission"
-	sub, err := svc.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
+	sub, err := service.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
 	if err != nil {
 		t.Fatalf("CreateSubmission() error = %v", err)
 	}
@@ -266,7 +266,7 @@ func TestCreateSubmission(t *testing.T) {
 func TestCreateSubmissionNotEnrolled(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -283,7 +283,7 @@ func TestCreateSubmissionNotEnrolled(t *testing.T) {
 	repo.assignments[a.ID] = a
 
 	content := "My submission"
-	_, err := svc.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
+	_, err := service.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
 	if err != ErrNotEnrolled {
 		t.Errorf("CreateSubmission() error = %v, want ErrNotEnrolled", err)
 	}
@@ -292,7 +292,7 @@ func TestCreateSubmissionNotEnrolled(t *testing.T) {
 func TestCreateSubmissionNotPublished(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -309,7 +309,7 @@ func TestCreateSubmissionNotPublished(t *testing.T) {
 	course.setEnrolled(offeringID, studentID)
 
 	content := "My submission"
-	_, err := svc.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
+	_, err := service.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
 	if err != ErrNotPublished {
 		t.Errorf("CreateSubmission() error = %v, want ErrNotPublished", err)
 	}
@@ -318,7 +318,7 @@ func TestCreateSubmissionNotPublished(t *testing.T) {
 func TestSubmitSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -336,9 +336,9 @@ func TestSubmitSubmission(t *testing.T) {
 	course.setEnrolled(offeringID, studentID)
 
 	content := "My submission"
-	sub, _ := svc.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
+	sub, _ := service.CreateSubmission(context.Background(), a.ID, studentID, &content, nil)
 
-	submitted, err := svc.SubmitSubmission(context.Background(), sub.ID, studentID)
+	submitted, err := service.SubmitSubmission(context.Background(), sub.ID, studentID)
 	if err != nil {
 		t.Fatalf("SubmitSubmission() error = %v", err)
 	}
@@ -351,7 +351,7 @@ func TestSubmitSubmission(t *testing.T) {
 func TestSubmitSubmissionClosed(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -378,7 +378,7 @@ func TestSubmitSubmissionClosed(t *testing.T) {
 	}
 	repo.submissions[sub.ID] = sub
 
-	_, err := svc.SubmitSubmission(context.Background(), sub.ID, studentID)
+	_, err := service.SubmitSubmission(context.Background(), sub.ID, studentID)
 	if err != ErrSubmissionsClosed {
 		t.Errorf("SubmitSubmission() error = %v, want ErrSubmissionsClosed", err)
 	}
@@ -387,7 +387,7 @@ func TestSubmitSubmissionClosed(t *testing.T) {
 func TestSubmitSubmissionAllowLate(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
@@ -414,7 +414,7 @@ func TestSubmitSubmissionAllowLate(t *testing.T) {
 	}
 	repo.submissions[sub.ID] = sub
 
-	submitted, err := svc.SubmitSubmission(context.Background(), sub.ID, studentID)
+	submitted, err := service.SubmitSubmission(context.Background(), sub.ID, studentID)
 	if err != nil {
 		t.Fatalf("SubmitSubmission() error = %v", err)
 	}
@@ -427,7 +427,7 @@ func TestSubmitSubmissionAllowLate(t *testing.T) {
 func TestDeleteSubmissionDraft(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	studentID := uuid.New()
 
@@ -440,7 +440,7 @@ func TestDeleteSubmissionDraft(t *testing.T) {
 	}
 	repo.submissions[sub.ID] = sub
 
-	err := svc.DeleteSubmission(context.Background(), sub.ID, studentID)
+	err := service.DeleteSubmission(context.Background(), sub.ID, studentID)
 	if err != nil {
 		t.Fatalf("DeleteSubmission() error = %v", err)
 	}
@@ -453,7 +453,7 @@ func TestDeleteSubmissionDraft(t *testing.T) {
 func TestDeleteSubmissionNotDraft(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	studentID := uuid.New()
 	submittedAt := time.Now()
@@ -467,7 +467,7 @@ func TestDeleteSubmissionNotDraft(t *testing.T) {
 	}
 	repo.submissions[sub.ID] = sub
 
-	err := svc.DeleteSubmission(context.Background(), sub.ID, studentID)
+	err := service.DeleteSubmission(context.Background(), sub.ID, studentID)
 	if err != ErrNotDraft {
 		t.Errorf("DeleteSubmission() error = %v, want ErrNotDraft", err)
 	}
@@ -476,7 +476,7 @@ func TestDeleteSubmissionNotDraft(t *testing.T) {
 func TestGradeSubmission(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	graderID := uuid.New()
 	submittedAt := time.Now()
@@ -497,7 +497,7 @@ func TestGradeSubmission(t *testing.T) {
 	repo.submissions[sub.ID] = sub
 
 	feedback := "Good work"
-	graded, err := svc.GradeSubmission(context.Background(), sub.ID, graderID, 85, &feedback)
+	graded, err := service.GradeSubmission(context.Background(), sub.ID, graderID, 85, &feedback)
 	if err != nil {
 		t.Fatalf("GradeSubmission() error = %v", err)
 	}
@@ -516,7 +516,7 @@ func TestGradeSubmission(t *testing.T) {
 func TestGradeSubmissionInvalidScore(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	a := &Assignment{
 		ID:       uuid.New(),
@@ -532,7 +532,7 @@ func TestGradeSubmissionInvalidScore(t *testing.T) {
 	}
 	repo.submissions[sub.ID] = sub
 
-	_, err := svc.GradeSubmission(context.Background(), sub.ID, uuid.New(), 150, nil)
+	_, err := service.GradeSubmission(context.Background(), sub.ID, uuid.New(), 150, nil)
 	if err != ErrInvalidScore {
 		t.Errorf("GradeSubmission() error = %v, want ErrInvalidScore", err)
 	}
@@ -541,7 +541,7 @@ func TestGradeSubmissionInvalidScore(t *testing.T) {
 func TestIsTeacher(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()
@@ -563,7 +563,7 @@ func TestIsTeacher(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := svc.IsTeacher(context.Background(), offeringID, tt.userID)
+			got, _ := service.IsTeacher(context.Background(), offeringID, tt.userID)
 			if got != tt.want {
 				t.Errorf("IsTeacher() = %v, want %v", got, tt.want)
 			}
@@ -574,7 +574,7 @@ func TestIsTeacher(t *testing.T) {
 func TestIsTeacherOrAssistant(t *testing.T) {
 	repo := newMockRepo()
 	course := newMockCourseChecker()
-	svc := NewService(repo, course, course, nil, nil)
+	service := NewService(repo, course, course, nil, nil)
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()
@@ -596,7 +596,7 @@ func TestIsTeacherOrAssistant(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := svc.IsTeacherOrAssistant(context.Background(), offeringID, tt.userID)
+			got, _ := service.IsTeacherOrAssistant(context.Background(), offeringID, tt.userID)
 			if got != tt.want {
 				t.Errorf("IsTeacherOrAssistant() = %v, want %v", got, tt.want)
 			}

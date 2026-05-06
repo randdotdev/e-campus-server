@@ -104,6 +104,24 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*TeamWithMembers, 
 	return team, nil
 }
 
+func (s *Service) GetByIDForUser(ctx context.Context, id, userID uuid.UUID) (*TeamWithMembers, error) {
+	team, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if team.LeaderID == userID {
+		return team, nil
+	}
+	isMember, err := s.members.IsMember(ctx, id, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !isMember {
+		return nil, ErrTeamNotFound
+	}
+	return team, nil
+}
+
 func (s *Service) GetMyTeams(ctx context.Context, studentID uuid.UUID, status *string) ([]MyTeam, error) {
 	teams, err := s.teams.GetByMember(ctx, studentID)
 	if err != nil {

@@ -47,24 +47,23 @@ func (r *Repository) BulkUpdateAttendance(ctx context.Context, lessonID uuid.UUI
 	}
 
 	now := time.Now()
-	query := strings.Builder{}
-	query.WriteString("UPDATE attendance SET percentage = CASE id ")
-
 	args := []any{markerID, now, lessonID}
-	ids := make([]string, 0, len(records))
+	var cases, ids []string
 
 	for _, r := range records {
 		argIdx := len(args) + 1
-		query.WriteString(fmt.Sprintf("WHEN $%d THEN $%d ", argIdx, argIdx+1))
-		args = append(args, r.ID, r.Percentage)
+		cases = append(cases, fmt.Sprintf("WHEN $%d THEN $%d", argIdx, argIdx+1))
 		ids = append(ids, fmt.Sprintf("$%d", argIdx))
+		args = append(args, r.ID, r.Percentage)
 	}
 
-	query.WriteString("END, marked_by = $1, marked_at = $2 WHERE lesson_id = $3 AND id IN (")
-	query.WriteString(strings.Join(ids, ", "))
-	query.WriteString(")")
+	query := fmt.Sprintf(
+		"UPDATE attendance SET percentage = CASE id %s END, marked_by = $1, marked_at = $2 WHERE lesson_id = $3 AND id IN (%s)",
+		strings.Join(cases, " "),
+		strings.Join(ids, ", "),
+	)
 
-	_, err := r.db.ExecContext(ctx, query.String(), args...)
+	_, err := r.db.ExecContext(ctx, query, args...)
 	return err
 }
 

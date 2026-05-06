@@ -49,64 +49,59 @@ func (r *Repository) GetQuestion(ctx context.Context, id uuid.UUID) (*Question, 
 }
 
 func (r *Repository) ListQuestions(ctx context.Context, params pagination.PageParams, filters QuestionFilters) ([]Question, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM questions WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND text ILIKE $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("text ILIKE $%d", argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.CourseCode != nil {
-		query.WriteString(fmt.Sprintf(" AND course_code = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("course_code = $%d", argN))
 		args = append(args, *filters.CourseCode)
 		argN++
 	}
-
 	if filters.Type != nil {
-		query.WriteString(fmt.Sprintf(" AND type = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("type = $%d", argN))
 		args = append(args, *filters.Type)
 		argN++
 	}
-
 	if filters.Difficulty != nil {
-		query.WriteString(fmt.Sprintf(" AND difficulty = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("difficulty = $%d", argN))
 		args = append(args, *filters.Difficulty)
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
-
 	if filters.CreatedBy != nil {
-		query.WriteString(fmt.Sprintf(" AND created_by = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("created_by = $%d", argN))
 		args = append(args, *filters.CreatedBy)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM questions %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var questions []Question
-	if err := r.db.SelectContext(ctx, &questions, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &questions, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -226,58 +221,54 @@ func (r *Repository) GetExam(ctx context.Context, id uuid.UUID) (*Exam, error) {
 }
 
 func (r *Repository) ListExams(ctx context.Context, params pagination.PageParams, filters ExamFilters) ([]Exam, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM exams WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if filters.OfferingID != nil {
-		query.WriteString(fmt.Sprintf(" AND offering_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("offering_id = $%d", argN))
 		args = append(args, *filters.OfferingID)
 		argN++
 	}
-
 	if filters.SectionID != nil {
-		query.WriteString(fmt.Sprintf(" AND section_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("section_id = $%d", argN))
 		args = append(args, *filters.SectionID)
 		argN++
 	}
-
 	if filters.Type != nil {
-		query.WriteString(fmt.Sprintf(" AND type = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("type = $%d", argN))
 		args = append(args, *filters.Type)
 		argN++
 	}
-
 	if filters.Mode != nil {
-		query.WriteString(fmt.Sprintf(" AND mode = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("mode = $%d", argN))
 		args = append(args, *filters.Mode)
 		argN++
 	}
-
 	if filters.Status != nil {
-		query.WriteString(fmt.Sprintf(" AND status = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argN))
 		args = append(args, *filters.Status)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM exams %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var exams []Exam
-	if err := r.db.SelectContext(ctx, &exams, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &exams, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -413,68 +404,66 @@ func (r *Repository) GetAttemptByExamAndStudent(ctx context.Context, examID, stu
 }
 
 func (r *Repository) ListAttempts(ctx context.Context, params pagination.PageParams, filters AttemptFilters) ([]Attempt, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
-	argN := 1
-
-	query.WriteString("SELECT a.* FROM exam_attempts a")
-
+	joins := ""
 	if filters.Query != "" {
-		query.WriteString(" JOIN students s ON a.student_id = s.id JOIN users u ON s.user_id = u.id")
+		joins = "JOIN students s ON a.student_id = s.id JOIN users u ON s.user_id = u.id"
 	}
 
-	query.WriteString(" WHERE 1=1")
+	var conditions []string
+	var args []any
+	argN := 1
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (a.started_at, a.id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(a.started_at, a.id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if filters.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(filters.Query)+"%")
 		argN++
 	}
-
 	if filters.ExamID != nil {
-		query.WriteString(fmt.Sprintf(" AND a.exam_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.exam_id = $%d", argN))
 		args = append(args, *filters.ExamID)
 		argN++
 	}
-
 	if filters.StudentID != nil {
-		query.WriteString(fmt.Sprintf(" AND a.student_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.student_id = $%d", argN))
 		args = append(args, *filters.StudentID)
 		argN++
 	}
-
 	if filters.IsSubmitted != nil {
 		if *filters.IsSubmitted {
-			query.WriteString(" AND a.submitted_at IS NOT NULL")
+			conditions = append(conditions, "a.submitted_at IS NOT NULL")
 		} else {
-			query.WriteString(" AND a.submitted_at IS NULL")
+			conditions = append(conditions, "a.submitted_at IS NULL")
 		}
 	}
-
 	if filters.IsGraded != nil {
 		if *filters.IsGraded {
-			query.WriteString(" AND a.graded_at IS NOT NULL")
+			conditions = append(conditions, "a.graded_at IS NOT NULL")
 		} else {
-			query.WriteString(" AND a.graded_at IS NULL")
+			conditions = append(conditions, "a.graded_at IS NULL")
 		}
 	}
 
-	query.WriteString(" ORDER BY a.started_at DESC, a.id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf(
+		"SELECT a.* FROM exam_attempts a %s %s ORDER BY a.started_at DESC, a.id DESC LIMIT $%d",
+		joins, where, argN,
+	)
 	args = append(args, params.Limit+1)
 
 	var attempts []Attempt
-	if err := r.db.SelectContext(ctx, &attempts, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &attempts, query, args...); err != nil {
 		return nil, false, err
 	}
 

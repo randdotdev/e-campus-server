@@ -136,15 +136,15 @@ func createTestService() (*Service, *mockGradingRepo, *mockOfferingProvider, *mo
 	attendance := &mockAttendanceProvider{}
 	enrollment := &mockEnrollmentProvider{}
 
-	svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
-	return svc, repo, offering, enrollment
+	service := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
+	return service, repo, offering, enrollment
 }
 
 func TestService_SaveRules(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("create new rules", func(t *testing.T) {
-		svc, repo, _, _ := createTestService()
+		service, repo, _, _ := createTestService()
 		offeringID := uuid.New()
 		examID := uuid.New()
 
@@ -153,7 +153,7 @@ func TestService_SaveRules(t *testing.T) {
 			{Type: RuleTypeAttendance, Weight: 40},
 		}
 
-		result, err := svc.SaveRules(ctx, offeringID, rules, uuid.New())
+		result, err := service.SaveRules(ctx, offeringID, rules, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -166,7 +166,7 @@ func TestService_SaveRules(t *testing.T) {
 	})
 
 	t.Run("update existing rules", func(t *testing.T) {
-		svc, repo, _, _ := createTestService()
+		service, repo, _, _ := createTestService()
 		offeringID := uuid.New()
 
 		oldRules, _ := json.Marshal([]Rule{{Type: RuleTypeAttendance, Weight: 100}})
@@ -177,40 +177,40 @@ func TestService_SaveRules(t *testing.T) {
 			{Type: RuleTypeSingle, Weight: 100, ExamID: &examID},
 		}
 
-		_, err := svc.SaveRules(ctx, offeringID, newRules, uuid.New())
+		_, err := service.SaveRules(ctx, offeringID, newRules, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("offering not found", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.exists = false
 
-		_, err := svc.SaveRules(ctx, uuid.New(), []Rule{{Type: RuleTypeAttendance, Weight: 100}}, uuid.New())
+		_, err := service.SaveRules(ctx, uuid.New(), []Rule{{Type: RuleTypeAttendance, Weight: 100}}, uuid.New())
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("expected ErrOfferingNotFound, got %v", err)
 		}
 	})
 
 	t.Run("semester archived", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.status = "archived"
 
-		_, err := svc.SaveRules(ctx, uuid.New(), []Rule{{Type: RuleTypeAttendance, Weight: 100}}, uuid.New())
+		_, err := service.SaveRules(ctx, uuid.New(), []Rule{{Type: RuleTypeAttendance, Weight: 100}}, uuid.New())
 		if !errors.Is(err, ErrSemesterArchived) {
 			t.Errorf("expected ErrSemesterArchived, got %v", err)
 		}
 	})
 
 	t.Run("invalid rules", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
 		rules := []Rule{
 			{Type: RuleTypeAttendance, Weight: 50}, // Doesn't sum to 100
 		}
 
-		_, err := svc.SaveRules(ctx, uuid.New(), rules, uuid.New())
+		_, err := service.SaveRules(ctx, uuid.New(), rules, uuid.New())
 		if !errors.Is(err, ErrWeightsMustSum100) {
 			t.Errorf("expected ErrWeightsMustSum100, got %v", err)
 		}
@@ -221,14 +221,14 @@ func TestService_GetRules(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("found", func(t *testing.T) {
-		svc, repo, _, _ := createTestService()
+		service, repo, _, _ := createTestService()
 		offeringID := uuid.New()
 
 		rules := []Rule{{Type: RuleTypeAttendance, Weight: 100}}
 		rulesJSON, _ := json.Marshal(rules)
 		repo.rules[offeringID] = &GradingRules{OfferingID: offeringID, Rules: rulesJSON}
 
-		gr, parsedRules, err := svc.GetRules(ctx, offeringID)
+		gr, parsedRules, err := service.GetRules(ctx, offeringID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -241,9 +241,9 @@ func TestService_GetRules(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
-		_, _, err := svc.GetRules(ctx, uuid.New())
+		_, _, err := service.GetRules(ctx, uuid.New())
 		if !errors.Is(err, ErrRulesNotFound) {
 			t.Errorf("expected ErrRulesNotFound, got %v", err)
 		}
@@ -254,11 +254,11 @@ func TestService_DeleteRules(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, repo, _, _ := createTestService()
+		service, repo, _, _ := createTestService()
 		offeringID := uuid.New()
 		repo.rules[offeringID] = &GradingRules{OfferingID: offeringID}
 
-		err := svc.DeleteRules(ctx, offeringID)
+		err := service.DeleteRules(ctx, offeringID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -268,10 +268,10 @@ func TestService_DeleteRules(t *testing.T) {
 	})
 
 	t.Run("archived semester", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.status = "archived"
 
-		err := svc.DeleteRules(ctx, uuid.New())
+		err := service.DeleteRules(ctx, uuid.New())
 		if !errors.Is(err, ErrSemesterArchived) {
 			t.Errorf("expected ErrSemesterArchived, got %v", err)
 		}
@@ -292,14 +292,14 @@ func TestService_FinalizeGrades(t *testing.T) {
 			finalized:  false,
 		}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
+		service := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{{Type: RuleTypeAssignments, Weight: 100}}
 		rulesJSON, _ := json.Marshal(rules)
 		repo.rules[offeringID] = &GradingRules{OfferingID: offeringID, Rules: rulesJSON}
 
-		count, err := svc.FinalizeGrades(ctx, offeringID)
+		count, err := service.FinalizeGrades(ctx, offeringID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -309,21 +309,21 @@ func TestService_FinalizeGrades(t *testing.T) {
 	})
 
 	t.Run("not in grading status", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.status = "active"
 
-		_, err := svc.FinalizeGrades(ctx, uuid.New())
+		_, err := service.FinalizeGrades(ctx, uuid.New())
 		if !errors.Is(err, ErrSemesterNotGrading) {
 			t.Errorf("expected ErrSemesterNotGrading, got %v", err)
 		}
 	})
 
 	t.Run("already finalized", func(t *testing.T) {
-		svc, _, offering, enrollment := createTestService()
+		service, _, offering, enrollment := createTestService()
 		offering.status = "grading"
 		enrollment.finalized = true
 
-		_, err := svc.FinalizeGrades(ctx, uuid.New())
+		_, err := service.FinalizeGrades(ctx, uuid.New())
 		if !errors.Is(err, ErrAlreadyFinalized) {
 			t.Errorf("expected ErrAlreadyFinalized, got %v", err)
 		}
@@ -337,14 +337,14 @@ func TestService_FinalizeGrades(t *testing.T) {
 		attendance := &mockAttendanceProvider{}
 		enrollment := &mockEnrollmentProvider{studentIDs: []uuid.UUID{}, finalized: false}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
+		service := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{{Type: RuleTypeAttendance, Weight: 100}}
 		rulesJSON, _ := json.Marshal(rules)
 		repo.rules[offeringID] = &GradingRules{OfferingID: offeringID, Rules: rulesJSON}
 
-		_, err := svc.FinalizeGrades(ctx, offeringID)
+		_, err := service.FinalizeGrades(ctx, offeringID)
 		if !errors.Is(err, ErrNoEnrollments) {
 			t.Errorf("expected ErrNoEnrollments, got %v", err)
 		}
@@ -355,32 +355,32 @@ func TestService_DefinalizeGrades(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, _, offering, enrollment := createTestService()
+		service, _, offering, enrollment := createTestService()
 		offering.status = "grading"
 		enrollment.finalized = true
 
-		err := svc.DefinalizeGrades(ctx, uuid.New())
+		err := service.DefinalizeGrades(ctx, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("not finalized", func(t *testing.T) {
-		svc, _, offering, enrollment := createTestService()
+		service, _, offering, enrollment := createTestService()
 		offering.status = "grading"
 		enrollment.finalized = false
 
-		err := svc.DefinalizeGrades(ctx, uuid.New())
+		err := service.DefinalizeGrades(ctx, uuid.New())
 		if !errors.Is(err, ErrNotFinalized) {
 			t.Errorf("expected ErrNotFinalized, got %v", err)
 		}
 	})
 
 	t.Run("archived semester", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.status = "archived"
 
-		err := svc.DefinalizeGrades(ctx, uuid.New())
+		err := service.DefinalizeGrades(ctx, uuid.New())
 		if !errors.Is(err, ErrSemesterArchived) {
 			t.Errorf("expected ErrSemesterArchived, got %v", err)
 		}
@@ -391,12 +391,12 @@ func TestService_GetGrades(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, _, _, enrollment := createTestService()
+		service, _, _, enrollment := createTestService()
 		enrollment.grades = []StudentGrade{
 			{StudentID: uuid.New(), StudentName: "John", Status: "completed"},
 		}
 
-		grades, err := svc.GetGrades(ctx, uuid.New())
+		grades, err := service.GetGrades(ctx, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -406,10 +406,10 @@ func TestService_GetGrades(t *testing.T) {
 	})
 
 	t.Run("offering not found", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.exists = false
 
-		_, err := svc.GetGrades(ctx, uuid.New())
+		_, err := service.GetGrades(ctx, uuid.New())
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("expected ErrOfferingNotFound, got %v", err)
 		}
@@ -420,37 +420,37 @@ func TestService_OverrideGrade(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
-		err := svc.OverrideGrade(ctx, uuid.New(), uuid.New(), 85)
+		err := service.OverrideGrade(ctx, uuid.New(), uuid.New(), 85)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("invalid grade negative", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
-		err := svc.OverrideGrade(ctx, uuid.New(), uuid.New(), -5)
+		err := service.OverrideGrade(ctx, uuid.New(), uuid.New(), -5)
 		if !errors.Is(err, ErrInvalidGrade) {
 			t.Errorf("expected ErrInvalidGrade, got %v", err)
 		}
 	})
 
 	t.Run("invalid grade over 100", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
-		err := svc.OverrideGrade(ctx, uuid.New(), uuid.New(), 105)
+		err := service.OverrideGrade(ctx, uuid.New(), uuid.New(), 105)
 		if !errors.Is(err, ErrInvalidGrade) {
 			t.Errorf("expected ErrInvalidGrade, got %v", err)
 		}
 	})
 
 	t.Run("archived semester", func(t *testing.T) {
-		svc, _, offering, _ := createTestService()
+		service, _, offering, _ := createTestService()
 		offering.status = "archived"
 
-		err := svc.OverrideGrade(ctx, uuid.New(), uuid.New(), 85)
+		err := service.OverrideGrade(ctx, uuid.New(), uuid.New(), 85)
 		if !errors.Is(err, ErrSemesterArchived) {
 			t.Errorf("expected ErrSemesterArchived, got %v", err)
 		}
@@ -468,7 +468,7 @@ func TestService_PreviewGrade(t *testing.T) {
 		attendance := &mockAttendanceProvider{rate: 90}
 		enrollment := &mockEnrollmentProvider{}
 
-		svc := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
+		service := NewService(repo, offering, exams, assignments, attendance, enrollment, nil, nil)
 
 		offeringID := uuid.New()
 		rules := []Rule{
@@ -479,7 +479,7 @@ func TestService_PreviewGrade(t *testing.T) {
 		repo.rules[offeringID] = &GradingRules{OfferingID: offeringID, Rules: rulesJSON}
 
 		// 80*0.5 + 90*0.5 = 40 + 45 = 85
-		grade, err := svc.PreviewGrade(ctx, offeringID, uuid.New())
+		grade, err := service.PreviewGrade(ctx, offeringID, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -489,9 +489,9 @@ func TestService_PreviewGrade(t *testing.T) {
 	})
 
 	t.Run("rules not found", func(t *testing.T) {
-		svc, _, _, _ := createTestService()
+		service, _, _, _ := createTestService()
 
-		_, err := svc.PreviewGrade(ctx, uuid.New(), uuid.New())
+		_, err := service.PreviewGrade(ctx, uuid.New(), uuid.New())
 		if !errors.Is(err, ErrRulesNotFound) {
 			t.Errorf("expected ErrRulesNotFound, got %v", err)
 		}

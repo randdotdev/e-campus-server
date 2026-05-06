@@ -74,58 +74,57 @@ func (r *Repository) GetEnrollment(ctx context.Context, offeringID, studentID uu
 }
 
 func (r *Repository) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
-	argN := 1
-
-	query.WriteString("SELECT e.* FROM course_enrollments e")
-
+	joins := ""
 	if filters.Query != "" {
-		query.WriteString(" JOIN users u ON e.student_id = u.id")
+		joins = "JOIN users u ON e.student_id = u.id"
 	}
 
-	query.WriteString(" WHERE 1=1")
+	var conditions []string
+	var args []any
+	argN := 1
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (e.enrolled_at, e.id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(e.enrolled_at, e.id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if filters.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d OR u.email ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(filters.Query)+"%")
 		argN++
 	}
-
 	if filters.OfferingID != nil {
-		query.WriteString(fmt.Sprintf(" AND e.offering_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("e.offering_id = $%d", argN))
 		args = append(args, *filters.OfferingID)
 		argN++
 	}
-
 	if filters.EnrollmentType != nil {
-		query.WriteString(fmt.Sprintf(" AND e.enrollment_type = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("e.enrollment_type = $%d", argN))
 		args = append(args, *filters.EnrollmentType)
 		argN++
 	}
-
 	if filters.Status != nil {
-		query.WriteString(fmt.Sprintf(" AND e.status = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("e.status = $%d", argN))
 		args = append(args, *filters.Status)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY e.enrolled_at DESC, e.id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf(
+		"SELECT e.* FROM course_enrollments e %s %s ORDER BY e.enrolled_at DESC, e.id DESC LIMIT $%d",
+		joins, where, argN,
+	)
 	args = append(args, params.Limit+1)
 
 	var enrollments []Enrollment
-	if err := r.db.SelectContext(ctx, &enrollments, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &enrollments, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -370,45 +369,43 @@ func (r *Repository) GetRequestByID(ctx context.Context, id uuid.UUID) (*Request
 }
 
 func (r *Repository) ListRequests(ctx context.Context, filters RequestFilters) ([]Request, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
 
-	query.WriteString("SELECT * FROM enrollment_requests WHERE 1=1")
-
 	if filters.StudentID != nil {
-		query.WriteString(fmt.Sprintf(" AND student_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("student_id = $%d", argN))
 		args = append(args, *filters.StudentID)
 		argN++
 	}
-
 	if filters.CourseID != nil {
-		query.WriteString(fmt.Sprintf(" AND course_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("course_id = $%d", argN))
 		args = append(args, *filters.CourseID)
 		argN++
 	}
-
 	if filters.SemesterID != nil {
-		query.WriteString(fmt.Sprintf(" AND semester_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("semester_id = $%d", argN))
 		args = append(args, *filters.SemesterID)
 		argN++
 	}
-
 	if filters.Type != nil {
-		query.WriteString(fmt.Sprintf(" AND type = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("type = $%d", argN))
 		args = append(args, *filters.Type)
 		argN++
 	}
-
 	if filters.Status != nil {
-		query.WriteString(fmt.Sprintf(" AND status = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argN))
 		args = append(args, *filters.Status)
 	}
 
-	query.WriteString(" ORDER BY created_at DESC")
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM enrollment_requests %s ORDER BY created_at DESC", where)
 
 	var requests []Request
-	if err := r.db.SelectContext(ctx, &requests, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &requests, query, args...); err != nil {
 		return nil, err
 	}
 	return requests, nil
@@ -768,4 +765,11 @@ func (r *Repository) GetRetakeRequestInfos(ctx context.Context, studentID, semes
 		result[i] = academic.RetakeRequestInfo{CourseID: id}
 	}
 	return result, nil
+}
+
+func (r *Repository) GetEnrolledOfferingsForUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	query := `SELECT offering_id FROM course_enrollments WHERE student_id = $1 AND status = 'enrolled'`
+	err := r.db.SelectContext(ctx, &ids, query, userID)
+	return ids, err
 }

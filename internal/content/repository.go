@@ -250,3 +250,38 @@ func (r *Repository) GetClassesInRange(ctx context.Context, studentID uuid.UUID,
 
 	return entries, nil
 }
+
+func (r *Repository) GetOfferingIDBySectionID(ctx context.Context, sectionID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.db.QueryRowContext(ctx,
+		`SELECT offering_id FROM sections WHERE id = $1`, sectionID,
+	).Scan(&id)
+	return id, err
+}
+
+func (r *Repository) GetOfferingIDByLessonID(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.db.QueryRowContext(ctx,
+		`SELECT s.offering_id FROM lessons l JOIN sections s ON s.id = l.section_id WHERE l.id = $1`,
+		lessonID,
+	).Scan(&id)
+	return id, err
+}
+
+func (r *Repository) GetOfferingIDByAttachmentID(ctx context.Context, attachmentID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.db.QueryRowContext(ctx,
+		`SELECT s.offering_id FROM lesson_attachments la JOIN lessons l ON l.id = la.lesson_id JOIN sections s ON s.id = l.section_id WHERE la.id = $1`,
+		attachmentID,
+	).Scan(&id)
+	return id, err
+}
+
+func (r *Repository) GetOfferingIDByScheduleID(ctx context.Context, scheduleID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.db.QueryRowContext(ctx,
+		`SELECT s.offering_id FROM lesson_schedules ls JOIN lessons l ON l.id = ls.lesson_id JOIN sections s ON s.id = l.section_id WHERE ls.id = $1`,
+		scheduleID,
+	).Scan(&id)
+	return id, err
+}

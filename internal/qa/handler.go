@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -56,14 +56,14 @@ func (h *Handler) AskQuestion(c *gin.Context) {
 
 	var req AskQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	userID := middleware.GetUserID(c)
 
-	if !permission.IsOfferingMember(c, offeringID) {
-		response.Forbidden(c, "not a member of this offering")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionCreate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -95,12 +95,12 @@ func (h *Handler) CreateFAQ(c *gin.Context) {
 
 	var req CreateFAQRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if !permission.IsOfferingStaff(c, offeringID) {
-		response.Forbidden(c, "only teachers can create FAQ")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -144,8 +144,13 @@ func (h *Handler) GetQuestion(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceQA, authz.ActionGet, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	userID := middleware.GetUserID(c)
-	isTeacher := permission.IsOfferingStaff(c, q.OfferingID)
+	isTeacher := isOfferingStaff(c, q.OfferingID)
 
 	if !CanViewQuestion(&q.Question, userID, isTeacher) {
 		response.NotFound(c, "question not found")
@@ -168,12 +173,12 @@ func (h *Handler) ListQuestions(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingMember(c, offeringID) {
-		response.Forbidden(c, "not a member of this offering")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	isTeacher := permission.IsOfferingStaff(c, offeringID)
+	isTeacher := isOfferingStaff(c, offeringID)
 	params := pagination.ParsePageParams(c)
 
 	questions, hasMore, err := h.service.ListQuestions(c.Request.Context(), offeringID, nil, params)
@@ -206,12 +211,12 @@ func (h *Handler) ListFAQ(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingMember(c, offeringID) {
-		response.Forbidden(c, "not a member of this offering")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	isTeacher := permission.IsOfferingStaff(c, offeringID)
+	isTeacher := isOfferingStaff(c, offeringID)
 	params := pagination.ParsePageParams(c)
 
 	isFAQ := true
@@ -245,8 +250,8 @@ func (h *Handler) ListPendingQuestions(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingStaff(c, offeringID) {
-		response.Forbidden(c, "only teachers can view pending questions")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -284,7 +289,7 @@ func (h *Handler) UpdateQuestion(c *gin.Context) {
 
 	var req UpdateQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -299,8 +304,13 @@ func (h *Handler) UpdateQuestion(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	userID := middleware.GetUserID(c)
-	isTeacher := permission.IsOfferingStaff(c, q.OfferingID)
+	isTeacher := isOfferingStaff(c, q.OfferingID)
 
 	updated, err := h.service.UpdateQuestion(c.Request.Context(), questionID, userID, isTeacher, req.Title, req.Body)
 	if err != nil {
@@ -328,6 +338,24 @@ func (h *Handler) DeleteQuestion(c *gin.Context) {
 		return
 	}
 
+	q, err := h.service.GetQuestionByID(c.Request.Context(), questionID)
+	if err != nil {
+		h.log.Error("get question failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if q == nil || q.DeletedAt != nil {
+		response.NotFound(c, "question not found")
+		return
+	}
+
+	// authz.Check gates course membership; service.DeleteQuestion enforces author-only
+	// deletion of pending questions. Teachers moderate via Reject, not Delete.
+	if !authz.Check(c, authz.ResourceQA, authz.ActionDelete, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	userID := middleware.GetUserID(c)
 
 	if err := h.service.DeleteQuestion(c.Request.Context(), questionID, userID); err != nil {
@@ -347,7 +375,7 @@ func (h *Handler) AnswerQuestion(c *gin.Context) {
 
 	var req AnswerQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -362,8 +390,8 @@ func (h *Handler) AnswerQuestion(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingStaff(c, q.OfferingID) {
-		response.Forbidden(c, "only teachers can answer questions")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -403,7 +431,7 @@ func (h *Handler) UpdateAnswer(c *gin.Context) {
 
 	var req UpdateAnswerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -418,8 +446,8 @@ func (h *Handler) UpdateAnswer(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingStaff(c, q.OfferingID) {
-		response.Forbidden(c, "only teachers can update answers")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -450,7 +478,7 @@ func (h *Handler) RejectQuestion(c *gin.Context) {
 
 	var req RejectQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -465,8 +493,8 @@ func (h *Handler) RejectQuestion(c *gin.Context) {
 		return
 	}
 
-	if !permission.IsOfferingStaff(c, q.OfferingID) {
-		response.Forbidden(c, "only teachers can reject questions")
+	if !authz.Check(c, authz.ResourceQA, authz.ActionUpdate, q.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -478,6 +506,11 @@ func (h *Handler) RejectQuestion(c *gin.Context) {
 	}
 
 	response.NoContent(c)
+}
+
+func isOfferingStaff(c *gin.Context, offeringID uuid.UUID) bool {
+	role := authz.CourseRole(c, offeringID)
+	return role == "teacher" || role == "assistant"
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
@@ -13,12 +14,12 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	service *Service
 	log *zap.Logger
 }
 
-func NewHandler(svc *Service, log *zap.Logger) *Handler {
-	return &Handler{svc: svc, log: log}
+func NewHandler(service *Service, log *zap.Logger) *Handler {
+	return &Handler{service: service, log: log}
 }
 
 // Enrollment handlers
@@ -27,6 +28,11 @@ func (h *Handler) ListEnrollments(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionList, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -44,7 +50,7 @@ func (h *Handler) ListEnrollments(c *gin.Context) {
 		filters.Status = &status
 	}
 
-	enrollments, hasMore, err := h.svc.ListEnrollments(c.Request.Context(), params, filters)
+	enrollments, hasMore, err := h.service.ListEnrollments(c.Request.Context(), params, filters)
 	if err != nil {
 		h.log.Error("list enrollments failed", zap.Error(err))
 		response.InternalError(c)
@@ -70,13 +76,18 @@ func (h *Handler) EnrollStudent(c *gin.Context) {
 		return
 	}
 
-	var req EnrollStudentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionCreate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	enrollment, err := h.svc.EnrollStudent(c.Request.Context(), offeringID, req)
+	var req EnrollStudentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	enrollment, err := h.service.EnrollStudent(c.Request.Context(), offeringID, req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -89,7 +100,7 @@ func (h *Handler) GetMyEnrollments(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	status := c.Query("status")
 
-	enrollments, err := h.svc.GetMyEnrollments(c.Request.Context(), userID, status)
+	enrollments, err := h.service.GetMyEnrollments(c.Request.Context(), userID, status)
 	if err != nil {
 		h.log.Error("get my enrollments failed", zap.Error(err))
 		response.InternalError(c)
@@ -107,7 +118,7 @@ func (h *Handler) GetAccessLevel(c *gin.Context) {
 	}
 
 	userID := middleware.GetUserID(c)
-	access, err := h.svc.GetAccessLevel(c.Request.Context(), offeringID, userID)
+	access, err := h.service.GetAccessLevel(c.Request.Context(), offeringID, userID)
 	if err != nil {
 		h.log.Error("get access level failed", zap.Error(err))
 		response.InternalError(c)
@@ -124,13 +135,18 @@ func (h *Handler) DropEnrollment(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionDelete, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	studentID, err := uuid.Parse(c.Param("student_id"))
 	if err != nil {
 		response.BadRequest(c, "invalid student id")
 		return
 	}
 
-	if err := h.svc.DropEnrollment(c.Request.Context(), offeringID, studentID); err != nil {
+	if err := h.service.DropEnrollment(c.Request.Context(), offeringID, studentID); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -147,7 +163,12 @@ func (h *Handler) ListProjectGroups(c *gin.Context) {
 		return
 	}
 
-	groups, err := h.svc.ListProjectGroups(c.Request.Context(), offeringID)
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionList, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	groups, err := h.service.ListProjectGroups(c.Request.Context(), offeringID)
 	if err != nil {
 		h.log.Error("list project groups failed", zap.Error(err))
 		response.InternalError(c)
@@ -164,13 +185,18 @@ func (h *Handler) CreateProjectGroup(c *gin.Context) {
 		return
 	}
 
-	var req CreateProjectGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionCreate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	group, err := h.svc.CreateProjectGroup(c.Request.Context(), offeringID, req.Type, req.Name)
+	var req CreateProjectGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	group, err := h.service.CreateProjectGroup(c.Request.Context(), offeringID, req.Type, req.Name)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -182,11 +208,16 @@ func (h *Handler) CreateProjectGroup(c *gin.Context) {
 func (h *Handler) AssignToProjectGroup(c *gin.Context) {
 	var req AssignToGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if err := h.svc.AssignToProjectGroup(c.Request.Context(), req.StudentID, req.GroupID); err != nil {
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate, req.GroupID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.AssignToProjectGroup(c.Request.Context(), req.StudentID, req.GroupID); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -207,7 +238,12 @@ func (h *Handler) RemoveFromProjectGroup(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.RemoveFromProjectGroup(c.Request.Context(), studentID, groupID); err != nil {
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate, groupID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.RemoveFromProjectGroup(c.Request.Context(), studentID, groupID); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -224,6 +260,11 @@ func (h *Handler) ListCohortGroups(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceProgram, authz.ActionGet, programID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	cohortYear, err := parseIntParam(c, "cohort_year")
 	if err != nil {
 		response.BadRequest(c, "invalid cohort_year")
@@ -236,7 +277,7 @@ func (h *Handler) ListCohortGroups(c *gin.Context) {
 		return
 	}
 
-	groups, err := h.svc.ListCohortGroupsWithCounts(c.Request.Context(), programID, cohortYear, stage)
+	groups, err := h.service.ListCohortGroupsWithCounts(c.Request.Context(), programID, cohortYear, stage)
 	if err != nil {
 		h.log.Error("list cohort groups failed", zap.Error(err))
 		response.InternalError(c)
@@ -249,11 +290,16 @@ func (h *Handler) ListCohortGroups(c *gin.Context) {
 func (h *Handler) CreateCohortGroup(c *gin.Context) {
 	var req CreateCohortGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	group, err := h.svc.CreateCohortGroup(c.Request.Context(), req.ProgramID, req.CohortYear, req.Stage, req.Type, req.Name)
+	if !authz.Check(c, authz.ResourceProgram, authz.ActionUpdate, req.ProgramID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	group, err := h.service.CreateCohortGroup(c.Request.Context(), req.ProgramID, req.CohortYear, req.Stage, req.Type, req.Name)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -265,11 +311,16 @@ func (h *Handler) CreateCohortGroup(c *gin.Context) {
 func (h *Handler) AssignToCohortGroup(c *gin.Context) {
 	var req AssignToGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if err := h.svc.AssignToCohortGroup(c.Request.Context(), req.StudentID, req.GroupID); err != nil {
+	if !authz.Check(c, authz.ResourceProgram, authz.ActionUpdate, req.GroupID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.AssignToCohortGroup(c.Request.Context(), req.StudentID, req.GroupID); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -290,7 +341,12 @@ func (h *Handler) RemoveFromCohortGroup(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.RemoveFromCohortGroup(c.Request.Context(), studentID, groupID); err != nil {
+	if !authz.Check(c, authz.ResourceProgram, authz.ActionUpdate, groupID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.RemoveFromCohortGroup(c.Request.Context(), studentID, groupID); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -315,11 +371,11 @@ func (h *Handler) CreatePretake(c *gin.Context) {
 
 	var req CreatePretakeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	request, warning, err := h.svc.CreatePretake(c.Request.Context(), userID, req)
+	request, warning, err := h.service.CreatePretake(c.Request.Context(), userID, req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -337,11 +393,11 @@ func (h *Handler) CreateRetake(c *gin.Context) {
 
 	var req CreateRetakeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	request, warning, err := h.svc.CreateRetake(c.Request.Context(), userID, req)
+	request, warning, err := h.service.CreateRetake(c.Request.Context(), userID, req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -357,7 +413,7 @@ func (h *Handler) CreateRetake(c *gin.Context) {
 func (h *Handler) GetMyRequests(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
-	requests, err := h.svc.ListRequestsByStudent(c.Request.Context(), userID)
+	requests, err := h.service.ListRequestsByStudent(c.Request.Context(), userID)
 	if err != nil {
 		response.InternalError(c)
 		return
@@ -367,6 +423,11 @@ func (h *Handler) GetMyRequests(c *gin.Context) {
 }
 
 func (h *Handler) ListRequests(c *gin.Context) {
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionList) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var filters RequestFilters
 
 	if id := c.Query("semester_id"); id != "" {
@@ -395,7 +456,7 @@ func (h *Handler) ListRequests(c *gin.Context) {
 		filters.Status = &s
 	}
 
-	requests, err := h.svc.ListRequests(c.Request.Context(), filters)
+	requests, err := h.service.ListRequests(c.Request.Context(), filters)
 	if err != nil {
 		response.InternalError(c)
 		return
@@ -411,7 +472,12 @@ func (h *Handler) GetRequestByID(c *gin.Context) {
 		return
 	}
 
-	request, warning, err := h.svc.GetRequestWithWarning(c.Request.Context(), id)
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	request, warning, err := h.service.GetRequestWithWarning(c.Request.Context(), id)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -427,9 +493,14 @@ func (h *Handler) ApproveRequest(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	reviewerID := middleware.GetUserID(c)
 
-	request, err := h.svc.ApproveRequest(c.Request.Context(), id, reviewerID)
+	request, err := h.service.ApproveRequest(c.Request.Context(), id, reviewerID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -445,15 +516,20 @@ func (h *Handler) RejectRequest(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceEnrollment, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req RejectRequestDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	reviewerID := middleware.GetUserID(c)
 
-	request, err := h.svc.RejectRequest(c.Request.Context(), id, reviewerID, req.Reason)
+	request, err := h.service.RejectRequest(c.Request.Context(), id, reviewerID, req.Reason)
 	if err != nil {
 		h.handleError(c, err)
 		return

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -26,14 +26,14 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 // College handlers
 
 func (h *Handler) CreateCollege(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceUniversity, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req CreateCollegeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -116,14 +116,14 @@ func (h *Handler) UpdateCollege(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceUniversity, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateCollegeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -150,12 +150,12 @@ func (h *Handler) UpdateCollege(c *gin.Context) {
 func (h *Handler) CreateDepartment(c *gin.Context) {
 	var req CreateDepartmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if !permission.CanAdminCollege(c, req.CollegeID) {
-		response.Forbidden(c, "college admin access required")
+	if !authz.Check(c, authz.ResourceCollege, authz.ActionUpdate, req.CollegeID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -257,14 +257,14 @@ func (h *Handler) UpdateDepartment(c *gin.Context) {
 		return
 	}
 
-	if !permission.CanAdminCollege(c, dept.CollegeID) {
-		response.Forbidden(c, "college admin access required")
+	if !authz.Check(c, authz.ResourceCollege, authz.ActionUpdate, dept.CollegeID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -287,12 +287,12 @@ func (h *Handler) UpdateDepartment(c *gin.Context) {
 func (h *Handler) CreateProgram(c *gin.Context) {
 	var req CreateProgramRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	// Check department-level permission, or college-level permission for the department's college
-	if !permission.CanAdminDepartment(c, req.DepartmentID) {
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, req.DepartmentID) {
 		dept, err := h.service.GetDepartment(c.Request.Context(), req.DepartmentID)
 		if err != nil {
 			if errors.Is(err, ErrDepartmentNotFound) {
@@ -303,8 +303,8 @@ func (h *Handler) CreateProgram(c *gin.Context) {
 			response.InternalError(c)
 			return
 		}
-		if !permission.CanAdminCollege(c, dept.CollegeID) {
-			response.Forbidden(c, "department admin access required")
+		if !authz.Check(c, authz.ResourceCollege, authz.ActionUpdate, dept.CollegeID) {
+			response.Forbidden(c, "insufficient permissions")
 			return
 		}
 	}
@@ -408,22 +408,22 @@ func (h *Handler) UpdateProgram(c *gin.Context) {
 	}
 
 	// Check department-level permission, or college-level permission for the program's college
-	if !permission.CanAdminDepartment(c, program.DepartmentID) {
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, program.DepartmentID) {
 		dept, err := h.service.GetDepartment(c.Request.Context(), program.DepartmentID)
 		if err != nil {
 			h.log.Error("get department failed", zap.Error(err))
 			response.InternalError(c)
 			return
 		}
-		if !permission.CanAdminCollege(c, dept.CollegeID) {
-			response.Forbidden(c, "department admin access required")
+		if !authz.Check(c, authz.ResourceCollege, authz.ActionUpdate, dept.CollegeID) {
+			response.Forbidden(c, "insufficient permissions")
 			return
 		}
 	}
 
 	var req UpdateProgramRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 

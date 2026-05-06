@@ -124,7 +124,7 @@ func TestBuildRoleClaim(t *testing.T) {
 	titleLocal := "بەڕێوەبەر"
 	scopeID := uuid.New()
 
-	role := &RoleData{ID: uuid.New(), TitleEN: &titleEN, TitleLocal: &titleLocal, Permission: "admin", ScopeType: "university", ScopeID: &scopeID}
+	role := &RoleData{ID: uuid.New(), TitleEN: &titleEN, TitleLocal: &titleLocal, Level: "admin", ScopeType: "university", ScopeID: &scopeID}
 
 	claim := BuildRoleClaim(role)
 
@@ -132,8 +132,8 @@ func TestBuildRoleClaim(t *testing.T) {
 		t.Fatal("claim should not be nil")
 	}
 
-	if claim["permission"] != "admin" {
-		t.Error("claim permission should be admin")
+	if claim["level"] != "admin" {
+		t.Error("claim level should be admin")
 	}
 
 	if claim["title_en"] != "Admin" {

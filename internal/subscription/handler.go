@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -26,8 +26,8 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 // University admin handlers (read-only)
 
 func (h *Handler) GetMyLimits(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -42,8 +42,8 @@ func (h *Handler) GetMyLimits(c *gin.Context) {
 }
 
 func (h *Handler) GetMySubscription(c *gin.Context) {
-	if !permission.CanAdminUniversity(c) {
-		response.Forbidden(c, "university admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -65,8 +65,8 @@ func (h *Handler) GetMySubscription(c *gin.Context) {
 // Platform admin handlers
 
 func (h *Handler) GetSubscription(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -86,8 +86,8 @@ func (h *Handler) GetSubscription(c *gin.Context) {
 }
 
 func (h *Handler) GetLimits(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -102,8 +102,8 @@ func (h *Handler) GetLimits(c *gin.Context) {
 }
 
 func (h *Handler) GetAllTierLimits(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -118,8 +118,8 @@ func (h *Handler) GetAllTierLimits(c *gin.Context) {
 }
 
 func (h *Handler) UpdateTierLimits(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -131,7 +131,7 @@ func (h *Handler) UpdateTierLimits(c *gin.Context) {
 
 	var req UpdateTierLimitsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -155,14 +155,14 @@ func (h *Handler) UpdateTierLimits(c *gin.Context) {
 }
 
 func (h *Handler) UpdateTier(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateTierRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -184,14 +184,14 @@ func (h *Handler) UpdateTier(c *gin.Context) {
 }
 
 func (h *Handler) SetOverrides(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req SetOverridesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -209,8 +209,8 @@ func (h *Handler) SetOverrides(c *gin.Context) {
 }
 
 func (h *Handler) ClearOverrides(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -228,8 +228,8 @@ func (h *Handler) ClearOverrides(c *gin.Context) {
 }
 
 func (h *Handler) GetHistory(c *gin.Context) {
-	if !permission.CanAdminPlatform(c) {
-		response.Forbidden(c, "platform admin access required")
+	if !authz.Check(c, authz.ResourceSubscription, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 

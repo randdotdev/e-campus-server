@@ -264,3 +264,26 @@ func (s *Service) GetStudentAttendance(ctx context.Context, studentID, offeringI
 func (s *Service) GetMyCourseAttendances(ctx context.Context, studentID uuid.UUID) ([]CourseAttendance, error) {
 	return s.repo.GetStudentCourseAttendances(ctx, studentID)
 }
+
+func (s *Service) GetOfferingIDByLessonID(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, error) {
+	offeringID, _, err := s.lessons.GetLessonForAttendance(ctx, lessonID)
+	return offeringID, err
+}
+
+func (s *Service) GetOfferingIDByAttendanceID(ctx context.Context, attendanceID uuid.UUID) (uuid.UUID, error) {
+	record, err := s.repo.GetAttendanceByID(ctx, attendanceID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	offeringID, _, err := s.lessons.GetLessonForAttendance(ctx, record.LessonID)
+	return offeringID, err
+}
+
+func (s *Service) GetOfferingIDByExcuseID(ctx context.Context, excuseID uuid.UUID) (uuid.UUID, error) {
+	excuse, err := s.repo.GetExcuseRequestByID(ctx, excuseID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	offeringID, _, err := s.lessons.GetLessonForAttendance(ctx, excuse.LessonID)
+	return offeringID, err
+}

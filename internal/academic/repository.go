@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 )
 
 type Repository struct {
@@ -76,6 +77,31 @@ func (r *Repository) AcademicYearExists(ctx context.Context, year int) (bool, er
 	query := `SELECT EXISTS(SELECT 1 FROM academic_years WHERE year = $1)`
 	err := r.db.GetContext(ctx, &exists, query, year)
 	return exists, err
+}
+
+func (r *Repository) EnrichCurriculum(ctx context.Context, id uuid.UUID) (authz.EnrichedResource, error) {
+	var h ProgramHierarchy
+	query := `
+		SELECT pc.program_id, p.department_id, d.college_id
+		FROM program_curriculum pc
+		JOIN programs p ON p.id = pc.program_id
+		JOIN departments d ON d.id = p.department_id
+		WHERE pc.id = $1`
+
+	if err := r.db.GetContext(ctx, &h, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return authz.EnrichedResource{Type: "curriculum", ID: id}, nil
+		}
+		return authz.EnrichedResource{}, err
+	}
+
+	return authz.EnrichedResource{
+		Type:         "curriculum",
+		ID:           id,
+		ProgramID:    &h.ProgramID,
+		DepartmentID: &h.DepartmentID,
+		CollegeID:    &h.CollegeID,
+	}, nil
 }
 
 func (r *Repository) CreateSemester(ctx context.Context, s *Semester) error {
@@ -238,6 +264,19 @@ func (r *Repository) ListCurriculumItems(ctx context.Context, programID uuid.UUI
 		}
 	}
 	return items, nil
+}
+
+func (r *Repository) GetCurriculumByID(ctx context.Context, id uuid.UUID) (*Curriculum, error) {
+	var c Curriculum
+	query := `SELECT * FROM program_curriculum WHERE id = $1`
+	err := r.db.GetContext(ctx, &c, query, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrCurriculumNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func (r *Repository) RemoveCurriculum(ctx context.Context, id uuid.UUID) error {

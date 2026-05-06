@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 )
 
@@ -22,6 +23,16 @@ func (h *Handler) InitializeAttendance(c *gin.Context) {
 	lessonID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid lesson id"})
+		return
+	}
+
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), lessonID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionUpdate, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 		return
 	}
 
@@ -44,9 +55,19 @@ func (h *Handler) MarkAttendance(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), lessonID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionUpdate, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
 	var req MarkAttendanceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -66,9 +87,19 @@ func (h *Handler) UpdateAttendance(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByAttendanceID(c.Request.Context(), attendanceID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionUpdate, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
 	var req UpdateAttendanceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -89,6 +120,16 @@ func (h *Handler) GetLessonAttendance(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), lessonID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionGet, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
 	records, err := h.service.GetLessonAttendance(c.Request.Context(), lessonID)
 	if err != nil {
 		handleError(c, err)
@@ -105,6 +146,11 @@ func (h *Handler) GetOfferingAttendance(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionGet, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
 	records, err := h.service.GetOfferingAttendance(c.Request.Context(), offeringID)
 	if err != nil {
 		handleError(c, err)
@@ -118,6 +164,11 @@ func (h *Handler) GetAttendanceSummaries(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offering id"})
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionGet, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 		return
 	}
 
@@ -139,7 +190,7 @@ func (h *Handler) RequestExcuse(c *gin.Context) {
 
 	var req ExcuseRequestInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -160,9 +211,19 @@ func (h *Handler) ReviewExcuse(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByExcuseID(c.Request.Context(), excuseID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionUpdate, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
 	var req ReviewExcuseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
@@ -179,6 +240,11 @@ func (h *Handler) GetPendingExcuses(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offering id"})
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceAttendance, authz.ActionGet, offeringID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 		return
 	}
 
@@ -228,15 +294,15 @@ func handleError(c *gin.Context, err error) {
 	case errors.Is(err, ErrExcuseNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrAttendanceNotRequired):
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 	case errors.Is(err, ErrExcuseAlreadyExists):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrExcuseAlreadyReviewed):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrInvalidPercentage):
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 	case errors.Is(err, ErrInvalidExcuseStatus):
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 	case errors.Is(err, ErrStudentNotEnrolled):
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrCannotExcuseOwnAttendance):

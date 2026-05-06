@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -49,7 +49,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 func (h *Handler) CreateNews(c *gin.Context) {
 	var req CreateNewsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -263,7 +263,7 @@ func (h *Handler) UpdateNews(c *gin.Context) {
 
 	var req UpdateNewsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -384,7 +384,7 @@ func (h *Handler) PinNews(c *gin.Context) {
 
 	var req PinNewsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -427,7 +427,7 @@ func (h *Handler) AddAttachment(c *gin.Context) {
 
 	var req AddAttachmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -530,17 +530,17 @@ func (h *Handler) RemoveAttachment(c *gin.Context) {
 func (h *Handler) canPublish(c *gin.Context, publisherType string, publisherID *uuid.UUID) bool {
 	switch publisherType {
 	case PublisherUniversity:
-		return permission.CanAdminUniversity(c)
+		return authz.Check(c, authz.ResourceNews, authz.ActionCreate)
 	case PublisherCollege:
 		if publisherID == nil {
 			return false
 		}
-		return permission.CanAdminCollege(c, *publisherID)
+		return authz.Check(c, authz.ResourceNews, authz.ActionCreate, *publisherID)
 	case PublisherDepartment:
 		if publisherID == nil {
 			return false
 		}
-		return permission.CanAdminDepartment(c, *publisherID)
+		return authz.Check(c, authz.ResourceNews, authz.ActionCreate, *publisherID)
 	}
 	return false
 }

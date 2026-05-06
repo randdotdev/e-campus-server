@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
@@ -32,22 +33,16 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 	var req CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceProject, authz.ActionCreate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), offeringID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
-		return
-	}
 
 	p := &Project{
 		OfferingID:           offeringID,
@@ -92,32 +87,16 @@ func (h *Handler) GetProject(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
 	now := time.Now()
 
-	isTeacherOrAssistant, err := h.service.IsTeacherOrAssistant(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
+	if !authz.Check(c, authz.ResourceProject, authz.ActionGet, p.OfferingID) {
+		response.Forbidden(c, "not enrolled")
 		return
 	}
-
-	if !isTeacherOrAssistant {
-		if !IsPublished(p.PublishAt, now) {
-			response.NotFound(c, "project not found")
-			return
-		}
-
-		enrolled, err := h.service.IsEnrolled(c.Request.Context(), p.OfferingID, userID)
-		if err != nil {
-			h.log.Error("check enrollment failed", zap.Error(err))
-			response.InternalError(c)
-			return
-		}
-		if !enrolled {
-			response.Forbidden(c, "not enrolled")
-			return
-		}
+	isStaff := isOfferingStaff(c, p.OfferingID)
+	if !isStaff && !IsPublished(p.PublishAt, now) {
+		response.NotFound(c, "project not found")
+		return
 	}
 
 	attachments, err := h.service.GetAttachments(c.Request.Context(), id)
@@ -145,30 +124,18 @@ func (h *Handler) ListProjects(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
 	now := time.Now()
 
-	isTeacherOrAssistant, err := h.service.IsTeacherOrAssistant(c.Request.Context(), offeringID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
+	if !authz.Check(c, authz.ResourceProject, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "not enrolled")
 		return
 	}
+	isStaff := isOfferingStaff(c, offeringID)
 
 	var projects []Project
-	if isTeacherOrAssistant {
+	if isStaff {
 		projects, err = h.service.ListProjects(c.Request.Context(), offeringID)
 	} else {
-		enrolled, enrollErr := h.service.IsEnrolled(c.Request.Context(), offeringID, userID)
-		if enrollErr != nil {
-			h.log.Error("check enrollment failed", zap.Error(enrollErr))
-			response.InternalError(c)
-			return
-		}
-		if !enrolled {
-			response.Forbidden(c, "not enrolled")
-			return
-		}
 		projects, err = h.service.ListPublishedProjects(c.Request.Context(), offeringID)
 	}
 
@@ -199,22 +166,14 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionUpdate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -246,16 +205,8 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionDelete, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -277,7 +228,7 @@ func (h *Handler) Register(c *gin.Context) {
 
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -405,16 +356,8 @@ func (h *Handler) CreateProjectGroups(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionCreate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -443,7 +386,7 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 
 	var req CreateSubmissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -479,7 +422,7 @@ func (h *Handler) UpdateSubmission(c *gin.Context) {
 
 	var req UpdateSubmissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -592,16 +535,8 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacherOrAssistant, err := h.service.IsTeacherOrAssistant(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacherOrAssistant {
-		response.Forbidden(c, "teacher or assistant access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionUpdate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -653,22 +588,16 @@ func (h *Handler) GradeSubmission(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
+	if !authz.Check(c, authz.ResourceProject, authz.ActionUpdate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
 
-	isTeacherOrAssistant, err := h.service.IsTeacherOrAssistant(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacherOrAssistant {
-		response.Forbidden(c, "teacher or assistant access required")
-		return
-	}
+	userID := middleware.GetUserID(c)
 
 	var req GradeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -707,16 +636,8 @@ func (h *Handler) PublishScores(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionUpdate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -747,22 +668,16 @@ func (h *Handler) AddAttachment(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
+	if !authz.Check(c, authz.ResourceProject, authz.ActionUpdate, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
 
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
-		return
-	}
+	userID := middleware.GetUserID(c)
 
 	var req AddAttachmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -807,16 +722,8 @@ func (h *Handler) DeleteAttachment(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), p.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceProject, authz.ActionDelete, p.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -827,6 +734,11 @@ func (h *Handler) DeleteAttachment(c *gin.Context) {
 	}
 
 	response.NoContent(c)
+}
+
+func isOfferingStaff(c *gin.Context, offeringID uuid.UUID) bool {
+	role := authz.CourseRole(c, offeringID)
+	return role == "teacher" || role == "assistant"
 }
 
 func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {

@@ -30,7 +30,7 @@ func NewHandler(service *Service, log *zap.Logger, secureCookie bool) *Handler {
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) Login(c *gin.Context) {
 			response.Forbidden(c, "account is deactivated")
 			return
 		}
-		h.log.Error("login failed", zap.String("email", req.Email), zap.Error(err))
+		h.log.Error("login failed", zap.Error(err))
 		response.InternalError(c)
 		return
 	}
@@ -106,6 +106,10 @@ func (h *Handler) Refresh(c *gin.Context) {
 		}
 		if errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrTokenReused) {
 			response.Unauthorized(c, "invalid refresh token")
+			return
+		}
+		if errors.Is(err, ErrUserInactive) {
+			response.Forbidden(c, "account is deactivated")
 			return
 		}
 		h.log.Error("refresh failed", zap.Error(err))
@@ -164,7 +168,8 @@ func (h *Handler) clearRefreshCookie(c *gin.Context) {
 func ExtractToken(c *gin.Context) string {
 	auth := c.GetHeader("Authorization")
 	if auth == "" {
-		return ""
+		// Browser WebSocket API cannot set headers; fall back to query param.
+		return c.Query("access_token")
 	}
 
 	parts := strings.SplitN(auth, " ", 2)

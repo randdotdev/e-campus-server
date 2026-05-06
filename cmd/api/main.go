@@ -30,7 +30,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/mute"
 	"github.com/ranjdotdev/e-campus-server/internal/news"
 	"github.com/ranjdotdev/e-campus-server/internal/notification"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
@@ -63,8 +63,13 @@ func run() error {
 		_ = log.Sync()
 	}()
 
-	if cfg.IsProduction() {
+	switch {
+	case cfg.IsProduction():
 		gin.SetMode(gin.ReleaseMode)
+	case cfg.IsDevelopment():
+		gin.SetMode(gin.DebugMode)
+	default:
+		return fmt.Errorf("invalid ENV: %q (must be 'development' or 'production')", cfg.Server.Env)
 	}
 
 	db, err := database.NewPostgres(database.PostgresConfig{
@@ -118,14 +123,11 @@ func run() error {
 	authService := auth.NewService(authRepo, userRepo, &cfg.JWT)
 	authHandler := auth.NewHandler(authService, log, cfg.IsProduction())
 
-	userService := user.NewService(userRepo, authRepo, notificationService)
-	userHandler := user.NewHandler(userService, log)
-
 	subscriptionRepo := subscription.NewRepository(db)
 	subscriptionService := subscription.NewService(subscriptionRepo)
 	subscriptionHandler := subscription.NewHandler(subscriptionService, log)
 
-	universityRepo := university.NewRepository(db)
+	universityRepo := university.NewRepository(db, rdb)
 	universityService := university.NewService(universityRepo, subscriptionService)
 	universityHandler := university.NewHandler(universityService, log)
 
@@ -147,8 +149,13 @@ func run() error {
 	courseService := course.NewService(courseRepo)
 	courseHandler := course.NewHandler(courseService, log)
 
-	permissionRepo := permission.NewRepository(db)
-	permission.SetCourseChecker(permissionRepo)
+	academicRepo := academic.NewRepository(db)
+
+	authzService := authz.NewService(db, courseRepo, enrollmentRepo, applicationRepo, academicRepo, rdb)
+	authz.SetDefault(authzService)
+
+	userService := user.NewService(userRepo, authRepo, notificationService, authzService)
+	userHandler := user.NewHandler(userService, log)
 
 	examRepo := exam.NewRepository(db)
 	examService := exam.NewService(examRepo, notificationService, enrollmentRepo)
@@ -237,6 +244,7 @@ func run() error {
 		enrollmentRepo,
 		courseRepo,
 		courseRepo,
+		authzService,
 	)
 	enrollmentHandler := enrollment.NewHandler(enrollmentService, log)
 
@@ -252,7 +260,6 @@ func run() error {
 	settingsService := settings.NewService(settingsRepo, settingsRepo)
 	settingsHandler := settings.NewHandler(settingsService, log)
 
-	academicRepo := academic.NewRepository(db)
 	academicService := academic.NewService(
 		academicRepo,
 		studentRepo,
@@ -275,17 +282,22 @@ func run() error {
 		notificationService,
 		enrollmentRepo,
 	)
-	gradingHandler := grading.NewHandler(gradingService, courseRepo)
+	gradingHandler := grading.NewHandler(gradingService)
 
-	notificationHandler := notification.NewHandler(notificationService, notificationHub, log)
+	allowedOrigins := strings.Split(cfg.CORS.AllowedOrigins, ",")
+	notificationHandler := notification.NewHandler(notificationService, notificationHub, log, allowedOrigins...)
 
 	router := gin.New()
+	router.MaxMultipartMemory = 50 << 20 // 50 MB
+	if err := router.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
+		return fmt.Errorf("set trusted proxies: %w", err)
+	}
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestID())
 	router.Use(middleware.Logger(log))
 	router.Use(middleware.SecurityHeaders())
 	router.Use(middleware.CORS(middleware.CORSConfig{
-		AllowedOrigins:   strings.Split(cfg.CORS.AllowedOrigins, ","),
+		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: true,
 	}))
 	router.Use(middleware.RateLimiter(middleware.RateLimiterConfig{
@@ -294,7 +306,17 @@ func run() error {
 		Burst:   cfg.Rate.Burst,
 	}))
 
-	router.GET("/health", handleHealth)
+	router.GET("/health", func(c *gin.Context) {
+		if err := db.PingContext(c.Request.Context()); err != nil {
+			response.Err(c, http.StatusServiceUnavailable, "UNHEALTHY", "database unreachable")
+			return
+		}
+		if err := rdb.Ping(c.Request.Context()).Err(); err != nil {
+			response.Err(c, http.StatusServiceUnavailable, "UNHEALTHY", "cache unreachable")
+			return
+		}
+		response.OK(c, gin.H{"status": "ok", "time": time.Now().UTC()})
+	})
 
 	authRateLimiter := middleware.AuthRateLimiter(middleware.AuthRateLimiterConfig{
 		Enabled:       cfg.AuthRate.Enabled,
@@ -601,11 +623,12 @@ func run() error {
 	}
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:           fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:        router,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 
 	go func() {
@@ -618,12 +641,6 @@ func run() error {
 	return gracefulShutdown(srv, log)
 }
 
-func handleHealth(c *gin.Context) {
-	response.OK(c, gin.H{
-		"status": "ok",
-		"time":   time.Now().UTC(),
-	})
-}
 
 func gracefulShutdown(srv *http.Server, log *zap.Logger) error {
 	quit := make(chan os.Signal, 1)
@@ -632,7 +649,7 @@ func gracefulShutdown(srv *http.Server, log *zap.Logger) error {
 
 	log.Info("shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

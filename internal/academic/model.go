@@ -166,3 +166,9 @@ type EndSemesterResult struct {
 	Errors    int    `json:"errors"`
 	Warning   string `json:"warning,omitempty"`
 }
+
+type ProgramHierarchy struct {
+	ProgramID    uuid.UUID `db:"program_id"`
+	DepartmentID uuid.UUID `db:"department_id"`
+	CollegeID    uuid.UUID `db:"college_id"`
+}

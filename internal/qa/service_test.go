@@ -166,18 +166,18 @@ func newTestService() (*Service, *mockQuestionRepo, *mockAnswerRepo, *mockReject
 	rRepo := newMockRejectionRepo()
 	offerings := newMockOfferingChecker()
 	mutes := newMockMuteChecker()
-	svc := NewService(qRepo, aRepo, rRepo, &mockQuestionAttachmentRepo{}, &mockAnswerAttachmentRepo{}, offerings, mutes, nil)
-	return svc, qRepo, aRepo, rRepo, offerings, mutes
+	service := NewService(qRepo, aRepo, rRepo, &mockQuestionAttachmentRepo{}, &mockAnswerAttachmentRepo{}, offerings, mutes, nil)
+	return service, qRepo, aRepo, rRepo, offerings, mutes
 }
 
 func TestAskQuestion(t *testing.T) {
-	svc, _, _, _, offerings, _ := newTestService()
+	service, _, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	userID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, err := svc.AskQuestion(context.Background(), offeringID, userID, "Test Title", "Test Body", false)
+	q, err := service.AskQuestion(context.Background(), offeringID, userID, "Test Title", "Test Body", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -194,51 +194,51 @@ func TestAskQuestion(t *testing.T) {
 }
 
 func TestAskQuestion_EmptyTitle(t *testing.T) {
-	svc, _, _, _, offerings, _ := newTestService()
+	service, _, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	_, err := svc.AskQuestion(context.Background(), offeringID, uuid.New(), "", "Body", false)
+	_, err := service.AskQuestion(context.Background(), offeringID, uuid.New(), "", "Body", false)
 	if err != ErrEmptyTitle {
 		t.Errorf("err = %v, want ErrEmptyTitle", err)
 	}
 }
 
 func TestAskQuestion_OfferingNotFound(t *testing.T) {
-	svc, _, _, _, _, _ := newTestService()
+	service, _, _, _, _, _ := newTestService()
 
-	_, err := svc.AskQuestion(context.Background(), uuid.New(), uuid.New(), "Title", "Body", false)
+	_, err := service.AskQuestion(context.Background(), uuid.New(), uuid.New(), "Title", "Body", false)
 	if err != ErrOfferingNotFound {
 		t.Errorf("err = %v, want ErrOfferingNotFound", err)
 	}
 }
 
 func TestAskQuestion_UserMuted(t *testing.T) {
-	svc, _, _, _, offerings, mutes := newTestService()
+	service, _, _, _, offerings, mutes := newTestService()
 
 	offeringID := uuid.New()
 	userID := uuid.New()
 	offerings.offerings[offeringID] = true
 	mutes.muted[userID] = true
 
-	_, err := svc.AskQuestion(context.Background(), offeringID, userID, "Title", "Body", false)
+	_, err := service.AskQuestion(context.Background(), offeringID, userID, "Title", "Body", false)
 	if err != ErrUserMuted {
 		t.Errorf("err = %v, want ErrUserMuted", err)
 	}
 }
 
 func TestAnswerQuestion(t *testing.T) {
-	svc, qRepo, _, _, offerings, _ := newTestService()
+	service, qRepo, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
 	teacherID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
 
-	updatedQ, answer, err := svc.AnswerQuestion(context.Background(), q.ID, teacherID, "Answer body", nil)
+	updatedQ, answer, err := service.AnswerQuestion(context.Background(), q.ID, teacherID, "Answer body", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -260,16 +260,16 @@ func TestAnswerQuestion(t *testing.T) {
 }
 
 func TestAnswerQuestion_WithEdit(t *testing.T) {
-	svc, qRepo, _, _, offerings, _ := newTestService()
+	service, qRepo, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Original body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Original body", false)
 
 	teacherID := uuid.New()
 	editedBody := "Fixed grammar body"
-	_, _, err := svc.AnswerQuestion(context.Background(), q.ID, teacherID, "Answer", &editedBody)
+	_, _, err := service.AnswerQuestion(context.Background(), q.ID, teacherID, "Answer", &editedBody)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -284,15 +284,15 @@ func TestAnswerQuestion_WithEdit(t *testing.T) {
 }
 
 func TestRejectQuestion(t *testing.T) {
-	svc, qRepo, _, rRepo, offerings, _ := newTestService()
+	service, qRepo, _, rRepo, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
 
-	err := svc.RejectQuestion(context.Background(), q.ID, teacherID, "Not relevant")
+	err := service.RejectQuestion(context.Background(), q.ID, teacherID, "Not relevant")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -315,31 +315,31 @@ func TestRejectQuestion(t *testing.T) {
 }
 
 func TestRejectQuestion_EmptyReason(t *testing.T) {
-	svc, _, _, _, offerings, _ := newTestService()
+	service, _, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
 
-	err := svc.RejectQuestion(context.Background(), q.ID, uuid.New(), "")
+	err := service.RejectQuestion(context.Background(), q.ID, uuid.New(), "")
 	if err != ErrEmptyReason {
 		t.Errorf("err = %v, want ErrEmptyReason", err)
 	}
 }
 
 func TestUpdateQuestion_StudentAfterAnswer(t *testing.T) {
-	svc, qRepo, _, _, offerings, _ := newTestService()
+	service, qRepo, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
-	_, _, _ = svc.AnswerQuestion(context.Background(), q.ID, uuid.New(), "Answer", nil)
+	q, _ := service.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
+	_, _, _ = service.AnswerQuestion(context.Background(), q.ID, uuid.New(), "Answer", nil)
 
 	newBody := "Updated body"
-	_, err := svc.UpdateQuestion(context.Background(), q.ID, studentID, false, nil, &newBody)
+	_, err := service.UpdateQuestion(context.Background(), q.ID, studentID, false, nil, &newBody)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -351,15 +351,15 @@ func TestUpdateQuestion_StudentAfterAnswer(t *testing.T) {
 }
 
 func TestDeleteQuestion(t *testing.T) {
-	svc, qRepo, _, _, offerings, _ := newTestService()
+	service, qRepo, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
 
-	err := svc.DeleteQuestion(context.Background(), q.ID, studentID)
+	err := service.DeleteQuestion(context.Background(), q.ID, studentID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -371,43 +371,43 @@ func TestDeleteQuestion(t *testing.T) {
 }
 
 func TestDeleteQuestion_NotAuthor(t *testing.T) {
-	svc, _, _, _, offerings, _ := newTestService()
+	service, _, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
+	q, _ := service.AskQuestion(context.Background(), offeringID, uuid.New(), "Title", "Body", false)
 
-	err := svc.DeleteQuestion(context.Background(), q.ID, uuid.New())
+	err := service.DeleteQuestion(context.Background(), q.ID, uuid.New())
 	if err != ErrNotAuthorized {
 		t.Errorf("err = %v, want ErrNotAuthorized", err)
 	}
 }
 
 func TestDeleteQuestion_Answered(t *testing.T) {
-	svc, _, _, _, offerings, _ := newTestService()
+	service, _, _, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	studentID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, _ := svc.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
-	_, _, _ = svc.AnswerQuestion(context.Background(), q.ID, uuid.New(), "Answer", nil)
+	q, _ := service.AskQuestion(context.Background(), offeringID, studentID, "Title", "Body", false)
+	_, _, _ = service.AnswerQuestion(context.Background(), q.ID, uuid.New(), "Answer", nil)
 
-	err := svc.DeleteQuestion(context.Background(), q.ID, studentID)
+	err := service.DeleteQuestion(context.Background(), q.ID, studentID)
 	if err != ErrNotAuthorized {
 		t.Errorf("err = %v, want ErrNotAuthorized (cannot delete answered question)", err)
 	}
 }
 
 func TestCreateFAQ(t *testing.T) {
-	svc, qRepo, aRepo, _, offerings, _ := newTestService()
+	service, qRepo, aRepo, _, offerings, _ := newTestService()
 
 	offeringID := uuid.New()
 	teacherID := uuid.New()
 	offerings.offerings[offeringID] = true
 
-	q, a, err := svc.CreateFAQ(context.Background(), offeringID, teacherID, "FAQ Title", "FAQ Question", "FAQ Answer")
+	q, a, err := service.CreateFAQ(context.Background(), offeringID, teacherID, "FAQ Title", "FAQ Question", "FAQ Answer")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

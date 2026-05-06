@@ -9,6 +9,10 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
+type noopAuthz struct{}
+
+func (noopAuthz) InvalidateCourseRoles(_ context.Context, _ uuid.UUID) error { return nil }
+
 type mockRepo struct {
 	// Enrollment operations
 	createEnrollmentFunc      func(ctx context.Context, e *Enrollment) error
@@ -420,7 +424,7 @@ func TestService_CreatePretake(t *testing.T) {
 		repo := &mockRepo{}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreatePretakeRequest{
 			CourseID:   uuid.New(),
@@ -428,7 +432,7 @@ func TestService_CreatePretake(t *testing.T) {
 			Reason:     "I need this course for graduation",
 		}
 
-		request, warning, err := svc.CreatePretake(ctx, studentID, req)
+		request, warning, err := service.CreatePretake(ctx, studentID, req)
 		if err != nil {
 			t.Fatalf("CreatePretake() error = %v", err)
 		}
@@ -448,7 +452,7 @@ func TestService_CreatePretake(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreatePretakeRequest{
 			CourseID:   uuid.New(),
@@ -456,7 +460,7 @@ func TestService_CreatePretake(t *testing.T) {
 			Reason:     "I need this course",
 		}
 
-		_, _, err := svc.CreatePretake(ctx, studentID, req)
+		_, _, err := service.CreatePretake(ctx, studentID, req)
 		if !errors.Is(err, ErrCourseNotFound) {
 			t.Errorf("error = %v, want ErrCourseNotFound", err)
 		}
@@ -470,7 +474,7 @@ func TestService_CreatePretake(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreatePretakeRequest{
 			CourseID:   uuid.New(),
@@ -478,7 +482,7 @@ func TestService_CreatePretake(t *testing.T) {
 			Reason:     "I need this course",
 		}
 
-		_, _, err := svc.CreatePretake(ctx, studentID, req)
+		_, _, err := service.CreatePretake(ctx, studentID, req)
 		if !errors.Is(err, ErrNoPrerequisite) {
 			t.Errorf("error = %v, want ErrNoPrerequisite", err)
 		}
@@ -492,7 +496,7 @@ func TestService_CreatePretake(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreatePretakeRequest{
 			CourseID:   uuid.New(),
@@ -500,7 +504,7 @@ func TestService_CreatePretake(t *testing.T) {
 			Reason:     "I need this course",
 		}
 
-		_, _, err := svc.CreatePretake(ctx, studentID, req)
+		_, _, err := service.CreatePretake(ctx, studentID, req)
 		if !errors.Is(err, ErrPrerequisitePassed) {
 			t.Errorf("error = %v, want ErrPrerequisitePassed", err)
 		}
@@ -515,7 +519,7 @@ func TestService_CreateRetake(t *testing.T) {
 		repo := &mockRepo{}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreateRetakeRequest{
 			CourseID:   uuid.New(),
@@ -523,7 +527,7 @@ func TestService_CreateRetake(t *testing.T) {
 			Reason:     "I want to improve my grade",
 		}
 
-		request, warning, err := svc.CreateRetake(ctx, studentID, req)
+		request, warning, err := service.CreateRetake(ctx, studentID, req)
 		if err != nil {
 			t.Fatalf("CreateRetake() error = %v", err)
 		}
@@ -543,7 +547,7 @@ func TestService_CreateRetake(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreateRetakeRequest{
 			CourseID:   uuid.New(),
@@ -551,7 +555,7 @@ func TestService_CreateRetake(t *testing.T) {
 			Reason:     "I want to retake",
 		}
 
-		_, _, err := svc.CreateRetake(ctx, studentID, req)
+		_, _, err := service.CreateRetake(ctx, studentID, req)
 		if !errors.Is(err, ErrCourseNotFailed) {
 			t.Errorf("error = %v, want ErrCourseNotFailed", err)
 		}
@@ -565,7 +569,7 @@ func TestService_CreateRetake(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := CreateRetakeRequest{
 			CourseID:   uuid.New(),
@@ -573,7 +577,7 @@ func TestService_CreateRetake(t *testing.T) {
 			Reason:     "I want to retake",
 		}
 
-		_, _, err := svc.CreateRetake(ctx, studentID, req)
+		_, _, err := service.CreateRetake(ctx, studentID, req)
 		if !errors.Is(err, ErrNotNaturalCohort) {
 			t.Errorf("error = %v, want ErrNotNaturalCohort", err)
 		}
@@ -593,9 +597,9 @@ func TestService_ApproveRequest(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
-		request, err := svc.ApproveRequest(ctx, requestID, reviewerID)
+		request, err := service.ApproveRequest(ctx, requestID, reviewerID)
 		if err != nil {
 			t.Fatalf("ApproveRequest() error = %v", err)
 		}
@@ -612,9 +616,9 @@ func TestService_ApproveRequest(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
-		_, err := svc.ApproveRequest(ctx, requestID, reviewerID)
+		_, err := service.ApproveRequest(ctx, requestID, reviewerID)
 		if !errors.Is(err, ErrAlreadyReviewed) {
 			t.Errorf("error = %v, want ErrAlreadyReviewed", err)
 		}
@@ -635,9 +639,9 @@ func TestService_RejectRequest(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
-		request, err := svc.RejectRequest(ctx, requestID, reviewerID, rejectionReason)
+		request, err := service.RejectRequest(ctx, requestID, reviewerID, rejectionReason)
 		if err != nil {
 			t.Fatalf("RejectRequest() error = %v", err)
 		}
@@ -655,14 +659,14 @@ func TestService_EnrollStudent(t *testing.T) {
 		repo := &mockRepo{}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := EnrollStudentRequest{
 			StudentID:      uuid.New(),
 			EnrollmentType: EnrollmentTypeCurriculum,
 		}
 
-		enrollment, err := svc.EnrollStudent(ctx, offeringID, req)
+		enrollment, err := service.EnrollStudent(ctx, offeringID, req)
 		if err != nil {
 			t.Fatalf("EnrollStudent() error = %v", err)
 		}
@@ -679,13 +683,13 @@ func TestService_EnrollStudent(t *testing.T) {
 			},
 		}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := EnrollStudentRequest{
 			StudentID: uuid.New(),
 		}
 
-		_, err := svc.EnrollStudent(ctx, offeringID, req)
+		_, err := service.EnrollStudent(ctx, offeringID, req)
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("error = %v, want ErrOfferingNotFound", err)
 		}
@@ -699,13 +703,13 @@ func TestService_EnrollStudent(t *testing.T) {
 		}
 		offeringChecker := &mockOfferingChecker{}
 		courseChecker := &mockCourseChecker{}
-		svc := NewService(repo, offeringChecker, courseChecker)
+		service := NewService(repo, offeringChecker, courseChecker, noopAuthz{})
 
 		req := EnrollStudentRequest{
 			StudentID: uuid.New(),
 		}
 
-		_, err := svc.EnrollStudent(ctx, offeringID, req)
+		_, err := service.EnrollStudent(ctx, offeringID, req)
 		if !errors.Is(err, ErrAlreadyEnrolled) {
 			t.Errorf("error = %v, want ErrAlreadyEnrolled", err)
 		}

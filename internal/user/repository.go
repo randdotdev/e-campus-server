@@ -107,9 +107,10 @@ func toRoleData(r *Role) *auth.RoleData {
 		ID:         r.ID,
 		TitleEN:    r.TitleEN,
 		TitleLocal: r.TitleLocal,
-		Permission: r.Permission,
+		Level:      r.Level,
 		ScopeType:  r.ScopeType,
 		ScopeID:    r.ScopeID,
+		Domain:     r.Domain,
 	}
 }
 
@@ -181,48 +182,46 @@ func (r *Repository) UpdateEmail(ctx context.Context, id uuid.UUID, email string
 }
 
 func (r *Repository) List(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM users WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (email ILIKE $%d OR full_name_en ILIKE $%d OR full_name_local ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(email ILIKE $%d OR full_name_en ILIKE $%d OR full_name_local ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
-
 	if filters.HasStaffProfile != nil {
 		if *filters.HasStaffProfile {
-			query.WriteString(" AND EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
+			conditions = append(conditions, "EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
 		} else {
-			query.WriteString(" AND NOT EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
+			conditions = append(conditions, "NOT EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
 		}
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM users %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var users []User
-	if err := r.db.SelectContext(ctx, &users, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &users, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -399,11 +398,11 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 	if role != nil {
 		role.UserID = user.ID
 		roleQuery := `
-			INSERT INTO roles (user_id, title_en, title_local, permission, scope_type, scope_id, assigned_by)
+			INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by)
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id, created_at`
 		if err := tx.QueryRowxContext(ctx, roleQuery,
-			role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy,
+			role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy,
 		).Scan(&role.ID, &role.CreatedAt); err != nil {
 			return err
 		}
@@ -414,12 +413,12 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 
 func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 	query := `
-		INSERT INTO roles (user_id, title_en, title_local, permission, scope_type, scope_id, assigned_by, expires_at)
+		INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by, expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if err != nil && strings.Contains(err.Error(), "roles_user_id_key") {
@@ -431,12 +430,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 func (r *Repository) UpdateRole(ctx context.Context, role *Role) error {
 	query := `
 		UPDATE roles
-		SET title_en = $2, title_local = $3, permission = $4, scope_type = $5, scope_id = $6, assigned_by = $7, expires_at = $8
+		SET title_en = $2, title_local = $3, level = $4, scope_type = $5, scope_id = $6, assigned_by = $7, expires_at = $8
 		WHERE user_id = $1
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.TitleEN, role.TitleLocal, role.Permission, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {

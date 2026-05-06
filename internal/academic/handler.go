@@ -5,22 +5,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	svc *Service
+	service *Service
 	log *zap.Logger
 }
 
-func NewHandler(svc *Service, log *zap.Logger) *Handler {
-	return &Handler{svc: svc, log: log}
+func NewHandler(service *Service, log *zap.Logger) *Handler {
+	return &Handler{service: service, log: log}
 }
 
 func (h *Handler) ListAcademicYears(c *gin.Context) {
-	years, err := h.svc.ListAcademicYears(c.Request.Context())
+	years, err := h.service.ListAcademicYears(c.Request.Context())
 	if err != nil {
 		h.log.Error("list academic years failed", zap.Error(err))
 		response.InternalError(c)
@@ -30,13 +31,18 @@ func (h *Handler) ListAcademicYears(c *gin.Context) {
 }
 
 func (h *Handler) CreateAcademicYear(c *gin.Context) {
-	var req CreateAcademicYearRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceAcademicYear, authz.ActionCreate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	year, err := h.svc.CreateAcademicYear(c.Request.Context(), req)
+	var req CreateAcademicYearRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	year, err := h.service.CreateAcademicYear(c.Request.Context(), req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -52,7 +58,7 @@ func (h *Handler) GetAcademicYear(c *gin.Context) {
 		return
 	}
 
-	year, err := h.svc.GetAcademicYear(c.Request.Context(), id)
+	year, err := h.service.GetAcademicYear(c.Request.Context(), id)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -68,13 +74,18 @@ func (h *Handler) UpdateAcademicYear(c *gin.Context) {
 		return
 	}
 
-	var req UpdateAcademicYearRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceAcademicYear, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	year, err := h.svc.UpdateAcademicYear(c.Request.Context(), id, req)
+	var req UpdateAcademicYearRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	year, err := h.service.UpdateAcademicYear(c.Request.Context(), id, req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -94,7 +105,7 @@ func (h *Handler) ListSemesters(c *gin.Context) {
 		academicYearID = &id
 	}
 
-	semesters, err := h.svc.ListSemesters(c.Request.Context(), academicYearID)
+	semesters, err := h.service.ListSemesters(c.Request.Context(), academicYearID)
 	if err != nil {
 		h.log.Error("list semesters failed", zap.Error(err))
 		response.InternalError(c)
@@ -105,13 +116,18 @@ func (h *Handler) ListSemesters(c *gin.Context) {
 }
 
 func (h *Handler) CreateSemester(c *gin.Context) {
-	var req CreateSemesterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionCreate) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	semester, err := h.svc.CreateSemester(c.Request.Context(), req)
+	var req CreateSemesterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	semester, err := h.service.CreateSemester(c.Request.Context(), req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -127,7 +143,7 @@ func (h *Handler) GetSemester(c *gin.Context) {
 		return
 	}
 
-	semester, err := h.svc.GetSemester(c.Request.Context(), id)
+	semester, err := h.service.GetSemester(c.Request.Context(), id)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -143,13 +159,18 @@ func (h *Handler) UpdateSemester(c *gin.Context) {
 		return
 	}
 
-	var req UpdateSemesterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	semester, err := h.svc.UpdateSemester(c.Request.Context(), id, req)
+	var req UpdateSemesterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	semester, err := h.service.UpdateSemester(c.Request.Context(), id, req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -165,13 +186,18 @@ func (h *Handler) UpdateSemesterStatus(c *gin.Context) {
 		return
 	}
 
-	var req UpdateSemesterStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	semester, err := h.svc.UpdateSemesterStatus(c.Request.Context(), id, req.Status)
+	var req UpdateSemesterStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	semester, err := h.service.UpdateSemesterStatus(c.Request.Context(), id, req.Status)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -187,7 +213,12 @@ func (h *Handler) DefinalizeSemester(c *gin.Context) {
 		return
 	}
 
-	semester, err := h.svc.DefinalizeSemester(c.Request.Context(), id)
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	semester, err := h.service.DefinalizeSemester(c.Request.Context(), id)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -203,13 +234,18 @@ func (h *Handler) GenerateOfferings(c *gin.Context) {
 		return
 	}
 
-	var req GenerateOfferingsRequest
-	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	result, err := h.svc.GenerateOfferings(c.Request.Context(), id, req.ProgramID, req.CohortYear)
+	var req GenerateOfferingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	result, err := h.service.GenerateOfferings(c.Request.Context(), id, req.ProgramID, req.CohortYear)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -225,13 +261,18 @@ func (h *Handler) BulkEnroll(c *gin.Context) {
 		return
 	}
 
-	var req BulkEnrollRequest
-	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
-		response.BadRequest(c, err.Error())
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
-	result, err := h.svc.BulkEnroll(c.Request.Context(), id, req.ProgramID, req.CohortYear)
+	var req BulkEnrollRequest
+	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	result, err := h.service.BulkEnroll(c.Request.Context(), id, req.ProgramID, req.CohortYear)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -247,7 +288,12 @@ func (h *Handler) EndSemester(c *gin.Context) {
 		return
 	}
 
-	result, err := h.svc.EndSemester(c.Request.Context(), id)
+	if !authz.Check(c, authz.ResourceSemester, authz.ActionUpdate, id) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	result, err := h.service.EndSemester(c.Request.Context(), id)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -271,7 +317,7 @@ func (h *Handler) ListCurriculum(c *gin.Context) {
 		}
 	}
 
-	items, err := h.svc.ListCurriculumItems(c.Request.Context(), programID, cohortYear)
+	items, err := h.service.ListCurriculumItems(c.Request.Context(), programID, cohortYear)
 	if err != nil {
 		h.log.Error("list curriculum failed", zap.Error(err))
 		response.InternalError(c)
@@ -288,15 +334,20 @@ func (h *Handler) AddToCurriculum(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceCurriculum, authz.ActionUpdate, programID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req AddCurriculumRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	req.ProgramID = programID
 
-	curriculum, err := h.svc.AddToCurriculum(c.Request.Context(), req)
+	curriculum, err := h.service.AddToCurriculum(c.Request.Context(), req)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -312,7 +363,18 @@ func (h *Handler) RemoveFromCurriculum(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.RemoveFromCurriculum(c.Request.Context(), id); err != nil {
+	curriculum, err := h.service.GetCurriculumByID(c.Request.Context(), id)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceCurriculum, authz.ActionUpdate, curriculum.ProgramID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.RemoveFromCurriculum(c.Request.Context(), id); err != nil {
 		h.handleError(c, err)
 		return
 	}
@@ -335,7 +397,7 @@ func (h *Handler) ListRequirements(c *gin.Context) {
 		}
 	}
 
-	requirements, err := h.svc.ListRequirements(c.Request.Context(), programID, cohortYear)
+	requirements, err := h.service.ListRequirements(c.Request.Context(), programID, cohortYear)
 	if err != nil {
 		h.log.Error("list requirements failed", zap.Error(err))
 		response.InternalError(c)
@@ -352,16 +414,21 @@ func (h *Handler) SetRequirement(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceCurriculum, authz.ActionUpdate, programID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req SetRequirementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	req.ProgramID = programID
 	req.CreatedBy = middleware.GetUserID(c)
 
-	requirement, err := h.svc.SetRequirement(c.Request.Context(), req)
+	requirement, err := h.service.SetRequirement(c.Request.Context(), req)
 	if err != nil {
 		h.handleError(c, err)
 		return

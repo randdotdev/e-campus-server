@@ -33,6 +33,8 @@ func (h *Hub) Run() {
 	}
 }
 
+const maxConnectionsPerUser = 5
+
 func (h *Hub) addClient(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -40,6 +42,15 @@ func (h *Hub) addClient(client *Client) {
 	if h.clients[client.userID] == nil {
 		h.clients[client.userID] = make(map[*Client]bool)
 	}
+
+	if len(h.clients[client.userID]) >= maxConnectionsPerUser {
+		for oldest := range h.clients[client.userID] {
+			delete(h.clients[client.userID], oldest)
+			close(oldest.send)
+			break
+		}
+	}
+
 	h.clients[client.userID][client] = true
 }
 

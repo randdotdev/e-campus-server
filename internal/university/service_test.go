@@ -206,14 +206,14 @@ func TestCreateCollege_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
 		Code:   "SCI",
 	}
 
-	college, err := svc.CreateCollege(context.Background(), req)
+	college, err := service.CreateCollege(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -231,14 +231,14 @@ func TestCreateCollege_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
 		Code:   "SCI",
 	}
 
-	_, err := svc.CreateCollege(context.Background(), req)
+	_, err := service.CreateCollege(context.Background(), req)
 	if !errors.Is(err, ErrCodeExists) {
 		t.Errorf("expected ErrCodeExists, got %v", err)
 	}
@@ -251,14 +251,14 @@ func TestCreateCollege_RepoError(t *testing.T) {
 			return false, repoErr
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateCollegeRequest{
 		NameEN: "College of Science",
 		Code:   "SCI",
 	}
 
-	_, err := svc.CreateCollege(context.Background(), req)
+	_, err := service.CreateCollege(context.Background(), req)
 	if !errors.Is(err, repoErr) {
 		t.Errorf("expected repo error, got %v", err)
 	}
@@ -271,9 +271,9 @@ func TestGetCollege_Success(t *testing.T) {
 			return &College{ID: id, NameEN: "Science", Code: "SCI"}, nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
-	college, err := svc.GetCollege(context.Background(), collegeID)
+	college, err := service.GetCollege(context.Background(), collegeID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -288,9 +288,9 @@ func TestGetCollege_NotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
-	_, err := svc.GetCollege(context.Background(), uuid.New())
+	_, err := service.GetCollege(context.Background(), uuid.New())
 	if !errors.Is(err, ErrCollegeNotFound) {
 		t.Errorf("expected ErrCollegeNotFound, got %v", err)
 	}
@@ -309,7 +309,7 @@ func TestUpdateCollege_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	newName := "New Name"
 	newCode := "NEW"
@@ -318,7 +318,7 @@ func TestUpdateCollege_Success(t *testing.T) {
 		Code:   &newCode,
 	}
 
-	college, err := svc.UpdateCollege(context.Background(), collegeID, req)
+	college, err := service.UpdateCollege(context.Background(), collegeID, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -340,14 +340,14 @@ func TestUpdateCollege_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	newCode := "TAKEN"
 	req := UpdateCollegeRequest{
 		Code: &newCode,
 	}
 
-	_, err := svc.UpdateCollege(context.Background(), collegeID, req)
+	_, err := service.UpdateCollege(context.Background(), collegeID, req)
 	if !errors.Is(err, ErrCodeExists) {
 		t.Errorf("expected ErrCodeExists, got %v", err)
 	}
@@ -369,7 +369,7 @@ func TestCreateDepartment_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: collegeID,
@@ -377,7 +377,7 @@ func TestCreateDepartment_Success(t *testing.T) {
 		Code:      "CS",
 	}
 
-	dept, err := svc.CreateDepartment(context.Background(), req)
+	dept, err := service.CreateDepartment(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -392,7 +392,7 @@ func TestCreateDepartment_CollegeNotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: uuid.New(),
@@ -400,7 +400,7 @@ func TestCreateDepartment_CollegeNotFound(t *testing.T) {
 		Code:      "CS",
 	}
 
-	_, err := svc.CreateDepartment(context.Background(), req)
+	_, err := service.CreateDepartment(context.Background(), req)
 	if !errors.Is(err, ErrCollegeNotFound) {
 		t.Errorf("expected ErrCollegeNotFound, got %v", err)
 	}
@@ -416,7 +416,7 @@ func TestCreateDepartment_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateDepartmentRequest{
 		CollegeID: collegeID,
@@ -424,7 +424,7 @@ func TestCreateDepartment_CodeExists(t *testing.T) {
 		Code:      "CS",
 	}
 
-	_, err := svc.CreateDepartment(context.Background(), req)
+	_, err := service.CreateDepartment(context.Background(), req)
 	if !errors.Is(err, ErrCodeExists) {
 		t.Errorf("expected ErrCodeExists, got %v", err)
 	}
@@ -437,9 +437,9 @@ func TestListDepartments_CollegeNotFound(t *testing.T) {
 			return nil, ErrCollegeNotFound
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
-	_, _, err := svc.ListDepartments(context.Background(), pagination.PageParams{}, DepartmentFilters{CollegeID: &collegeID})
+	_, _, err := service.ListDepartments(context.Background(), pagination.PageParams{}, DepartmentFilters{CollegeID: &collegeID})
 	if !errors.Is(err, ErrCollegeNotFound) {
 		t.Errorf("expected ErrCollegeNotFound, got %v", err)
 	}
@@ -461,7 +461,7 @@ func TestCreateProgram_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  deptID,
@@ -472,7 +472,7 @@ func TestCreateProgram_Success(t *testing.T) {
 		TotalCredits:  240,
 	}
 
-	program, err := svc.CreateProgram(context.Background(), req)
+	program, err := service.CreateProgram(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestCreateProgram_DepartmentNotFound(t *testing.T) {
 			return nil, ErrDepartmentNotFound
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  uuid.New(),
@@ -501,7 +501,7 @@ func TestCreateProgram_DepartmentNotFound(t *testing.T) {
 		TotalCredits:  240,
 	}
 
-	_, err := svc.CreateProgram(context.Background(), req)
+	_, err := service.CreateProgram(context.Background(), req)
 	if !errors.Is(err, ErrDepartmentNotFound) {
 		t.Errorf("expected ErrDepartmentNotFound, got %v", err)
 	}
@@ -517,7 +517,7 @@ func TestCreateProgram_CodeExists(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	req := CreateProgramRequest{
 		DepartmentID:  deptID,
@@ -528,7 +528,7 @@ func TestCreateProgram_CodeExists(t *testing.T) {
 		TotalCredits:  240,
 	}
 
-	_, err := svc.CreateProgram(context.Background(), req)
+	_, err := service.CreateProgram(context.Background(), req)
 	if !errors.Is(err, ErrCodeExists) {
 		t.Errorf("expected ErrCodeExists, got %v", err)
 	}
@@ -548,7 +548,7 @@ func TestUpdateProgram_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
 	newName := "New Name"
 	newYears := 5
@@ -557,7 +557,7 @@ func TestUpdateProgram_Success(t *testing.T) {
 		DurationYears: &newYears,
 	}
 
-	program, err := svc.UpdateProgram(context.Background(), programID, req)
+	program, err := service.UpdateProgram(context.Background(), programID, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -576,9 +576,9 @@ func TestListPrograms_DepartmentNotFound(t *testing.T) {
 			return nil, ErrDepartmentNotFound
 		},
 	}
-	svc := NewService(mock, defaultLimitsProvider())
+	service := NewService(mock, defaultLimitsProvider())
 
-	_, _, err := svc.ListPrograms(context.Background(), pagination.PageParams{}, ProgramFilters{DepartmentID: &deptID})
+	_, _, err := service.ListPrograms(context.Background(), pagination.PageParams{}, ProgramFilters{DepartmentID: &deptID})
 	if !errors.Is(err, ErrDepartmentNotFound) {
 		t.Errorf("expected ErrDepartmentNotFound, got %v", err)
 	}

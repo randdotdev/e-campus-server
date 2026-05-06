@@ -28,7 +28,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 func (h *Handler) CreateFolder(c *gin.Context) {
 	var req CreateFolderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *Handler) UpdateFolder(c *gin.Context) {
 
 	var req UpdateFolderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *Handler) UpdateFile(c *gin.Context) {
 
 	var req UpdateFileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -327,7 +327,7 @@ func (h *Handler) CopyFile(c *gin.Context) {
 
 	var req CopyFileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 

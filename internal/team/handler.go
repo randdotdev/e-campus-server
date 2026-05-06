@@ -25,7 +25,7 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 func (h *Handler) CreateTeam(c *gin.Context) {
 	var req CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -55,7 +55,9 @@ func (h *Handler) GetTeam(c *gin.Context) {
 		return
 	}
 
-	team, err := h.service.GetByID(c.Request.Context(), id)
+	userID := middleware.GetUserID(c)
+
+	team, err := h.service.GetByIDForUser(c.Request.Context(), id, userID)
 	if errors.Is(err, ErrTeamNotFound) {
 		response.NotFound(c, "team not found")
 		return
@@ -101,7 +103,7 @@ func (h *Handler) UpdateTeam(c *gin.Context) {
 
 	var req UpdateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -165,7 +167,7 @@ func (h *Handler) AddMember(c *gin.Context) {
 
 	var req AddMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -263,7 +265,7 @@ func (h *Handler) TransferLeadership(c *gin.Context) {
 
 	var req TransferLeadershipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 

@@ -3,23 +3,18 @@ package grading
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 )
 
-type TeacherChecker interface {
-	IsTeacher(offeringID, userID uuid.UUID) (bool, error)
-}
-
 type Handler struct {
 	service *Service
-	teacher TeacherChecker
 }
 
-func NewHandler(service *Service, teacher TeacherChecker) *Handler {
+func NewHandler(service *Service) *Handler {
 	return &Handler{
 		service: service,
-		teacher: teacher,
 	}
 }
 
@@ -30,21 +25,16 @@ func (h *Handler) SaveRules(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
 
-	isTeacher, err := h.teacher.IsTeacher(offeringID, userID)
-	if err != nil {
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "only teachers can manage grading rules")
-		return
-	}
+	userID := middleware.GetUserID(c)
 
 	var req SaveRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -78,6 +68,11 @@ func (h *Handler) GetRules(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	gr, rules, err := h.service.GetRules(c.Request.Context(), offeringID)
 	if err != nil {
 		if err == ErrRulesNotFound {
@@ -98,15 +93,8 @@ func (h *Handler) DeleteRules(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.teacher.IsTeacher(offeringID, userID)
-	if err != nil {
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "only teachers can manage grading rules")
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionDelete, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -129,15 +117,8 @@ func (h *Handler) FinalizeGrades(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.teacher.IsTeacher(offeringID, userID)
-	if err != nil {
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "only teachers can finalize grades")
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -172,15 +153,8 @@ func (h *Handler) DefinalizeGrades(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.teacher.IsTeacher(offeringID, userID)
-	if err != nil {
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "only teachers can definalize grades")
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -203,6 +177,11 @@ func (h *Handler) GetGrades(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering_id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -232,21 +211,14 @@ func (h *Handler) OverrideGrade(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-
-	isTeacher, err := h.teacher.IsTeacher(offeringID, userID)
-	if err != nil {
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "only teachers can override grades")
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req OverrideGradeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -277,6 +249,11 @@ func (h *Handler) PreviewGrade(c *gin.Context) {
 	studentID, err := uuid.Parse(c.Param("student_id"))
 	if err != nil {
 		response.BadRequest(c, "invalid student_id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceGrade, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 

@@ -210,7 +210,7 @@ func TestService_CreateCourse(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		repo := &mockRepo{}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateCourseRequest{
 			DepartmentID: deptID,
@@ -219,7 +219,7 @@ func TestService_CreateCourse(t *testing.T) {
 			Credits:      6,
 		}
 
-		course, err := svc.CreateCourse(ctx, req)
+		course, err := service.CreateCourse(ctx, req)
 		if err != nil {
 			t.Fatalf("CreateCourse() error = %v", err)
 		}
@@ -237,7 +237,7 @@ func TestService_CreateCourse(t *testing.T) {
 				return true, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateCourseRequest{
 			DepartmentID: deptID,
@@ -246,7 +246,7 @@ func TestService_CreateCourse(t *testing.T) {
 			Credits:      6,
 		}
 
-		_, err := svc.CreateCourse(ctx, req)
+		_, err := service.CreateCourse(ctx, req)
 		if !errors.Is(err, ErrDuplicateCode) {
 			t.Errorf("CreateCourse() error = %v, want ErrDuplicateCode", err)
 		}
@@ -268,12 +268,12 @@ func TestService_UpdateCourse(t *testing.T) {
 				return existingCourse, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		newName := "New Name"
 		req := UpdateCourseRequest{NameEN: &newName}
 
-		course, err := svc.UpdateCourse(ctx, courseID, req)
+		course, err := service.UpdateCourse(ctx, courseID, req)
 		if err != nil {
 			t.Fatalf("UpdateCourse() error = %v", err)
 		}
@@ -284,12 +284,12 @@ func TestService_UpdateCourse(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		repo := &mockRepo{}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		newName := "New Name"
 		req := UpdateCourseRequest{NameEN: &newName}
 
-		_, err := svc.UpdateCourse(ctx, courseID, req)
+		_, err := service.UpdateCourse(ctx, courseID, req)
 		if !errors.Is(err, ErrCourseNotFound) {
 			t.Errorf("UpdateCourse() error = %v, want ErrCourseNotFound", err)
 		}
@@ -310,7 +310,7 @@ func TestService_CreateOffering(t *testing.T) {
 				return true, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateOfferingRequest{
 			CourseID:   courseID,
@@ -319,7 +319,7 @@ func TestService_CreateOffering(t *testing.T) {
 			Shift:      ShiftDay,
 		}
 
-		offering, err := svc.CreateOffering(ctx, req)
+		offering, err := service.CreateOffering(ctx, req)
 		if err != nil {
 			t.Fatalf("CreateOffering() error = %v", err)
 		}
@@ -330,7 +330,7 @@ func TestService_CreateOffering(t *testing.T) {
 
 	t.Run("course not found", func(t *testing.T) {
 		repo := &mockRepo{}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateOfferingRequest{
 			CourseID:   courseID,
@@ -339,7 +339,7 @@ func TestService_CreateOffering(t *testing.T) {
 			Shift:      ShiftDay,
 		}
 
-		_, err := svc.CreateOffering(ctx, req)
+		_, err := service.CreateOffering(ctx, req)
 		if !errors.Is(err, ErrCourseNotFound) {
 			t.Errorf("CreateOffering() error = %v, want ErrCourseNotFound", err)
 		}
@@ -354,7 +354,7 @@ func TestService_CreateOffering(t *testing.T) {
 				return false, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateOfferingRequest{
 			CourseID:   courseID,
@@ -363,7 +363,7 @@ func TestService_CreateOffering(t *testing.T) {
 			Shift:      ShiftDay,
 		}
 
-		_, err := svc.CreateOffering(ctx, req)
+		_, err := service.CreateOffering(ctx, req)
 		if !errors.Is(err, ErrSemesterNotFound) {
 			t.Errorf("CreateOffering() error = %v, want ErrSemesterNotFound", err)
 		}
@@ -381,14 +381,14 @@ func TestService_AddTeacher(t *testing.T) {
 				return &Offering{ID: id}, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := AddTeacherRequest{
 			UserID: userID,
 			Role:   TeacherRoleTeacher,
 		}
 
-		teacher, err := svc.AddTeacher(ctx, offeringID, req)
+		teacher, err := service.AddTeacher(ctx, offeringID, req)
 		if err != nil {
 			t.Fatalf("AddTeacher() error = %v", err)
 		}
@@ -406,14 +406,14 @@ func TestService_AddTeacher(t *testing.T) {
 				return true, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := AddTeacherRequest{
 			UserID: userID,
 			Role:   TeacherRoleTeacher,
 		}
 
-		_, err := svc.AddTeacher(ctx, offeringID, req)
+		_, err := service.AddTeacher(ctx, offeringID, req)
 		if !errors.Is(err, ErrAlreadyTeacher) {
 			t.Errorf("AddTeacher() error = %v, want ErrAlreadyTeacher", err)
 		}
@@ -430,7 +430,7 @@ func TestService_CreateSection(t *testing.T) {
 				return &Offering{ID: id}, nil
 			},
 		}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateSectionRequest{
 			OfferingID: offeringID,
@@ -438,7 +438,7 @@ func TestService_CreateSection(t *testing.T) {
 			OrderIndex: 0,
 		}
 
-		section, err := svc.CreateSection(ctx, req)
+		section, err := service.CreateSection(ctx, req)
 		if err != nil {
 			t.Fatalf("CreateSection() error = %v", err)
 		}
@@ -449,14 +449,14 @@ func TestService_CreateSection(t *testing.T) {
 
 	t.Run("offering not found", func(t *testing.T) {
 		repo := &mockRepo{}
-		svc := NewService(repo)
+		service := NewService(repo)
 
 		req := CreateSectionRequest{
 			OfferingID: offeringID,
 			Title:      "Week 1",
 		}
 
-		_, err := svc.CreateSection(ctx, req)
+		_, err := service.CreateSection(ctx, req)
 		if !errors.Is(err, ErrOfferingNotFound) {
 			t.Errorf("CreateSection() error = %v, want ErrOfferingNotFound", err)
 		}

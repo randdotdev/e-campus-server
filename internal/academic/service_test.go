@@ -31,8 +31,9 @@ type MockAcademicRepository struct {
 	CurriculumExistsFunc      func(ctx context.Context, programID, courseID uuid.UUID, cohortYear, stage int, semester string) (bool, error)
 	SetRequirementFunc        func(ctx context.Context, r *SemesterRequirement) error
 	GetRequirementFunc        func(ctx context.Context, programID uuid.UUID, cohortYear, stage int, semester string) (*SemesterRequirement, error)
-	ListRequirementsFunc        func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]SemesterRequirement, error)
-	ListCurriculumItemsFunc     func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error)
+	ListRequirementsFunc      func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]SemesterRequirement, error)
+	ListCurriculumItemsFunc   func(ctx context.Context, programID uuid.UUID, cohortYear int) ([]CurriculumItem, error)
+	GetCurriculumByIDFunc     func(ctx context.Context, id uuid.UUID) (*Curriculum, error)
 }
 
 func (m *MockAcademicRepository) CreateAcademicYear(ctx context.Context, ay *AcademicYear) error {
@@ -184,6 +185,13 @@ func (m *MockAcademicRepository) ListCurriculumItems(ctx context.Context, progra
 		return m.ListCurriculumItemsFunc(ctx, programID, cohortYear)
 	}
 	return []CurriculumItem{}, nil
+}
+
+func (m *MockAcademicRepository) GetCurriculumByID(ctx context.Context, id uuid.UUID) (*Curriculum, error) {
+	if m.GetCurriculumByIDFunc != nil {
+		return m.GetCurriculumByIDFunc(ctx, id)
+	}
+	return nil, ErrCurriculumNotFound
 }
 
 type MockStudentProvider struct {
@@ -389,14 +397,14 @@ func newTestService() (*Service, *MockAcademicRepository, *MockStudentProvider, 
 	enrollment := &MockEnrollmentProvider{}
 	cohortGroups := &MockCohortGroupProvider{}
 	settings := &MockSettingsProvider{}
-	svc := NewService(repo, students, courses, offerings, enrollment, cohortGroups, settings)
-	return svc, repo, students, courses, offerings, enrollment, cohortGroups, settings
+	service := NewService(repo, students, courses, offerings, enrollment, cohortGroups, settings)
+	return service, repo, students, courses, offerings, enrollment, cohortGroups, settings
 }
 
 // Academic Year Tests
 
 func TestCreateAcademicYear_Success(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	repo.AcademicYearExistsFunc = func(ctx context.Context, year int) (bool, error) {
 		return false, nil
 	}
@@ -407,7 +415,7 @@ func TestCreateAcademicYear_Success(t *testing.T) {
 		EndDate:   time.Now().AddDate(1, 0, 0),
 	}
 
-	ay, err := svc.CreateAcademicYear(context.Background(), req)
+	ay, err := service.CreateAcademicYear(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -420,7 +428,7 @@ func TestCreateAcademicYear_Success(t *testing.T) {
 }
 
 func TestCreateAcademicYear_Duplicate(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	repo.AcademicYearExistsFunc = func(ctx context.Context, year int) (bool, error) {
 		return true, nil
 	}
@@ -431,14 +439,14 @@ func TestCreateAcademicYear_Duplicate(t *testing.T) {
 		EndDate:   time.Now().AddDate(1, 0, 0),
 	}
 
-	_, err := svc.CreateAcademicYear(context.Background(), req)
+	_, err := service.CreateAcademicYear(context.Background(), req)
 	if !errors.Is(err, ErrDuplicateYear) {
 		t.Errorf("expected ErrDuplicateYear, got %v", err)
 	}
 }
 
 func TestUpdateAcademicYear_InvalidStatus(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	ayID := uuid.New()
 	repo.GetAcademicYearFunc = func(ctx context.Context, id uuid.UUID) (*AcademicYear, error) {
 		return &AcademicYear{ID: id, Status: AcademicYearStatusUpcoming}, nil
@@ -447,7 +455,7 @@ func TestUpdateAcademicYear_InvalidStatus(t *testing.T) {
 	invalidStatus := "invalid"
 	req := UpdateAcademicYearRequest{Status: &invalidStatus}
 
-	_, err := svc.UpdateAcademicYear(context.Background(), ayID, req)
+	_, err := service.UpdateAcademicYear(context.Background(), ayID, req)
 	if !errors.Is(err, ErrInvalidStatus) {
 		t.Errorf("expected ErrInvalidStatus, got %v", err)
 	}
@@ -456,7 +464,7 @@ func TestUpdateAcademicYear_InvalidStatus(t *testing.T) {
 // Semester Tests
 
 func TestCreateSemester_Success(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	ayID := uuid.New()
 	repo.GetAcademicYearFunc = func(ctx context.Context, id uuid.UUID) (*AcademicYear, error) {
 		return &AcademicYear{ID: id}, nil
@@ -472,7 +480,7 @@ func TestCreateSemester_Success(t *testing.T) {
 		EndDate:        time.Now().AddDate(0, 4, 0),
 	}
 
-	sem, err := svc.CreateSemester(context.Background(), req)
+	sem, err := service.CreateSemester(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -488,7 +496,7 @@ func TestCreateSemester_Success(t *testing.T) {
 }
 
 func TestCreateSemester_AcademicYearNotFound(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	repo.GetAcademicYearFunc = func(ctx context.Context, id uuid.UUID) (*AcademicYear, error) {
 		return nil, ErrAcademicYearNotFound
 	}
@@ -500,14 +508,14 @@ func TestCreateSemester_AcademicYearNotFound(t *testing.T) {
 		EndDate:        time.Now().AddDate(0, 4, 0),
 	}
 
-	_, err := svc.CreateSemester(context.Background(), req)
+	_, err := service.CreateSemester(context.Background(), req)
 	if !errors.Is(err, ErrAcademicYearNotFound) {
 		t.Errorf("expected ErrAcademicYearNotFound, got %v", err)
 	}
 }
 
 func TestCreateSemester_Duplicate(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	ayID := uuid.New()
 	repo.GetAcademicYearFunc = func(ctx context.Context, id uuid.UUID) (*AcademicYear, error) {
 		return &AcademicYear{ID: id}, nil
@@ -523,20 +531,20 @@ func TestCreateSemester_Duplicate(t *testing.T) {
 		EndDate:        time.Now().AddDate(0, 4, 0),
 	}
 
-	_, err := svc.CreateSemester(context.Background(), req)
+	_, err := service.CreateSemester(context.Background(), req)
 	if !errors.Is(err, ErrDuplicateSemester) {
 		t.Errorf("expected ErrDuplicateSemester, got %v", err)
 	}
 }
 
 func TestUpdateSemesterStatus_Success(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusUpcoming}, nil
 	}
 
-	sem, err := svc.UpdateSemesterStatus(context.Background(), semID, SemesterStatusActive)
+	sem, err := service.UpdateSemesterStatus(context.Background(), semID, SemesterStatusActive)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -546,26 +554,26 @@ func TestUpdateSemesterStatus_Success(t *testing.T) {
 }
 
 func TestUpdateSemesterStatus_InvalidTransition(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusUpcoming}, nil
 	}
 
-	_, err := svc.UpdateSemesterStatus(context.Background(), semID, SemesterStatusFinalized)
+	_, err := service.UpdateSemesterStatus(context.Background(), semID, SemesterStatusFinalized)
 	if !errors.Is(err, ErrInvalidStatusTransition) {
 		t.Errorf("expected ErrInvalidStatusTransition, got %v", err)
 	}
 }
 
 func TestDefinalizeSemester_Success(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusFinalized}, nil
 	}
 
-	sem, err := svc.DefinalizeSemester(context.Background(), semID)
+	sem, err := service.DefinalizeSemester(context.Background(), semID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -575,26 +583,26 @@ func TestDefinalizeSemester_Success(t *testing.T) {
 }
 
 func TestDefinalizeSemester_Archived(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusArchived}, nil
 	}
 
-	_, err := svc.DefinalizeSemester(context.Background(), semID)
+	_, err := service.DefinalizeSemester(context.Background(), semID)
 	if !errors.Is(err, ErrSemesterArchived) {
 		t.Errorf("expected ErrSemesterArchived, got %v", err)
 	}
 }
 
 func TestDefinalizeSemester_NotFinalized(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusActive}, nil
 	}
 
-	_, err := svc.DefinalizeSemester(context.Background(), semID)
+	_, err := service.DefinalizeSemester(context.Background(), semID)
 	if !errors.Is(err, ErrSemesterNotFinalized) {
 		t.Errorf("expected ErrSemesterNotFinalized, got %v", err)
 	}
@@ -603,7 +611,7 @@ func TestDefinalizeSemester_NotFinalized(t *testing.T) {
 // Curriculum Tests
 
 func TestAddToCurriculum_Success(t *testing.T) {
-	svc, repo, _, courses, _, _, _, _ := newTestService()
+	service, repo, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return true, nil
 	}
@@ -622,7 +630,7 @@ func TestAddToCurriculum_Success(t *testing.T) {
 		Semester:   SemesterTypeFall,
 	}
 
-	curr, err := svc.AddToCurriculum(context.Background(), req)
+	curr, err := service.AddToCurriculum(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -632,7 +640,7 @@ func TestAddToCurriculum_Success(t *testing.T) {
 }
 
 func TestAddToCurriculum_ProgramNotFound(t *testing.T) {
-	svc, _, _, courses, _, _, _, _ := newTestService()
+	service, _, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return false, nil
 	}
@@ -645,14 +653,14 @@ func TestAddToCurriculum_ProgramNotFound(t *testing.T) {
 		Semester:   SemesterTypeFall,
 	}
 
-	_, err := svc.AddToCurriculum(context.Background(), req)
+	_, err := service.AddToCurriculum(context.Background(), req)
 	if !errors.Is(err, ErrProgramNotFound) {
 		t.Errorf("expected ErrProgramNotFound, got %v", err)
 	}
 }
 
 func TestAddToCurriculum_CourseNotFound(t *testing.T) {
-	svc, _, _, courses, _, _, _, _ := newTestService()
+	service, _, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return true, nil
 	}
@@ -668,14 +676,14 @@ func TestAddToCurriculum_CourseNotFound(t *testing.T) {
 		Semester:   SemesterTypeFall,
 	}
 
-	_, err := svc.AddToCurriculum(context.Background(), req)
+	_, err := service.AddToCurriculum(context.Background(), req)
 	if !errors.Is(err, ErrCourseNotFound) {
 		t.Errorf("expected ErrCourseNotFound, got %v", err)
 	}
 }
 
 func TestAddToCurriculum_Duplicate(t *testing.T) {
-	svc, repo, _, courses, _, _, _, _ := newTestService()
+	service, repo, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return true, nil
 	}
@@ -694,7 +702,7 @@ func TestAddToCurriculum_Duplicate(t *testing.T) {
 		Semester:   SemesterTypeFall,
 	}
 
-	_, err := svc.AddToCurriculum(context.Background(), req)
+	_, err := service.AddToCurriculum(context.Background(), req)
 	if !errors.Is(err, ErrDuplicateCurriculum) {
 		t.Errorf("expected ErrDuplicateCurriculum, got %v", err)
 	}
@@ -703,7 +711,7 @@ func TestAddToCurriculum_Duplicate(t *testing.T) {
 // Requirement Tests
 
 func TestSetRequirement_Success(t *testing.T) {
-	svc, _, _, courses, _, _, _, _ := newTestService()
+	service, _, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return true, nil
 	}
@@ -717,7 +725,7 @@ func TestSetRequirement_Success(t *testing.T) {
 		CreatedBy:  uuid.New(),
 	}
 
-	r, err := svc.SetRequirement(context.Background(), req)
+	r, err := service.SetRequirement(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -727,7 +735,7 @@ func TestSetRequirement_Success(t *testing.T) {
 }
 
 func TestSetRequirement_ProgramNotFound(t *testing.T) {
-	svc, _, _, courses, _, _, _, _ := newTestService()
+	service, _, _, courses, _, _, _, _ := newTestService()
 	courses.ProgramExistsFunc = func(ctx context.Context, id uuid.UUID) (bool, error) {
 		return false, nil
 	}
@@ -741,7 +749,7 @@ func TestSetRequirement_ProgramNotFound(t *testing.T) {
 		CreatedBy:  uuid.New(),
 	}
 
-	_, err := svc.SetRequirement(context.Background(), req)
+	_, err := service.SetRequirement(context.Background(), req)
 	if !errors.Is(err, ErrProgramNotFound) {
 		t.Errorf("expected ErrProgramNotFound, got %v", err)
 	}
@@ -750,20 +758,20 @@ func TestSetRequirement_ProgramNotFound(t *testing.T) {
 // EndSemester Tests
 
 func TestEndSemester_NotFinalized(t *testing.T) {
-	svc, repo, _, _, _, _, _, _ := newTestService()
+	service, repo, _, _, _, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusActive}, nil
 	}
 
-	_, err := svc.EndSemester(context.Background(), semID)
+	_, err := service.EndSemester(context.Background(), semID)
 	if !errors.Is(err, ErrSemesterNotFinalized) {
 		t.Errorf("expected ErrSemesterNotFinalized, got %v", err)
 	}
 }
 
 func TestEndSemester_UnfinalizedOfferings(t *testing.T) {
-	svc, repo, _, _, offerings, _, _, _ := newTestService()
+	service, repo, _, _, offerings, _, _, _ := newTestService()
 	semID := uuid.New()
 	repo.GetSemesterFunc = func(ctx context.Context, id uuid.UUID) (*Semester, error) {
 		return &Semester{ID: id, Status: SemesterStatusFinalized}, nil
@@ -772,14 +780,14 @@ func TestEndSemester_UnfinalizedOfferings(t *testing.T) {
 		return 5, nil
 	}
 
-	_, err := svc.EndSemester(context.Background(), semID)
+	_, err := service.EndSemester(context.Background(), semID)
 	if !errors.Is(err, ErrOfferingsNotFinalized) {
 		t.Errorf("expected ErrOfferingsNotFinalized, got %v", err)
 	}
 }
 
 func TestEndSemester_Success(t *testing.T) {
-	svc, repo, students, _, offerings, enrollment, _, settings := newTestService()
+	service, repo, students, _, offerings, enrollment, _, settings := newTestService()
 	semID := uuid.New()
 	programID := uuid.New()
 	studentID := uuid.New()
@@ -813,7 +821,7 @@ func TestEndSemester_Success(t *testing.T) {
 		return nil
 	}
 
-	result, err := svc.EndSemester(context.Background(), semID)
+	result, err := service.EndSemester(context.Background(), semID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -829,7 +837,7 @@ func TestEndSemester_Success(t *testing.T) {
 }
 
 func TestEndSemester_StudentRepeats(t *testing.T) {
-	svc, repo, students, _, offerings, enrollment, cohortGroups, settings := newTestService()
+	service, repo, students, _, offerings, enrollment, cohortGroups, settings := newTestService()
 	semID := uuid.New()
 	programID := uuid.New()
 	studentID := uuid.New()
@@ -885,7 +893,7 @@ func TestEndSemester_StudentRepeats(t *testing.T) {
 		return nil
 	}
 
-	result, err := svc.EndSemester(context.Background(), semID)
+	result, err := service.EndSemester(context.Background(), semID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

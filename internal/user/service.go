@@ -6,9 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
 )
+
+type RoleManager interface {
+	CanManageRole(ctx context.Context, actor, target *auth.RoleClaim) bool
+}
 
 type UserRepository interface {
 	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
@@ -38,10 +42,11 @@ type Service struct {
 	repo     UserRepository
 	tokens   auth.TokenRepository
 	notifier Notifier
+	roles    RoleManager
 }
 
-func NewService(repo UserRepository, tokens auth.TokenRepository, notifier Notifier) *Service {
-	return &Service{repo: repo, tokens: tokens, notifier: notifier}
+func NewService(repo UserRepository, tokens auth.TokenRepository, notifier Notifier, roles RoleManager) *Service {
+	return &Service{repo: repo, tokens: tokens, notifier: notifier, roles: roles}
 }
 
 func (s *Service) GetProfile(ctx context.Context, userID uuid.UUID) (*User, error) {
@@ -82,7 +87,6 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, req Updat
 	if err := s.repo.Update(ctx, user); err != nil {
 		return nil, err
 	}
-
 	return user, nil
 }
 
@@ -125,7 +129,10 @@ func (s *Service) GetUserByID(ctx context.Context, userID uuid.UUID) (*User, err
 }
 
 func (s *Service) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.Deactivate(ctx, userID)
+	if err := s.repo.Deactivate(ctx, userID); err != nil {
+		return err
+	}
+	return s.tokens.DeleteUserTokens(ctx, userID)
 }
 
 func (s *Service) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {
@@ -180,7 +187,6 @@ func (s *Service) RevokeOtherSessions(ctx context.Context, userID, keepSessionID
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -193,7 +199,6 @@ func (s *Service) CreateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 		return nil, err
 	}
 
-	// Check if staff profile already exists
 	if _, err := s.repo.GetStaffProfile(ctx, userID); err == nil {
 		return nil, ErrStaffProfileExists
 	} else if !errors.Is(err, ErrStaffProfileNotFound) {
@@ -212,7 +217,6 @@ func (s *Service) CreateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 	if err := s.repo.CreateStaffProfile(ctx, profile); err != nil {
 		return nil, err
 	}
-
 	return profile, nil
 }
 
@@ -241,33 +245,20 @@ func (s *Service) UpdateStaffProfile(ctx context.Context, userID uuid.UUID, req 
 	if err := s.repo.UpdateStaffProfile(ctx, profile); err != nil {
 		return nil, err
 	}
-
 	return profile, nil
 }
 
 func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorRole *auth.RoleClaim, req CreateStaffUserRequest) (*User, *StaffProfile, *Role, error) {
+	if err := auth.ValidatePassword(req.Password); err != nil {
+		return nil, nil, nil, err
+	}
+
 	if req.Role != nil {
-		actorPermission := ""
-		if actorRole != nil {
-			actorPermission = actorRole.Permission
-		}
-		if !permission.CanManageRole(actorPermission, req.Role.Permission) {
+		if !authz.CanGrantRole(actorRole.Level, actorRole.ScopeType, req.Role.Level, req.Role.ScopeType) {
 			return nil, nil, nil, ErrCannotManageHigherRole
 		}
-		if req.Role.ScopeType == "university" && req.Role.ScopeID != nil {
-			return nil, nil, nil, ErrScopeIDNotAllowed
-		}
-		if req.Role.ScopeType != "university" && req.Role.ScopeID == nil {
-			return nil, nil, nil, ErrScopeIDRequired
-		}
-		if req.Role.ScopeID != nil {
-			exists, err := s.repo.ScopeExists(ctx, req.Role.ScopeType, *req.Role.ScopeID)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			if !exists {
-				return nil, nil, nil, ErrInvalidScopeID
-			}
+		if err := s.validateRoleScope(ctx, req.Role.ScopeType, req.Role.ScopeID); err != nil {
+			return nil, nil, nil, err
 		}
 	}
 
@@ -304,7 +295,7 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 		role = &Role{
 			TitleEN:    req.Role.TitleEN,
 			TitleLocal: req.Role.TitleLocal,
-			Permission: req.Role.Permission,
+			Level:      req.Role.Level,
 			ScopeType:  req.Role.ScopeType,
 			ScopeID:    req.Role.ScopeID,
 			AssignedBy: &adminID,
@@ -319,6 +310,10 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 }
 
 func (s *Service) AdminSetPassword(ctx context.Context, userID uuid.UUID, password string) error {
+	if err := auth.ValidatePassword(password); err != nil {
+		return err
+	}
+
 	if _, err := s.repo.GetUser(ctx, userID); err != nil {
 		return err
 	}
@@ -332,7 +327,6 @@ func (s *Service) AdminSetPassword(ctx context.Context, userID uuid.UUID, passwo
 		return err
 	}
 
-	// Invalidate all user sessions after password change
 	if err := s.tokens.DeleteUserTokens(ctx, userID); err != nil {
 		return err
 	}
@@ -359,6 +353,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 		return ErrSamePassword
 	}
 
+	if err := auth.ValidatePassword(req.NewPassword); err != nil {
+		return err
+	}
+
 	passwordHash, err := auth.HashPassword(req.NewPassword)
 	if err != nil {
 		return err
@@ -368,38 +366,27 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 		return err
 	}
 
-	// Invalidate all user sessions after password change
 	return s.tokens.DeleteUserTokens(ctx, userID)
 }
 
 func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUID, actorRole *auth.RoleClaim, req AssignRoleRequest) (*Role, error) {
-	// Prevent modifying own role
 	if adminID == targetUserID {
 		return nil, ErrCannotModifyOwnRole
 	}
 
-	// Check permission level
-	actorPermission := ""
-	actorScopeType := ""
-	if actorRole != nil {
-		actorPermission = actorRole.Permission
-		actorScopeType = actorRole.ScopeType
+	targetClaim := &auth.RoleClaim{
+		Level:     req.Level,
+		ScopeType: req.ScopeType,
+		ScopeID:   req.ScopeID,
 	}
-	if !permission.CanManageRole(actorPermission, req.Permission) {
+	if !s.roles.CanManageRole(ctx, actorRole, targetClaim) {
 		return nil, ErrCannotManageHigherRole
 	}
 
-	// Check scope level - actor cannot assign roles at higher scope than their own
-	if !permission.CanManageScope(actorScopeType, req.ScopeType) {
-		return nil, ErrCannotManageHigherScope
-	}
-
-	// Validate scope requirements
 	if err := s.validateRoleScope(ctx, req.ScopeType, req.ScopeID); err != nil {
 		return nil, err
 	}
 
-	// Verify target user exists
 	if _, err := s.repo.GetUser(ctx, targetUserID); err != nil {
 		return nil, err
 	}
@@ -408,13 +395,12 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 		UserID:     targetUserID,
 		TitleEN:    req.TitleEN,
 		TitleLocal: req.TitleLocal,
-		Permission: req.Permission,
+		Level:      req.Level,
 		ScopeType:  req.ScopeType,
 		ScopeID:    req.ScopeID,
 		AssignedBy: &adminID,
 	}
 
-	// Try to create, if exists then update
 	if err := s.repo.CreateRole(ctx, role); err != nil {
 		if errors.Is(err, ErrRoleExists) {
 			if err := s.repo.UpdateRole(ctx, role); err != nil {
@@ -425,15 +411,13 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 		}
 	}
 
-	// Invalidate user sessions so they get fresh JWT with new role
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
 
 	if s.notifier != nil {
-		title := "Role Assigned"
-		body := "You have been assigned the role: " + role.Permission + " (" + role.ScopeType + ")"
-		_ = s.notifier.Send(ctx, targetUserID, "role_assigned", title, &body, map[string]any{
+		body := "You have been assigned the role: " + role.Level + " (" + role.ScopeType + ")"
+		_ = s.notifier.Send(ctx, targetUserID, "role_assigned", "Role Assigned", &body, map[string]any{
 			"role_id":    role.ID,
-			"permission": role.Permission,
+			"permission": role.Level,
 			"scope_type": role.ScopeType,
 		})
 	}
@@ -442,12 +426,10 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 }
 
 func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUID, actorRole *auth.RoleClaim) error {
-	// Prevent modifying own role
 	if adminID == targetUserID {
 		return ErrCannotModifyOwnRole
 	}
 
-	// Get target user's current role to check permission
 	targetRole, err := s.repo.GetRole(ctx, targetUserID)
 	if err != nil {
 		return err
@@ -456,27 +438,19 @@ func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUI
 		return ErrRoleNotFound
 	}
 
-	// Check if actor can manage the target's permission level
-	actorPermission := ""
-	actorScopeType := ""
-	if actorRole != nil {
-		actorPermission = actorRole.Permission
-		actorScopeType = actorRole.ScopeType
+	targetClaim := &auth.RoleClaim{
+		Level:     targetRole.Level,
+		ScopeType: targetRole.ScopeType,
+		ScopeID:   targetRole.ScopeID,
 	}
-	if !permission.CanManageRole(actorPermission, targetRole.Permission) {
+	if !s.roles.CanManageRole(ctx, actorRole, targetClaim) {
 		return ErrCannotManageHigherRole
-	}
-
-	// Check scope level - actor cannot remove roles at higher scope than their own
-	if !permission.CanManageScope(actorScopeType, targetRole.ScopeType) {
-		return ErrCannotManageHigherScope
 	}
 
 	if err := s.repo.DeleteRole(ctx, targetUserID); err != nil {
 		return err
 	}
 
-	// Invalidate user sessions so they get fresh JWT without role
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
 
 	if s.notifier != nil {
@@ -495,7 +469,6 @@ func (s *Service) validateRoleScope(ctx context.Context, scopeType string, scope
 		return nil
 	}
 
-	// For college, department, program - scope_id is required
 	if scopeID == nil {
 		return ErrScopeIDRequired
 	}
@@ -507,6 +480,5 @@ func (s *Service) validateRoleScope(ctx context.Context, scopeType string, scope
 	if !exists {
 		return ErrInvalidScopeID
 	}
-
 	return nil
 }

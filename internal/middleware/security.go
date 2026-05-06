@@ -17,6 +17,7 @@ func SecurityHeaders() gin.HandlerFunc {
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		c.Header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		c.Next()
 	}
 }
@@ -40,6 +41,8 @@ func CORS(cfg CORSConfig) gin.HandlerFunc {
 		if allowedOrigins[origin] || allowedOrigins["*"] {
 			c.Header("Access-Control-Allow-Origin", origin)
 		}
+
+		c.Header("Vary", "Origin")
 
 		if cfg.AllowCredentials {
 			c.Header("Access-Control-Allow-Credentials", "true")
@@ -65,41 +68,49 @@ type RateLimiterConfig struct {
 	Burst   int
 }
 
+type ipEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 type ipLimiter struct {
-	limiters map[string]*rate.Limiter
-	mu       sync.RWMutex
-	rps      rate.Limit
-	burst    int
+	entries map[string]*ipEntry
+	mu      sync.Mutex
+	rps     rate.Limit
+	burst   int
 }
 
 func newIPLimiter(rps int, burst int) *ipLimiter {
 	return &ipLimiter{
-		limiters: make(map[string]*rate.Limiter),
-		rps:      rate.Limit(rps),
-		burst:    burst,
+		entries: make(map[string]*ipEntry),
+		rps:     rate.Limit(rps),
+		burst:   burst,
 	}
 }
 
 func (l *ipLimiter) getLimiter(ip string) *rate.Limiter {
-	l.mu.RLock()
-	limiter, exists := l.limiters[ip]
-	l.mu.RUnlock()
-
-	if exists {
-		return limiter
-	}
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	limiter, exists = l.limiters[ip]
-	if exists {
-		return limiter
+	e, exists := l.entries[ip]
+	if !exists {
+		e = &ipEntry{limiter: rate.NewLimiter(l.rps, l.burst)}
+		l.entries[ip] = e
 	}
+	e.lastSeen = time.Now()
+	return e.limiter
+}
 
-	limiter = rate.NewLimiter(l.rps, l.burst)
-	l.limiters[ip] = limiter
-	return limiter
+func (l *ipLimiter) cleanup(ttl time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	cutoff := time.Now().Add(-ttl)
+	for ip, e := range l.entries {
+		if e.lastSeen.Before(cutoff) {
+			delete(l.entries, ip)
+		}
+	}
 }
 
 // RateLimiter limits requests per IP.
@@ -110,13 +121,10 @@ func RateLimiter(cfg RateLimiterConfig) gin.HandlerFunc {
 
 	limiter := newIPLimiter(cfg.RPS, cfg.Burst)
 
-	// Cleanup old entries every 10 minutes
 	go func() {
 		for {
 			time.Sleep(10 * time.Minute)
-			limiter.mu.Lock()
-			limiter.limiters = make(map[string]*rate.Limiter)
-			limiter.mu.Unlock()
+			limiter.cleanup(20 * time.Minute)
 		}
 	}()
 

@@ -47,14 +47,14 @@ func TestToUserResponse(t *testing.T) {
 }
 
 func TestToRoleResponse(t *testing.T) {
-	role := &Role{ID: uuid.New(), Permission: "admin", ScopeType: "university"}
+	role := &Role{ID: uuid.New(), Level: "admin", ScopeType: "university"}
 
 	resp := ToRoleResponse(role)
 
 	if resp == nil {
 		t.Fatal("response should not be nil")
 	}
-	if resp.Permission != "admin" {
+	if resp.Level != "admin" {
 		t.Error("role permission should be admin")
 	}
 	if resp.ScopeType != "university" {

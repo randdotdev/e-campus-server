@@ -35,9 +35,10 @@ type RoleClaim struct {
 	ID         uuid.UUID  `json:"id"`
 	TitleEN    string     `json:"title_en,omitempty"`
 	TitleLocal string     `json:"title_local,omitempty"`
-	Permission string     `json:"permission"`
+	Level      string     `json:"level"`
 	ScopeType  string     `json:"scope_type"`
 	ScopeID    *uuid.UUID `json:"scope_id,omitempty"`
+	Domain     string     `json:"domain,omitempty"`
 }
 
 type UserData struct {
@@ -56,7 +57,8 @@ type RoleData struct {
 	ID         uuid.UUID
 	TitleEN    *string
 	TitleLocal *string
-	Permission string
+	Level      string
 	ScopeType  string
 	ScopeID    *uuid.UUID
+	Domain     *string
 }

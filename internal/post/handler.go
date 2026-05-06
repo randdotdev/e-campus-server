@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -55,7 +55,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 func (h *Handler) CreatePost(c *gin.Context) {
 	var req CreatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 
 	var req UpdatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -336,7 +336,7 @@ func (h *Handler) CreateComment(c *gin.Context) {
 
 	var req CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -500,7 +500,7 @@ func (h *Handler) AddAttachment(c *gin.Context) {
 
 	var req AddAttachmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -617,7 +617,7 @@ func (h *Handler) PinPost(c *gin.Context) {
 
 	var req PinPostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -660,22 +660,22 @@ func (h *Handler) PinPost(c *gin.Context) {
 func (h *Handler) isAdminForScope(c *gin.Context, scopeType string, scopeID *uuid.UUID) bool {
 	switch scopeType {
 	case ScopeUniversity:
-		return permission.CanAdminUniversity(c)
+		return authz.Check(c, authz.ResourcePost, authz.ActionCreate)
 	case ScopeCollege:
 		if scopeID == nil {
 			return false
 		}
-		return permission.CanAdminCollege(c, *scopeID)
+		return authz.Check(c, authz.ResourcePost, authz.ActionCreate, *scopeID)
 	case ScopeDepartment:
 		if scopeID == nil {
 			return false
 		}
-		return permission.CanAdminDepartment(c, *scopeID)
+		return authz.Check(c, authz.ResourcePost, authz.ActionCreate, *scopeID)
 	case ScopeProgram:
 		if scopeID == nil {
 			return false
 		}
-		return permission.CanAdminProgram(c, *scopeID)
+		return authz.Check(c, authz.ResourcePost, authz.ActionCreate, *scopeID)
 	}
 	return false
 }

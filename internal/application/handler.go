@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/permission"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -32,7 +32,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	var req CreateApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *Handler) UpdateMine(c *gin.Context) {
 
 	var req UpdateApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -175,6 +175,11 @@ func (h *Handler) Withdraw(c *gin.Context) {
 // Admin application handlers
 
 func (h *Handler) List(c *gin.Context) {
+	if !authz.Check(c, authz.ResourceApplication, authz.ActionList) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	filters, err := h.parseFilters(c)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -182,11 +187,6 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	filters = h.applyScopeRestrictions(c, filters)
-
-	if !h.hasAnyAdminAccess(c) {
-		response.Forbidden(c, "admin access required")
-		return
-	}
 
 	params := pagination.ParsePageParams(c)
 
@@ -231,7 +231,7 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessApplication(c, app) {
+	if !h.canAccessApplication(c, app, authz.ActionGet) {
 		response.Forbidden(c, "access denied")
 		return
 	}
@@ -259,14 +259,14 @@ func (h *Handler) Review(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessApplication(c, app) {
+	if !h.canAccessApplication(c, app, authz.ActionUpdate) {
 		response.Forbidden(c, "access denied")
 		return
 	}
 
 	var req ReviewApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -290,52 +290,32 @@ func (h *Handler) Review(c *gin.Context) {
 
 // Helper functions
 
-func (h *Handler) canAccessApplication(c *gin.Context, app *Application) bool {
-	if permission.CanAdminUniversity(c) {
-		return true
-	}
-
-	hierarchy, err := h.service.GetProgramHierarchy(c.Request.Context(), app.ProgramID)
-	if err != nil {
-		return false
-	}
-
-	return permission.CanAdminProgram(c, hierarchy.ProgramID) ||
-		permission.CanAdminDepartment(c, hierarchy.DepartmentID) ||
-		permission.CanAdminCollege(c, hierarchy.CollegeID)
-}
-
-func (h *Handler) hasAnyAdminAccess(c *gin.Context) bool {
-	return permission.CanAdmin(c, permission.ScopeUniversity, nil) ||
-		permission.CanAdmin(c, permission.ScopeCollege, nil) ||
-		permission.CanAdmin(c, permission.ScopeDepartment, nil) ||
-		permission.CanAdmin(c, permission.ScopeProgram, nil)
+func (h *Handler) canAccessApplication(c *gin.Context, app *Application, action string) bool {
+	return authz.Check(c, authz.ResourceApplication, action, app.ProgramID)
 }
 
 func (h *Handler) applyScopeRestrictions(c *gin.Context, filters ApplicationFilters) ApplicationFilters {
-	if permission.CanAdminUniversity(c) {
-		return filters
-	}
-
 	role := middleware.GetUserRole(c)
 	if role == nil {
 		return filters
 	}
-
-	if role.Permission != permission.Admin && role.Permission != permission.SuperAdmin {
+	if role.ScopeType == authz.ScopeUniversity || role.ScopeType == authz.ScopePlatform {
+		return filters
+	}
+	if role.Level != authz.Admin && role.Level != authz.SuperAdmin {
 		return filters
 	}
 
 	switch role.ScopeType {
-	case permission.ScopeCollege:
+	case authz.ScopeCollege:
 		if role.ScopeID != nil {
 			filters.CollegeID = role.ScopeID
 		}
-	case permission.ScopeDepartment:
+	case authz.ScopeDepartment:
 		if role.ScopeID != nil {
 			filters.DepartmentID = role.ScopeID
 		}
-	case permission.ScopeProgram:
+	case authz.ScopeProgram:
 		if role.ScopeID != nil {
 			filters.ProgramID = role.ScopeID
 		}

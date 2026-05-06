@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -25,7 +26,12 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 func (h *Handler) CreateSection(c *gin.Context) {
 	var req CreateSectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, req.OfferingID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 
@@ -82,9 +88,24 @@ func (h *Handler) UpdateSection(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDBySectionID(c.Request.Context(), id)
+	if errors.Is(err, ErrSectionNotFound) {
+		response.NotFound(c, "section not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var req UpdateSectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -106,6 +127,21 @@ func (h *Handler) DeleteSection(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDBySectionID(c.Request.Context(), id)
+	if errors.Is(err, ErrSectionNotFound) {
+		response.NotFound(c, "section not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	err = h.service.DeleteSection(c.Request.Context(), id)
 	if errors.Is(err, ErrSectionNotFound) {
 		response.NotFound(c, "section not found")
@@ -124,7 +160,22 @@ func (h *Handler) DeleteSection(c *gin.Context) {
 func (h *Handler) CreateLesson(c *gin.Context) {
 	var req CreateLessonRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	offeringID, err := h.service.GetOfferingIDBySectionID(c.Request.Context(), req.SectionID)
+	if errors.Is(err, ErrSectionNotFound) {
+		response.NotFound(c, "section not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 
@@ -187,9 +238,24 @@ func (h *Handler) UpdateLesson(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), id)
+	if errors.Is(err, ErrLessonNotFound) {
+		response.NotFound(c, "lesson not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var req UpdateLessonRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -215,6 +281,21 @@ func (h *Handler) DeleteLesson(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), id)
+	if errors.Is(err, ErrLessonNotFound) {
+		response.NotFound(c, "lesson not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	err = h.service.DeleteLesson(c.Request.Context(), id)
 	if errors.Is(err, ErrLessonNotFound) {
 		response.NotFound(c, "lesson not found")
@@ -235,9 +316,24 @@ func (h *Handler) AddAttachment(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), lessonID)
+	if errors.Is(err, ErrLessonNotFound) {
+		response.NotFound(c, "lesson not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var req AddAttachmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -261,6 +357,21 @@ func (h *Handler) RemoveAttachment(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid attachment id")
+		return
+	}
+
+	offeringID, err := h.service.GetOfferingIDByAttachmentID(c.Request.Context(), id)
+	if errors.Is(err, ErrAttachmentNotFound) {
+		response.NotFound(c, "attachment not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 
@@ -308,9 +419,24 @@ func (h *Handler) AddSchedule(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), lessonID)
+	if errors.Is(err, ErrLessonNotFound) {
+		response.NotFound(c, "lesson not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var req AddScheduleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -336,9 +462,24 @@ func (h *Handler) UpdateSchedule(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByScheduleID(c.Request.Context(), id)
+	if errors.Is(err, ErrScheduleNotFound) {
+		response.NotFound(c, "schedule not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var req UpdateScheduleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -357,6 +498,21 @@ func (h *Handler) RemoveSchedule(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid schedule id")
+		return
+	}
+
+	offeringID, err := h.service.GetOfferingIDByScheduleID(c.Request.Context(), id)
+	if errors.Is(err, ErrScheduleNotFound) {
+		response.NotFound(c, "schedule not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionUpdate, offeringID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 

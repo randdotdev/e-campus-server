@@ -6,21 +6,26 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/student"
+	"github.com/redis/go-redis/v9"
 )
 
+const scopeCacheTTL = 7 * 24 * time.Hour
+
 type Repository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	rdb *redis.Client
 }
 
 var _ student.ProgramProvider = (*Repository)(nil)
 
-func NewRepository(db *sqlx.DB) *Repository {
-	return &Repository{db: db}
+func NewRepository(db *sqlx.DB, rdb *redis.Client) *Repository {
+	return &Repository{db: db, rdb: rdb}
 }
 
 // College operations
@@ -51,40 +56,39 @@ func (r *Repository) GetCollege(ctx context.Context, id uuid.UUID) (*College, er
 }
 
 func (r *Repository) ListColleges(ctx context.Context, params pagination.PageParams, filters CollegeFilters) ([]College, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM colleges WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM colleges %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var colleges []College
-	if err := r.db.SelectContext(ctx, &colleges, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &colleges, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -140,10 +144,14 @@ func (r *Repository) CreateDepartment(ctx context.Context, dept *Department) err
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, is_active, created_at, updated_at`
 
-	return r.db.QueryRowxContext(ctx, query,
+	if err := r.db.QueryRowxContext(ctx, query,
 		dept.CollegeID, dept.NameEN, dept.NameLocal, dept.Code, dept.Description,
 		dept.About, dept.Founded, dept.Phone, dept.Email, dept.LogoURL,
-	).Scan(&dept.ID, &dept.IsActive, &dept.CreatedAt, &dept.UpdatedAt)
+	).Scan(&dept.ID, &dept.IsActive, &dept.CreatedAt, &dept.UpdatedAt); err != nil {
+		return err
+	}
+	_ = r.rdb.Set(ctx, "dept:"+dept.ID.String()+":college_id", dept.CollegeID.String(), scopeCacheTTL).Err()
+	return nil
 }
 
 func (r *Repository) GetDepartment(ctx context.Context, id uuid.UUID) (*Department, error) {
@@ -160,46 +168,44 @@ func (r *Repository) GetDepartment(ctx context.Context, id uuid.UUID) (*Departme
 }
 
 func (r *Repository) ListDepartments(ctx context.Context, params pagination.PageParams, filters DepartmentFilters) ([]Department, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM departments WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.CollegeID != nil {
-		query.WriteString(fmt.Sprintf(" AND college_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("college_id = $%d", argN))
 		args = append(args, *filters.CollegeID)
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM departments %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var depts []Department
-	if err := r.db.SelectContext(ctx, &depts, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &depts, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -255,10 +261,14 @@ func (r *Repository) CreateProgram(ctx context.Context, program *Program) error 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, is_active, created_at, updated_at`
 
-	return r.db.QueryRowxContext(ctx, query,
+	if err := r.db.QueryRowxContext(ctx, query,
 		program.DepartmentID, program.NameEN, program.NameLocal, program.Code,
 		program.DegreeType, program.DurationYears, program.TotalCredits, program.MinAge, program.MaxAge, program.Description,
-	).Scan(&program.ID, &program.IsActive, &program.CreatedAt, &program.UpdatedAt)
+	).Scan(&program.ID, &program.IsActive, &program.CreatedAt, &program.UpdatedAt); err != nil {
+		return err
+	}
+	_ = r.rdb.Set(ctx, "program:"+program.ID.String()+":dept_id", program.DepartmentID.String(), scopeCacheTTL).Err()
+	return nil
 }
 
 func (r *Repository) GetProgram(ctx context.Context, id uuid.UUID) (*Program, error) {
@@ -275,52 +285,49 @@ func (r *Repository) GetProgram(ctx context.Context, id uuid.UUID) (*Program, er
 }
 
 func (r *Repository) ListPrograms(ctx context.Context, params pagination.PageParams, filters ProgramFilters) ([]Program, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString("SELECT * FROM programs WHERE 1=1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(" AND (name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf("(name_en ILIKE $%d OR name_local ILIKE $%d OR code ILIKE $%d)", argN, argN, argN))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.DepartmentID != nil {
-		query.WriteString(fmt.Sprintf(" AND department_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("department_id = $%d", argN))
 		args = append(args, *filters.DepartmentID)
 		argN++
 	}
-
 	if filters.DegreeType != nil {
-		query.WriteString(fmt.Sprintf(" AND degree_type = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("degree_type = $%d", argN))
 		args = append(args, *filters.DegreeType)
 		argN++
 	}
-
 	if filters.IsActive != nil {
-		query.WriteString(fmt.Sprintf(" AND is_active = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("is_active = $%d", argN))
 		args = append(args, *filters.IsActive)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf("SELECT * FROM programs %s ORDER BY created_at DESC, id DESC LIMIT $%d", where, argN)
 	args = append(args, params.Limit+1)
 
 	var programs []Program
-	if err := r.db.SelectContext(ctx, &programs, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &programs, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -402,4 +409,38 @@ func (r *Repository) GetProgramTotalCredits(ctx context.Context, id uuid.UUID) (
 	query := `SELECT total_credits FROM programs WHERE id = $1`
 	err := r.db.GetContext(ctx, &credits, query, id)
 	return credits, err
+}
+
+func (r *Repository) CollegeForDept(ctx context.Context, deptID uuid.UUID) (uuid.UUID, error) {
+	key := "dept:" + deptID.String() + ":college_id"
+	if val, err := r.rdb.Get(ctx, key).Result(); err == nil {
+		return uuid.Parse(val)
+	}
+	var collegeID uuid.UUID
+	if err := r.db.GetContext(ctx, &collegeID, `SELECT college_id FROM departments WHERE id = $1`, deptID); err != nil {
+		return uuid.UUID{}, err
+	}
+	_ = r.rdb.Set(ctx, key, collegeID.String(), scopeCacheTTL).Err()
+	return collegeID, nil
+}
+
+func (r *Repository) DeptForProgram(ctx context.Context, programID uuid.UUID) (uuid.UUID, error) {
+	key := "program:" + programID.String() + ":dept_id"
+	if val, err := r.rdb.Get(ctx, key).Result(); err == nil {
+		return uuid.Parse(val)
+	}
+	var deptID uuid.UUID
+	if err := r.db.GetContext(ctx, &deptID, `SELECT department_id FROM programs WHERE id = $1`, programID); err != nil {
+		return uuid.UUID{}, err
+	}
+	_ = r.rdb.Set(ctx, key, deptID.String(), scopeCacheTTL).Err()
+	return deptID, nil
+}
+
+func (r *Repository) CollegeForProgram(ctx context.Context, programID uuid.UUID) (uuid.UUID, error) {
+	deptID, err := r.DeptForProgram(ctx, programID)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+	return r.CollegeForDept(ctx, deptID)
 }

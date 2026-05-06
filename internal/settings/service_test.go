@@ -59,10 +59,10 @@ func TestService_Get(t *testing.T) {
 				return &SettingsRow{Settings: data}, nil
 			},
 		}
-		svc := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo, &mockPrefsRepo{})
 
-		_, _ = svc.Get(context.Background())
-		_, _ = svc.Get(context.Background())
+		_, _ = service.Get(context.Background())
+		_, _ = service.Get(context.Background())
 
 		if callCount != 1 {
 			t.Errorf("expected 1 repo call, got %d", callCount)
@@ -75,9 +75,9 @@ func TestService_Get(t *testing.T) {
 				return nil, nil
 			},
 		}
-		svc := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo, &mockPrefsRepo{})
 
-		_, err := svc.Get(context.Background())
+		_, err := service.Get(context.Background())
 		if !errors.Is(err, ErrSettingsNotFound) {
 			t.Errorf("expected ErrSettingsNotFound, got %v", err)
 		}
@@ -90,9 +90,9 @@ func TestService_Get(t *testing.T) {
 				return nil, repoErr
 			},
 		}
-		svc := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo, &mockPrefsRepo{})
 
-		_, err := svc.Get(context.Background())
+		_, err := service.Get(context.Background())
 		if !errors.Is(err, repoErr) {
 			t.Errorf("expected repo error, got %v", err)
 		}
@@ -102,7 +102,7 @@ func TestService_Get(t *testing.T) {
 func TestService_Update(t *testing.T) {
 	t.Run("validates before saving", func(t *testing.T) {
 		repo := &mockSettingsRepo{}
-		svc := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo, &mockPrefsRepo{})
 
 		invalid := &UniversitySettings{
 			Institution: Institution{Name: map[string]string{}},
@@ -110,7 +110,7 @@ func TestService_Update(t *testing.T) {
 			Academic:    AcademicConfig{SemestersPerYear: 2},
 		}
 
-		err := svc.Update(context.Background(), invalid, uuid.New())
+		err := service.Update(context.Background(), invalid, uuid.New())
 		if !errors.Is(err, ErrMissingInstitutionName) {
 			t.Errorf("expected ErrMissingInstitutionName, got %v", err)
 		}
@@ -122,17 +122,17 @@ func TestService_Update(t *testing.T) {
 				return nil
 			},
 		}
-		svc := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo, &mockPrefsRepo{})
 
 		settings := DefaultSettings()
 		settings.Institution.Name["en"] = "Updated Name"
 
-		err := svc.Update(context.Background(), settings, uuid.New())
+		err := service.Update(context.Background(), settings, uuid.New())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		cached, _ := svc.Get(context.Background())
+		cached, _ := service.Get(context.Background())
 		if cached.Institution.GetName("en") != "Updated Name" {
 			t.Error("cache not updated")
 		}
@@ -151,7 +151,7 @@ func TestService_UpdatePartial(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo, &mockPrefsRepo{})
 
 	newInstitution := Institution{
 		Name:    map[string]string{"en": "New Name"},
@@ -160,7 +160,7 @@ func TestService_UpdatePartial(t *testing.T) {
 	}
 	updates := SettingsUpdates{Institution: &newInstitution}
 
-	result, err := svc.UpdatePartial(context.Background(), updates, uuid.New())
+	result, err := service.UpdatePartial(context.Background(), updates, uuid.New())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -183,9 +183,9 @@ func TestService_GetFeatures(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	svc := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo, &mockPrefsRepo{})
 
-	features, err := svc.GetFeatures(context.Background())
+	features, err := service.GetFeatures(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestService_IsFeatureEnabled(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	svc := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo, &mockPrefsRepo{})
 
 	tests := []struct {
 		feature string
@@ -219,7 +219,7 @@ func TestService_IsFeatureEnabled(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.feature, func(t *testing.T) {
-			enabled, err := svc.IsFeatureEnabled(context.Background(), tt.feature)
+			enabled, err := service.IsFeatureEnabled(context.Background(), tt.feature)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -239,9 +239,9 @@ func TestService_GetPreferences(t *testing.T) {
 				return nil, nil
 			},
 		}
-		svc := NewService(&mockSettingsRepo{}, prefsRepo)
+		service := NewService(&mockSettingsRepo{}, prefsRepo)
 
-		prefs, err := svc.GetPreferences(context.Background(), userID)
+		prefs, err := service.GetPreferences(context.Background(), userID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -262,9 +262,9 @@ func TestService_GetPreferences(t *testing.T) {
 				return existing, nil
 			},
 		}
-		svc := NewService(&mockSettingsRepo{}, prefsRepo)
+		service := NewService(&mockSettingsRepo{}, prefsRepo)
 
-		prefs, err := svc.GetPreferences(context.Background(), userID)
+		prefs, err := service.GetPreferences(context.Background(), userID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -279,10 +279,10 @@ func TestService_UpdatePreferences(t *testing.T) {
 	userID := uuid.New()
 
 	t.Run("validates language", func(t *testing.T) {
-		svc := NewService(&mockSettingsRepo{}, &mockPrefsRepo{})
+		service := NewService(&mockSettingsRepo{}, &mockPrefsRepo{})
 
 		invalidLang := "invalid"
-		_, err := svc.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
+		_, err := service.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
 			Language: &invalidLang,
 		})
 		if !errors.Is(err, ErrInvalidLanguage) {
@@ -301,13 +301,13 @@ func TestService_UpdatePreferences(t *testing.T) {
 				return nil
 			},
 		}
-		svc := NewService(&mockSettingsRepo{}, prefsRepo)
+		service := NewService(&mockSettingsRepo{}, prefsRepo)
 
 		lang := LanguageKurdish
 		tz := "Asia/Baghdad"
 		emailOff := false
 
-		result, err := svc.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
+		result, err := service.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
 			Language:           &lang,
 			Timezone:           &tz,
 			EmailNotifications: &emailOff,
@@ -339,10 +339,10 @@ func TestService_Refresh(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	svc := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo, &mockPrefsRepo{})
 
-	_, _ = svc.Get(context.Background())
-	_ = svc.Refresh(context.Background())
+	_, _ = service.Get(context.Background())
+	_ = service.Refresh(context.Background())
 
 	if callCount != 2 {
 		t.Errorf("expected 2 repo calls after refresh, got %d", callCount)

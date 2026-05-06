@@ -9,7 +9,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/config"
 )
 
-type UserStore interface {
+type UserRepository interface {
 	Create(ctx context.Context, email, passwordHash, fullNameEN string, fullNameLocal *string) (*UserData, error)
 	GetByEmail(ctx context.Context, email string) (*UserData, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*UserData, error)
@@ -19,11 +19,11 @@ type UserStore interface {
 
 type Service struct {
 	tokens TokenRepository
-	users  UserStore
+	users  UserRepository
 	jwt    *config.JWTConfig
 }
 
-func NewService(tokens TokenRepository, users UserStore, jwt *config.JWTConfig) *Service {
+func NewService(tokens TokenRepository, users UserRepository, jwt *config.JWTConfig) *Service {
 	return &Service{tokens: tokens, users: users, jwt: jwt}
 }
 
@@ -88,18 +88,29 @@ func (s *Service) Refresh(ctx context.Context, refreshToken, device, ip string) 
 		return nil, ErrTokenExpired
 	}
 
-	if IsTokenUsed(stored.UsedAt) {
+	// Atomic check-and-mark: closes the concurrent-refresh race.
+	// Two goroutines racing here: exactly one SetNX wins; the other sees alreadyUsed=true.
+	alreadyUsed, err := s.tokens.MarkTokenUsed(ctx, hash)
+	if err != nil {
+		if errors.Is(err, ErrTokenNotFound) {
+			return nil, ErrInvalidToken
+		}
+		return nil, err
+	}
+	if alreadyUsed {
+		// Token reuse detected — invalidate the entire family to revoke all
+		// sessions derived from this lineage.
 		_ = s.tokens.InvalidateFamily(ctx, stored.Family)
 		return nil, ErrTokenReused
-	}
-
-	if err := s.tokens.MarkTokenUsed(ctx, hash); err != nil {
-		return nil, err
 	}
 
 	user, err := s.users.GetByID(ctx, stored.UserID)
 	if err != nil {
 		return nil, err
+	}
+
+	if !user.IsActive {
+		return nil, ErrUserInactive
 	}
 
 	return s.createTokenPair(ctx, user, stored.Family, device, ip)

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -71,9 +72,17 @@ func IsAllowedContentType(contentType string) bool {
 	return allowedMimeTypes[ct]
 }
 
+func SanitizeFilename(name string) string {
+	name = filepath.Base(name)
+	if name == "." || name == ".." || name == "" {
+		return "unnamed"
+	}
+	return name
+}
+
 func GenerateStorageKey(userID uuid.UUID, filename string) string {
 	unique := uuid.New().String()[:8]
-	return fmt.Sprintf("files/%s/%s_%s", userID.String(), unique, filename)
+	return fmt.Sprintf("files/%s/%s_%s", userID.String(), unique, SanitizeFilename(filename))
 }
 
 func FormatFileSize(bytes int64) string {

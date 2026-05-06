@@ -124,10 +124,10 @@ func TestService_Create(t *testing.T) {
 	t.Run("success with name", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
 		name := "My Team"
-		team, err := svc.Create(ctx, uuid.New(), &name)
+		team, err := service.Create(ctx, uuid.New(), &name)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -139,9 +139,9 @@ func TestService_Create(t *testing.T) {
 	t.Run("success with default name", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, err := svc.Create(ctx, uuid.New(), nil)
+		team, err := service.Create(ctx, uuid.New(), nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -159,10 +159,10 @@ func TestService_AddMember(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.AddMember(ctx, team.ID, leaderID, memberID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.AddMember(ctx, team.ID, leaderID, memberID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -171,10 +171,10 @@ func TestService_AddMember(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.AddMember(ctx, team.ID, memberID, uuid.New())
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.AddMember(ctx, team.ID, memberID, uuid.New())
 		if !errors.Is(err, ErrNotLeader) {
 			t.Errorf("expected ErrNotLeader, got %v", err)
 		}
@@ -183,10 +183,10 @@ func TestService_AddMember(t *testing.T) {
 	t.Run("team locked", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{hasSubmissions: true}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{hasSubmissions: true}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.AddMember(ctx, team.ID, leaderID, memberID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.AddMember(ctx, team.ID, leaderID, memberID)
 		if !errors.Is(err, ErrTeamLocked) {
 			t.Errorf("expected ErrTeamLocked, got %v", err)
 		}
@@ -195,11 +195,11 @@ func TestService_AddMember(t *testing.T) {
 	t.Run("already member", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_ = svc.AddMember(ctx, team.ID, leaderID, memberID)
-		err := svc.AddMember(ctx, team.ID, leaderID, memberID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		_ = service.AddMember(ctx, team.ID, leaderID, memberID)
+		err := service.AddMember(ctx, team.ID, leaderID, memberID)
 		if !errors.Is(err, ErrAlreadyMember) {
 			t.Errorf("expected ErrAlreadyMember, got %v", err)
 		}
@@ -214,11 +214,11 @@ func TestService_RemoveMember(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_ = svc.AddMember(ctx, team.ID, leaderID, memberID)
-		err := svc.RemoveMember(ctx, team.ID, leaderID, memberID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		_ = service.AddMember(ctx, team.ID, leaderID, memberID)
+		err := service.RemoveMember(ctx, team.ID, leaderID, memberID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -227,10 +227,10 @@ func TestService_RemoveMember(t *testing.T) {
 	t.Run("cannot remove leader", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.RemoveMember(ctx, team.ID, leaderID, leaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.RemoveMember(ctx, team.ID, leaderID, leaderID)
 		if !errors.Is(err, ErrCannotRemoveLeader) {
 			t.Errorf("expected ErrCannotRemoveLeader, got %v", err)
 		}
@@ -245,11 +245,11 @@ func TestService_Leave(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_ = svc.AddMember(ctx, team.ID, leaderID, memberID)
-		err := svc.Leave(ctx, team.ID, memberID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		_ = service.AddMember(ctx, team.ID, leaderID, memberID)
+		err := service.Leave(ctx, team.ID, memberID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -258,10 +258,10 @@ func TestService_Leave(t *testing.T) {
 	t.Run("leader cannot leave", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.Leave(ctx, team.ID, leaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.Leave(ctx, team.ID, leaderID)
 		if !errors.Is(err, ErrLeaderCannotLeave) {
 			t.Errorf("expected ErrLeaderCannotLeave, got %v", err)
 		}
@@ -276,12 +276,12 @@ func TestService_TransferLeadership(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_ = svc.AddMember(ctx, team.ID, leaderID, newLeaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		_ = service.AddMember(ctx, team.ID, leaderID, newLeaderID)
 
-		updated, err := svc.TransferLeadership(ctx, team.ID, leaderID, newLeaderID)
+		updated, err := service.TransferLeadership(ctx, team.ID, leaderID, newLeaderID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -293,10 +293,10 @@ func TestService_TransferLeadership(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_, err := svc.TransferLeadership(ctx, team.ID, newLeaderID, uuid.New())
+		team, _ := service.Create(ctx, leaderID, nil)
+		_, err := service.TransferLeadership(ctx, team.ID, newLeaderID, uuid.New())
 		if !errors.Is(err, ErrNotLeader) {
 			t.Errorf("expected ErrNotLeader, got %v", err)
 		}
@@ -305,10 +305,10 @@ func TestService_TransferLeadership(t *testing.T) {
 	t.Run("new leader not member", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		_, err := svc.TransferLeadership(ctx, team.ID, leaderID, newLeaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		_, err := service.TransferLeadership(ctx, team.ID, leaderID, newLeaderID)
 		if !errors.Is(err, ErrNotMember) {
 			t.Errorf("expected ErrNotMember, got %v", err)
 		}
@@ -322,10 +322,10 @@ func TestService_Delete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.Delete(ctx, team.ID, leaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.Delete(ctx, team.ID, leaderID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -334,10 +334,10 @@ func TestService_Delete(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.Delete(ctx, team.ID, uuid.New())
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.Delete(ctx, team.ID, uuid.New())
 		if !errors.Is(err, ErrNotLeader) {
 			t.Errorf("expected ErrNotLeader, got %v", err)
 		}
@@ -346,10 +346,10 @@ func TestService_Delete(t *testing.T) {
 	t.Run("team locked", func(t *testing.T) {
 		teamRepo := newMockTeamRepo()
 		memberRepo := newMockMemberRepo()
-		svc := NewService(teamRepo, memberRepo, &mockSubmissionChecker{hasSubmissions: true}, &mockUserProvider{name: "Ali"})
+		service := NewService(teamRepo, memberRepo, &mockSubmissionChecker{hasSubmissions: true}, &mockUserProvider{name: "Ali"})
 
-		team, _ := svc.Create(ctx, leaderID, nil)
-		err := svc.Delete(ctx, team.ID, leaderID)
+		team, _ := service.Create(ctx, leaderID, nil)
+		err := service.Delete(ctx, team.ID, leaderID)
 		if !errors.Is(err, ErrTeamLocked) {
 			t.Errorf("expected ErrTeamLocked, got %v", err)
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
@@ -27,9 +28,16 @@ func NewHandler(service *Service, log *zap.Logger) *Handler {
 // Question handlers
 
 func (h *Handler) CreateQuestion(c *gin.Context) {
+	// Question bank is not offering-scoped; scope-based admin check only.
+	// Teachers need an offering_id in the request for course-role access (future API change).
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req CreateQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -51,6 +59,12 @@ func (h *Handler) GetQuestion(c *gin.Context) {
 		return
 	}
 
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	question, err := h.service.GetQuestion(c.Request.Context(), id)
 	if errors.Is(err, ErrQuestionNotFound) {
 		response.NotFound(c, "question not found")
@@ -63,6 +77,12 @@ func (h *Handler) GetQuestion(c *gin.Context) {
 }
 
 func (h *Handler) ListQuestions(c *gin.Context) {
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	params := pagination.ParsePageParams(c)
 	filters := h.parseQuestionFilters(c)
 
@@ -95,9 +115,15 @@ func (h *Handler) UpdateQuestion(c *gin.Context) {
 		return
 	}
 
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req UpdateQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -119,6 +145,12 @@ func (h *Handler) DeleteQuestion(c *gin.Context) {
 		return
 	}
 
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionDelete) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	err = h.service.DeleteQuestion(c.Request.Context(), id)
 	if errors.Is(err, ErrQuestionNotFound) {
 		response.NotFound(c, "question not found")
@@ -131,9 +163,15 @@ func (h *Handler) DeleteQuestion(c *gin.Context) {
 }
 
 func (h *Handler) BulkCreateQuestions(c *gin.Context) {
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	var req BulkCreateQuestionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -149,6 +187,12 @@ func (h *Handler) BulkCreateQuestions(c *gin.Context) {
 }
 
 func (h *Handler) RandomSelectQuestions(c *gin.Context) {
+	// Scope-based check only — question bank has no offering context in the URL.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	courseCode := c.Query("course_code")
 	if courseCode == "" {
 		response.BadRequest(c, "course_code is required")
@@ -190,21 +234,16 @@ func (h *Handler) RandomSelectQuestions(c *gin.Context) {
 func (h *Handler) CreateExam(c *gin.Context) {
 	var req CreateExamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate, req.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), req.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
-		return
-	}
 
 	exam, err := h.service.CreateExam(c.Request.Context(), req, userID)
 	if errors.Is(err, ErrOfferingNotFound) {
@@ -227,18 +266,30 @@ func (h *Handler) GetExam(c *gin.Context) {
 	exam, err := h.service.GetExam(c.Request.Context(), id)
 	if errors.Is(err, ErrExamNotFound) {
 		response.NotFound(c, "exam not found")
+		return
 	} else if err != nil {
 		h.log.Error("get exam failed", zap.Error(err))
 		response.InternalError(c)
-	} else {
-		response.OK(c, ToExamResponse(exam))
+		return
 	}
+
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	response.OK(c, ToExamResponse(exam))
 }
 
 func (h *Handler) ListExams(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -296,21 +347,14 @@ func (h *Handler) UpdateExam(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req UpdateExamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -342,15 +386,8 @@ func (h *Handler) DeleteExam(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionDelete, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -382,15 +419,8 @@ func (h *Handler) PublishExam(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -422,15 +452,8 @@ func (h *Handler) CloseExam(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -486,7 +509,7 @@ func (h *Handler) SaveAnswers(c *gin.Context) {
 
 	var req SaveAnswersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -512,7 +535,7 @@ func (h *Handler) SubmitAttempt(c *gin.Context) {
 
 	var req SaveAnswersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -571,15 +594,10 @@ func (h *Handler) ListAttempts(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	// ActionUpdate intentionally used: staff-only listing of all student attempts.
+	// ActionGet would allow enrolled students to see each other's attempt records.
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
@@ -641,21 +659,14 @@ func (h *Handler) BulkCreateResults(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req BulkResultsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -694,21 +705,14 @@ func (h *Handler) SetLateDecision(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionUpdate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req LateDecisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -745,21 +749,16 @@ func (h *Handler) GradeShortAnswers(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
+	userID := middleware.GetUserID(c)
+
 	var req GradeShortAnswerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -796,21 +795,14 @@ func (h *Handler) SetVisibility(c *gin.Context) {
 		return
 	}
 
-	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), exam.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
 		return
 	}
 
 	var req SetVisibilityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -911,23 +903,18 @@ func (h *Handler) createExamWithOfferingID(c *gin.Context) {
 
 	var req CreateExamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
 	req.OfferingID = offeringID
 
+	if !authz.Check(c, authz.ResourceExam, authz.ActionCreate, req.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	userID := middleware.GetUserID(c)
-	isTeacher, err := h.service.IsTeacher(c.Request.Context(), req.OfferingID, userID)
-	if err != nil {
-		h.log.Error("check teacher failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-	if !isTeacher {
-		response.Forbidden(c, "teacher access required")
-		return
-	}
 
 	exam, err := h.service.CreateExam(c.Request.Context(), req, userID)
 	if errors.Is(err, ErrOfferingNotFound) {

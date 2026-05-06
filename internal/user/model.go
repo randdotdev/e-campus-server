@@ -41,9 +41,10 @@ type Role struct {
 	UserID     uuid.UUID  `db:"user_id"`
 	TitleEN    *string    `db:"title_en"`
 	TitleLocal *string    `db:"title_local"`
-	Permission string     `db:"permission"`
+	Level      string     `db:"level"`
 	ScopeType  string     `db:"scope_type"`
 	ScopeID    *uuid.UUID `db:"scope_id"`
+	Domain     *string    `db:"domain"`
 	AssignedBy *uuid.UUID `db:"assigned_by"`
 	ExpiresAt  *time.Time `db:"expires_at"`
 	CreatedAt  time.Time  `db:"created_at"`

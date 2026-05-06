@@ -104,7 +104,7 @@ func TestCreateApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -116,7 +116,7 @@ func TestCreateApplication_Success(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	app, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	app, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestCreateApplication_ProgramNotFound(t *testing.T) {
 			return false, ErrProgramNotFound
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -143,7 +143,7 @@ func TestCreateApplication_ProgramNotFound(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	_, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	_, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if !errors.Is(err, ErrProgramNotFound) {
 		t.Errorf("expected ErrProgramNotFound, got %v", err)
 	}
@@ -155,7 +155,7 @@ func TestCreateApplication_ProgramInactive(t *testing.T) {
 			return false, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -167,7 +167,7 @@ func TestCreateApplication_ProgramInactive(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	_, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	_, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if !errors.Is(err, ErrProgramInactive) {
 		t.Errorf("expected ErrProgramInactive, got %v", err)
 	}
@@ -183,7 +183,7 @@ func TestCreateApplication_AgeTooYoung(t *testing.T) {
 			return &ProgramAgeRequirements{MinAge: &minAge}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -195,7 +195,7 @@ func TestCreateApplication_AgeTooYoung(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	_, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	_, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if !errors.Is(err, ErrAgeTooYoung) {
 		t.Errorf("expected ErrAgeTooYoung, got %v", err)
 	}
@@ -211,7 +211,7 @@ func TestCreateApplication_AgeTooOld(t *testing.T) {
 			return &ProgramAgeRequirements{MaxAge: &maxAge}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -223,7 +223,7 @@ func TestCreateApplication_AgeTooOld(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	_, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	_, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if !errors.Is(err, ErrAgeTooOld) {
 		t.Errorf("expected ErrAgeTooOld, got %v", err)
 	}
@@ -241,7 +241,7 @@ func TestCreateApplication_DuplicateApplication(t *testing.T) {
 			return true, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := CreateApplicationRequest{
 		ProgramID:     uuid.New(),
@@ -253,7 +253,7 @@ func TestCreateApplication_DuplicateApplication(t *testing.T) {
 		Nationality:   "Iraqi",
 	}
 
-	_, err := svc.CreateApplication(context.Background(), uuid.New(), req)
+	_, err := service.CreateApplication(context.Background(), uuid.New(), req)
 	if !errors.Is(err, ErrDuplicateApplication) {
 		t.Errorf("expected ErrDuplicateApplication, got %v", err)
 	}
@@ -277,13 +277,13 @@ func TestUpdateApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{
 		Academic: map[string]any{"gpa": 3.5},
 	}
 
-	app, err := svc.UpdateApplication(context.Background(), userID, appID, req)
+	app, err := service.UpdateApplication(context.Background(), userID, appID, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -306,11 +306,11 @@ func TestUpdateApplication_NotOwner(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{}
 
-	_, err := svc.UpdateApplication(context.Background(), otherUserID, appID, req)
+	_, err := service.UpdateApplication(context.Background(), otherUserID, appID, req)
 	if !errors.Is(err, ErrAccessDenied) {
 		t.Errorf("expected ErrAccessDenied, got %v", err)
 	}
@@ -329,11 +329,11 @@ func TestUpdateApplication_WrongStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := UpdateApplicationRequest{}
 
-	_, err := svc.UpdateApplication(context.Background(), userID, appID, req)
+	_, err := service.UpdateApplication(context.Background(), userID, appID, req)
 	if !errors.Is(err, ErrCannotUpdate) {
 		t.Errorf("expected ErrCannotUpdate, got %v", err)
 	}
@@ -360,9 +360,9 @@ func TestWithdrawApplication_Success(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
-	err := svc.WithdrawApplication(context.Background(), userID, appID)
+	err := service.WithdrawApplication(context.Background(), userID, appID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -382,9 +382,9 @@ func TestWithdrawApplication_NotOwner(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
-	err := svc.WithdrawApplication(context.Background(), otherUserID, appID)
+	err := service.WithdrawApplication(context.Background(), otherUserID, appID)
 	if !errors.Is(err, ErrAccessDenied) {
 		t.Errorf("expected ErrAccessDenied, got %v", err)
 	}
@@ -403,9 +403,9 @@ func TestWithdrawApplication_AlreadyApproved(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
-	err := svc.WithdrawApplication(context.Background(), userID, appID)
+	err := service.WithdrawApplication(context.Background(), userID, appID)
 	if !errors.Is(err, ErrCannotWithdraw) {
 		t.Errorf("expected ErrCannotWithdraw, got %v", err)
 	}
@@ -430,13 +430,13 @@ func TestReviewApplication_Approve(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusApproved,
 	}
 
-	app, err := svc.ReviewApplication(context.Background(), reviewerID, appID, req)
+	app, err := service.ReviewApplication(context.Background(), reviewerID, appID, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -464,13 +464,13 @@ func TestReviewApplication_CannotReviewOwn(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusApproved,
 	}
 
-	_, err := svc.ReviewApplication(context.Background(), userID, appID, req)
+	_, err := service.ReviewApplication(context.Background(), userID, appID, req)
 	if !errors.Is(err, ErrCannotReviewOwn) {
 		t.Errorf("expected ErrCannotReviewOwn, got %v", err)
 	}
@@ -490,13 +490,13 @@ func TestReviewApplication_InvalidCurrentStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusRejected,
 	}
 
-	_, err := svc.ReviewApplication(context.Background(), reviewerID, appID, req)
+	_, err := service.ReviewApplication(context.Background(), reviewerID, appID, req)
 	if !errors.Is(err, ErrInvalidStatus) {
 		t.Errorf("expected ErrInvalidStatus, got %v", err)
 	}
@@ -533,9 +533,9 @@ func TestReviewApplication_ApproveCreatesStudent(t *testing.T) {
 		UpdateFunc: func(ctx context.Context, app *Application) error { return nil },
 	}
 	creator := &mockStudentCreator{}
-	svc := NewService(mock, nil, creator)
+	service := NewService(mock, nil, creator)
 
-	_, err := svc.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
+	_, err := service.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -560,9 +560,9 @@ func TestReviewApplication_ApproveStudentCreationFailureIsNonFatal(t *testing.T)
 		UpdateFunc: func(ctx context.Context, app *Application) error { return nil },
 	}
 	creator := &mockStudentCreator{err: errors.New("db error")}
-	svc := NewService(mock, nil, creator)
+	service := NewService(mock, nil, creator)
 
-	app, err := svc.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
+	app, err := service.ReviewApplication(context.Background(), reviewerID, appID, ReviewApplicationRequest{Status: StatusApproved})
 	if err != nil {
 		t.Fatalf("student creation failure should not fail approval, got: %v", err)
 	}
@@ -585,13 +585,13 @@ func TestReviewApplication_InvalidTargetStatus(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewService(mock, nil, nil)
+	service := NewService(mock, nil, nil)
 
 	req := ReviewApplicationRequest{
 		Status: StatusWithdrawn, // invalid review status
 	}
 
-	_, err := svc.ReviewApplication(context.Background(), reviewerID, appID, req)
+	_, err := service.ReviewApplication(context.Background(), reviewerID, appID, req)
 	if !errors.Is(err, ErrInvalidStatus) {
 		t.Errorf("expected ErrInvalidStatus, got %v", err)
 	}

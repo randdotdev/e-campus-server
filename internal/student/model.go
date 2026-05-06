@@ -119,13 +119,13 @@ type TranscriptTotals struct {
 }
 
 type StudentFilters struct {
-	ProgramID    *uuid.UUID
-	CohortYear   *int
-	Stage        *int
-	Status       *string
-	Shift        *string
+	ProgramID     *uuid.UUID
+	CohortYear    *int
+	Stage         *int
+	Status        *string
+	Shift         *string
 	CohortGroupID *uuid.UUID
-	Query        *string
+	Query         *string
 }
 
 // StudentSummary is a read model that includes joined user display fields.

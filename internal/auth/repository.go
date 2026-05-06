@@ -14,7 +14,7 @@ import (
 type TokenRepository interface {
 	CreateToken(ctx context.Context, token *RefreshToken) error
 	GetTokenByHash(ctx context.Context, hash string) (*RefreshToken, error)
-	MarkTokenUsed(ctx context.Context, hash string) error
+	MarkTokenUsed(ctx context.Context, hash string) (alreadyUsed bool, err error)
 	InvalidateFamily(ctx context.Context, family uuid.UUID) error
 	DeleteToken(ctx context.Context, hash string) error
 	DeleteUserTokens(ctx context.Context, userID uuid.UUID) error
@@ -29,17 +29,10 @@ func NewTokenRepository(rdb *redis.Client) TokenRepository {
 	return &tokenRepository{rdb: rdb}
 }
 
-func tokenKey(hash string) string {
-	return fmt.Sprintf("token:%s", hash)
-}
-
-func userTokensKey(userID uuid.UUID) string {
-	return fmt.Sprintf("user_tokens:%s", userID.String())
-}
-
-func familyKey(family uuid.UUID) string {
-	return fmt.Sprintf("family:%s", family.String())
-}
+func tokenKey(hash string) string       { return fmt.Sprintf("token:%s", hash) }
+func tokenUsedKey(hash string) string   { return fmt.Sprintf("token:used:%s", hash) }
+func userTokensKey(id uuid.UUID) string { return fmt.Sprintf("user_tokens:%s", id) }
+func familyKey(id uuid.UUID) string     { return fmt.Sprintf("family:%s", id) }
 
 func (r *tokenRepository) CreateToken(ctx context.Context, token *RefreshToken) error {
 	token.ID = uuid.New()
@@ -58,9 +51,9 @@ func (r *tokenRepository) CreateToken(ctx context.Context, token *RefreshToken) 
 	pipe := r.rdb.Pipeline()
 	pipe.Set(ctx, tokenKey(token.TokenHash), data, ttl)
 	pipe.SAdd(ctx, userTokensKey(token.UserID), token.TokenHash)
-	pipe.Expire(ctx, userTokensKey(token.UserID), ttl)
+	pipe.ExpireGT(ctx, userTokensKey(token.UserID), ttl)
 	pipe.SAdd(ctx, familyKey(token.Family), token.TokenHash)
-	pipe.Expire(ctx, familyKey(token.Family), ttl)
+	pipe.ExpireGT(ctx, familyKey(token.Family), ttl)
 
 	_, err = pipe.Exec(ctx)
 	return err
@@ -82,32 +75,17 @@ func (r *tokenRepository) GetTokenByHash(ctx context.Context, hash string) (*Ref
 	return &token, nil
 }
 
-func (r *tokenRepository) MarkTokenUsed(ctx context.Context, hash string) error {
-	key := tokenKey(hash)
+func (r *tokenRepository) MarkTokenUsed(ctx context.Context, hash string) (bool, error) {
+	ttl := r.rdb.TTL(ctx, tokenKey(hash)).Val()
+	if ttl <= 0 {
+		return false, ErrTokenNotFound
+	}
 
-	data, err := r.rdb.Get(ctx, key).Bytes()
+	set, err := r.rdb.SetNX(ctx, tokenUsedKey(hash), "1", ttl).Result()
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return ErrTokenNotFound
-		}
-		return err
+		return false, err
 	}
-
-	var token RefreshToken
-	if err := json.Unmarshal(data, &token); err != nil {
-		return err
-	}
-
-	now := time.Now()
-	token.UsedAt = &now
-
-	newData, err := json.Marshal(token)
-	if err != nil {
-		return err
-	}
-
-	ttl := r.rdb.TTL(ctx, key).Val()
-	return r.rdb.Set(ctx, key, newData, ttl).Err()
+	return !set, nil
 }
 
 func (r *tokenRepository) InvalidateFamily(ctx context.Context, family uuid.UUID) error {
@@ -115,16 +93,33 @@ func (r *tokenRepository) InvalidateFamily(ctx context.Context, family uuid.UUID
 	if err != nil {
 		return err
 	}
-
 	if len(hashes) == 0 {
 		return nil
 	}
 
+	userHashes := make(map[uuid.UUID][]string)
+	for _, h := range hashes {
+		token, err := r.GetTokenByHash(ctx, h)
+		if err != nil {
+			continue
+		}
+		userHashes[token.UserID] = append(userHashes[token.UserID], h)
+	}
+
 	pipe := r.rdb.Pipeline()
-	for _, hash := range hashes {
-		pipe.Del(ctx, tokenKey(hash))
+	for _, h := range hashes {
+		pipe.Del(ctx, tokenKey(h))
+		pipe.Del(ctx, tokenUsedKey(h))
+	}
+	for userID, hs := range userHashes {
+		args := make([]interface{}, len(hs))
+		for i, h := range hs {
+			args[i] = h
+		}
+		pipe.SRem(ctx, userTokensKey(userID), args...)
 	}
 	pipe.Del(ctx, familyKey(family))
+
 	_, err = pipe.Exec(ctx)
 	return err
 }
@@ -140,6 +135,7 @@ func (r *tokenRepository) DeleteToken(ctx context.Context, hash string) error {
 
 	pipe := r.rdb.Pipeline()
 	pipe.Del(ctx, tokenKey(hash))
+	pipe.Del(ctx, tokenUsedKey(hash))
 	pipe.SRem(ctx, userTokensKey(token.UserID), hash)
 	pipe.SRem(ctx, familyKey(token.Family), hash)
 	_, err = pipe.Exec(ctx)
@@ -151,14 +147,14 @@ func (r *tokenRepository) DeleteUserTokens(ctx context.Context, userID uuid.UUID
 	if err != nil {
 		return err
 	}
-
 	if len(hashes) == 0 {
 		return nil
 	}
 
 	pipe := r.rdb.Pipeline()
-	for _, hash := range hashes {
-		pipe.Del(ctx, tokenKey(hash))
+	for _, h := range hashes {
+		pipe.Del(ctx, tokenKey(h))
+		pipe.Del(ctx, tokenUsedKey(h))
 	}
 	pipe.Del(ctx, userTokensKey(userID))
 	_, err = pipe.Exec(ctx)
@@ -172,8 +168,8 @@ func (r *tokenRepository) GetUserSessions(ctx context.Context, userID uuid.UUID)
 	}
 
 	var sessions []RefreshToken
-	for _, hash := range hashes {
-		token, err := r.GetTokenByHash(ctx, hash)
+	for _, h := range hashes {
+		token, err := r.GetTokenByHash(ctx, h)
 		if err != nil {
 			continue
 		}

@@ -1,0 +1,2 @@
+ALTER TABLE roles RENAME COLUMN permission TO level;
+ALTER TABLE roles ADD COLUMN domain VARCHAR(50);

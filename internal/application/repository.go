@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
@@ -84,103 +85,92 @@ func (r *Repository) HasPendingApplication(ctx context.Context, userID, programI
 }
 
 func (r *Repository) List(ctx context.Context, params pagination.PageParams, filters ApplicationFilters) ([]Application, bool, error) {
-	query := strings.Builder{}
-	args := []any{}
+	var conditions []string
+	var args []any
 	argN := 1
-
-	query.WriteString(`
-		SELECT a.* FROM applications a
-		JOIN programs p ON a.program_id = p.id
-		JOIN departments d ON p.department_id = d.id
-		WHERE 1=1`)
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (a.created_at, a.id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(a.created_at, a.id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
-
 	if params.Query != "" {
-		query.WriteString(fmt.Sprintf(`
-			AND EXISTS (
-				SELECT 1 FROM users u
-				WHERE u.id = a.user_id
-				AND (u.email ILIKE $%d OR u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d)
-			)`, argN, argN, argN))
+		conditions = append(conditions, fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM users u WHERE u.id = a.user_id AND (u.email ILIKE $%d OR u.full_name_en ILIKE $%d OR u.full_name_local ILIKE $%d))",
+			argN, argN, argN,
+		))
 		args = append(args, "%"+pagination.EscapeLike(params.Query)+"%")
 		argN++
 	}
-
 	if filters.ProgramID != nil {
-		query.WriteString(fmt.Sprintf(" AND a.program_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.program_id = $%d", argN))
 		args = append(args, *filters.ProgramID)
 		argN++
 	}
-
 	if filters.DepartmentID != nil {
-		query.WriteString(fmt.Sprintf(" AND p.department_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("p.department_id = $%d", argN))
 		args = append(args, *filters.DepartmentID)
 		argN++
 	}
-
 	if filters.CollegeID != nil {
-		query.WriteString(fmt.Sprintf(" AND d.college_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("d.college_id = $%d", argN))
 		args = append(args, *filters.CollegeID)
 		argN++
 	}
-
 	if filters.Status != nil {
-		query.WriteString(fmt.Sprintf(" AND a.status = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.status = $%d", argN))
 		args = append(args, *filters.Status)
 		argN++
 	}
-
 	if filters.AdmissionYear != nil {
-		query.WriteString(fmt.Sprintf(" AND a.admission_year = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.admission_year = $%d", argN))
 		args = append(args, *filters.AdmissionYear)
 		argN++
 	}
-
 	if filters.Shift != nil {
-		query.WriteString(fmt.Sprintf(" AND a.shift = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.shift = $%d", argN))
 		args = append(args, *filters.Shift)
 		argN++
 	}
-
 	if filters.Tuition != nil {
-		query.WriteString(fmt.Sprintf(" AND a.tuition = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.tuition = $%d", argN))
 		args = append(args, *filters.Tuition)
 		argN++
 	}
-
 	if filters.Nationality != nil {
-		query.WriteString(fmt.Sprintf(" AND a.nationality = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.nationality = $%d", argN))
 		args = append(args, *filters.Nationality)
 		argN++
 	}
-
 	if filters.Gender != nil {
-		query.WriteString(fmt.Sprintf(" AND a.gender = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.gender = $%d", argN))
 		args = append(args, *filters.Gender)
 		argN++
 	}
-
 	if filters.UserID != nil {
-		query.WriteString(fmt.Sprintf(" AND a.user_id = $%d", argN))
+		conditions = append(conditions, fmt.Sprintf("a.user_id = $%d", argN))
 		args = append(args, *filters.UserID)
 		argN++
 	}
 
-	query.WriteString(" ORDER BY a.created_at DESC, a.id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf(`
+		SELECT a.* FROM applications a
+		JOIN programs p ON a.program_id = p.id
+		JOIN departments d ON p.department_id = d.id
+		%s
+		ORDER BY a.created_at DESC, a.id DESC LIMIT $%d`, where, argN)
 	args = append(args, params.Limit+1)
 
 	var apps []Application
-	if err := r.db.SelectContext(ctx, &apps, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &apps, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -193,28 +183,28 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 }
 
 func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID, params pagination.PageParams) ([]Application, bool, error) {
-	query := strings.Builder{}
+	conditions := []string{fmt.Sprintf("user_id = $%d", 1)}
 	args := []any{userID}
 	argN := 2
-
-	query.WriteString("SELECT * FROM applications WHERE user_id = $1")
 
 	if params.Cursor != "" {
 		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
 		if err != nil {
 			return nil, false, err
 		}
-		query.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", argN, argN+1))
+		conditions = append(conditions, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argN, argN+1))
 		args = append(args, createdAt, id)
 		argN += 2
 	}
 
-	query.WriteString(" ORDER BY created_at DESC, id DESC")
-	query.WriteString(fmt.Sprintf(" LIMIT $%d", argN))
+	query := fmt.Sprintf(
+		"SELECT * FROM applications WHERE %s ORDER BY created_at DESC, id DESC LIMIT $%d",
+		strings.Join(conditions, " AND "), argN,
+	)
 	args = append(args, params.Limit+1)
 
 	var apps []Application
-	if err := r.db.SelectContext(ctx, &apps, query.String(), args...); err != nil {
+	if err := r.db.SelectContext(ctx, &apps, query, args...); err != nil {
 		return nil, false, err
 	}
 
@@ -224,6 +214,33 @@ func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID, params pa
 	}
 
 	return apps, hasMore, nil
+}
+
+// Authz enrichment
+
+func (r *Repository) EnrichApplication(ctx context.Context, id uuid.UUID) (authz.EnrichedResource, error) {
+	var h ProgramHierarchy
+	query := `
+		SELECT a.program_id, p.department_id, d.college_id
+		FROM applications a
+		JOIN programs p ON p.id = a.program_id
+		JOIN departments d ON d.id = p.department_id
+		WHERE a.id = $1`
+
+	if err := r.db.GetContext(ctx, &h, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return authz.EnrichedResource{Type: "application", ID: id}, nil
+		}
+		return authz.EnrichedResource{}, err
+	}
+
+	return authz.EnrichedResource{
+		Type:         "application",
+		ID:           id,
+		ProgramID:    &h.ProgramID,
+		DepartmentID: &h.DepartmentID,
+		CollegeID:    &h.CollegeID,
+	}, nil
 }
 
 // Program lookup operations

@@ -2,6 +2,8 @@ package content
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +44,12 @@ type ContentRepository interface {
 
 	// Classes
 	GetClassesInRange(ctx context.Context, studentID uuid.UUID, from, to time.Time) ([]CalendarEntry, error)
+
+	// Offering resolvers for permission checks
+	GetOfferingIDBySectionID(ctx context.Context, sectionID uuid.UUID) (uuid.UUID, error)
+	GetOfferingIDByLessonID(ctx context.Context, lessonID uuid.UUID) (uuid.UUID, error)
+	GetOfferingIDByAttachmentID(ctx context.Context, attachmentID uuid.UUID) (uuid.UUID, error)
+	GetOfferingIDByScheduleID(ctx context.Context, scheduleID uuid.UUID) (uuid.UUID, error)
 }
 
 type OfferingChecker interface {
@@ -388,6 +396,38 @@ func (s *Service) RemoveSchedule(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) GetMyClasses(ctx context.Context, studentID uuid.UUID, from, to time.Time) ([]CalendarEntry, error) {
 	return s.repo.GetClassesInRange(ctx, studentID, from, to)
+}
+
+func (s *Service) GetOfferingIDBySectionID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	offeringID, err := s.repo.GetOfferingIDBySectionID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.UUID{}, ErrSectionNotFound
+	}
+	return offeringID, err
+}
+
+func (s *Service) GetOfferingIDByLessonID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	offeringID, err := s.repo.GetOfferingIDByLessonID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.UUID{}, ErrLessonNotFound
+	}
+	return offeringID, err
+}
+
+func (s *Service) GetOfferingIDByAttachmentID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	offeringID, err := s.repo.GetOfferingIDByAttachmentID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.UUID{}, ErrAttachmentNotFound
+	}
+	return offeringID, err
+}
+
+func (s *Service) GetOfferingIDByScheduleID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	offeringID, err := s.repo.GetOfferingIDByScheduleID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.UUID{}, ErrScheduleNotFound
+	}
+	return offeringID, err
 }
 
 func isDuplicateKeyError(err error) bool {
