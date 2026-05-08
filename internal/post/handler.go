@@ -676,6 +676,11 @@ func (h *Handler) isAdminForScope(c *gin.Context, scopeType string, scopeID *uui
 			return false
 		}
 		return authz.Check(c, authz.ResourcePost, authz.ActionCreate, *scopeID)
+	case "course":
+		if scopeID == nil {
+			return false
+		}
+		return authz.Check(c, authz.ResourceCourse, authz.ActionGet, *scopeID)
 	}
 	return false
 }

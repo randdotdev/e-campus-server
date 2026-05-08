@@ -298,6 +298,7 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 			Level:      req.Role.Level,
 			ScopeType:  req.Role.ScopeType,
 			ScopeID:    req.Role.ScopeID,
+			Domain:     req.Role.Domain,
 			AssignedBy: &adminID,
 		}
 	}
@@ -398,6 +399,7 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 		Level:      req.Level,
 		ScopeType:  req.ScopeType,
 		ScopeID:    req.ScopeID,
+		Domain:     req.Domain,
 		AssignedBy: &adminID,
 	}
 

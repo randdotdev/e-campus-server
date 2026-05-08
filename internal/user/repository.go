@@ -398,11 +398,11 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 	if role != nil {
 		role.UserID = user.ID
 		roleQuery := `
-			INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by, domain)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING id, created_at`
 		if err := tx.QueryRowxContext(ctx, roleQuery,
-			role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy,
+			role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.Domain,
 		).Scan(&role.ID, &role.CreatedAt); err != nil {
 			return err
 		}
@@ -413,12 +413,12 @@ func (r *Repository) CreateStaffUserTx(ctx context.Context, user *User, profile 
 
 func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 	query := `
-		INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO roles (user_id, title_en, title_local, level, scope_type, scope_id, assigned_by, expires_at, domain)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt, role.Domain,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if err != nil && strings.Contains(err.Error(), "roles_user_id_key") {
@@ -430,12 +430,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role) error {
 func (r *Repository) UpdateRole(ctx context.Context, role *Role) error {
 	query := `
 		UPDATE roles
-		SET title_en = $2, title_local = $3, level = $4, scope_type = $5, scope_id = $6, assigned_by = $7, expires_at = $8
+		SET title_en = $2, title_local = $3, level = $4, scope_type = $5, scope_id = $6, assigned_by = $7, expires_at = $8, domain = $9
 		WHERE user_id = $1
 		RETURNING id, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt,
+		role.UserID, role.TitleEN, role.TitleLocal, role.Level, role.ScopeType, role.ScopeID, role.AssignedBy, role.ExpiresAt, role.Domain,
 	).Scan(&role.ID, &role.CreatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {

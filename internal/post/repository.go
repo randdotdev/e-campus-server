@@ -498,6 +498,8 @@ func (r *ScopeRepo) CanAccessScope(ctx context.Context, userID uuid.UUID, scopeT
 		return r.isEnrolledInDepartment(ctx, userID, *scopeID)
 	case ScopeProgram:
 		return r.isEnrolledInProgram(ctx, userID, *scopeID)
+	case "course":
+		return r.isMemberOfCourse(ctx, userID, *scopeID)
 	}
 
 	return false, nil
@@ -542,6 +544,22 @@ func (r *ScopeRepo) isEnrolledInProgram(ctx context.Context, userID, programID u
 	return exists, err
 }
 
+func (r *ScopeRepo) isMemberOfCourse(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM course_enrollments ce
+			JOIN course_offerings co ON ce.offering_id = co.id
+			WHERE co.course_id = $2 AND ce.student_id = $1
+			UNION
+			SELECT 1 FROM course_teachers ct
+			JOIN course_offerings co ON ct.offering_id = co.id
+			WHERE co.course_id = $2 AND ct.teacher_id = $1
+		)`
+	err := r.db.GetContext(ctx, &exists, query, userID, courseID)
+	return exists, err
+}
+
 func (r *ScopeRepo) ScopeExists(ctx context.Context, scopeType string, scopeID uuid.UUID) (bool, error) {
 	var exists bool
 	var query string
@@ -553,6 +571,8 @@ func (r *ScopeRepo) ScopeExists(ctx context.Context, scopeType string, scopeID u
 		query = `SELECT EXISTS(SELECT 1 FROM departments WHERE id = $1 AND is_active = true)`
 	case ScopeProgram:
 		query = `SELECT EXISTS(SELECT 1 FROM programs WHERE id = $1 AND is_active = true)`
+	case "course":
+		query = `SELECT EXISTS(SELECT 1 FROM courses WHERE id = $1 AND is_active = true)`
 	default:
 		return false, nil
 	}

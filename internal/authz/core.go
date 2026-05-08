@@ -16,7 +16,9 @@ func evaluate(identity *ResolvedIdentity, enriched *EnrichedResource, policies [
 
 func policyMatches(identity *ResolvedIdentity, enriched *EnrichedResource, p Policy) bool {
 	if policyRequiresCourseRole(p) {
-		return actorHasCourseRole(identity, enriched, p)
+		if !actorHasCourseRole(identity, enriched, p) {
+			return false
+		}
 	}
 	if policyRequiresScope(p) {
 		if identity.InstitutionRole == nil {
@@ -26,10 +28,14 @@ func policyMatches(identity *ResolvedIdentity, enriched *EnrichedResource, p Pol
 		if permissionRank[r.Level] < permissionRank[*p.MinLevel] {
 			return false
 		}
-		return scopeCovers(r.ScopeType, r.ScopeID, *p.ScopeType, enriched)
+		if !scopeCovers(r.ScopeType, r.ScopeID, *p.ScopeType, enriched) {
+			return false
+		}
 	}
 	if policyRequiresDomain(p) {
-		return actorHasDomain(identity, p)
+		if !actorHasDomain(identity, p) {
+			return false
+		}
 	}
 	return true
 }

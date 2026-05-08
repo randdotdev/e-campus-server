@@ -45,6 +45,7 @@ type CreateRoleRequest struct {
 	Level      string     `json:"level" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
+	Domain     *string    `json:"domain" binding:"omitempty,oneof=administration accountant registrar scheduler admissions hr"`
 }
 
 type AssignRoleRequest struct {
@@ -53,6 +54,7 @@ type AssignRoleRequest struct {
 	Level      string     `json:"level" binding:"required,oneof=super_admin admin operator viewer"`
 	ScopeType  string     `json:"scope_type" binding:"required,oneof=platform university college department program"`
 	ScopeID    *uuid.UUID `json:"scope_id"`
+	Domain     *string    `json:"domain" binding:"omitempty,oneof=administration accountant registrar scheduler admissions hr"`
 }
 
 type AdminSetPasswordRequest struct {
@@ -115,6 +117,7 @@ type RoleResponse struct {
 	Level      string     `json:"level"`
 	ScopeType  string     `json:"scope_type"`
 	ScopeID    *uuid.UUID `json:"scope_id,omitempty"`
+	Domain     *string    `json:"domain,omitempty"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 }
 
@@ -182,6 +185,7 @@ func ToRoleResponse(r *Role) *RoleResponse {
 		Level:      r.Level,
 		ScopeType:  r.ScopeType,
 		ScopeID:    r.ScopeID,
+		Domain:     r.Domain,
 		ExpiresAt:  r.ExpiresAt,
 	}
 }
