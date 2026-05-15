@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -62,8 +62,16 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	isAdmin := h.isAdminForScope(c, req.ScopeType, req.ScopeID)
 
-	// Check if user can create posts at this scope (must be admin or member)
-	if !isAdmin {
+	if req.ScopeType == ScopeCourse {
+		if req.ScopeID == nil {
+			response.BadRequest(c, "scope_id required for course scope")
+			return
+		}
+		if !isAdmin {
+			response.Forbidden(c, "only teaching staff can post in a course")
+			return
+		}
+	} else if !isAdmin {
 		canAccess, err := h.service.CanAccessScope(c.Request.Context(), userID, req.ScopeType, req.ScopeID)
 		if err != nil {
 			h.log.Error("check scope access failed", zap.Error(err))
@@ -87,20 +95,15 @@ func (h *Handler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	resp := PostResponse{
-		ID:           post.ID,
-		ScopeType:    post.ScopeType,
-		ScopeID:      post.ScopeID,
-		Body:         post.Body,
-		PublishAt:    post.PublishAt,
-		ExpiresAt:    post.ExpiresAt,
-		Status:       GetStatus(post, time.Now()),
-		AuthorID:     post.AuthorID,
-		LikeCount:    0,
-		CommentCount: 0,
-		CreatedAt:    post.CreatedAt,
+	// Fetch the full post with author details so the response mirrors what ListPosts returns.
+	full, atts, ments, _, err := h.service.GetPost(c.Request.Context(), post.ID, userID, true)
+	if err != nil {
+		h.log.Error("fetch created post failed", zap.Error(err))
+		response.InternalError(c)
+		return
 	}
-	response.Created(c, resp)
+
+	response.Created(c, ToPostResponse(full, atts, ments, false, time.Now()))
 }
 
 func (h *Handler) GetPost(c *gin.Context) {
@@ -256,7 +259,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 
 	isAdmin := h.isAdminForScope(c, existingPost.ScopeType, existingPost.ScopeID)
 
-	post, err := h.service.UpdatePost(c.Request.Context(), postID, userID, isAdmin, req.Body, req.PublishAt, req.ExpiresAt)
+	_, err = h.service.UpdatePost(c.Request.Context(), postID, userID, isAdmin, req.Body, req.PublishAt, req.ExpiresAt, req.ClearSchedule)
 	if err != nil {
 		if errors.Is(err, ErrPostNotFound) {
 			response.NotFound(c, "post not found")
@@ -271,20 +274,15 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	resp := PostResponse{
-		ID:        post.ID,
-		ScopeType: post.ScopeType,
-		ScopeID:   post.ScopeID,
-		Body:      post.Body,
-		IsPinned:  post.IsPinned,
-		PublishAt: post.PublishAt,
-		ExpiresAt: post.ExpiresAt,
-		Status:    GetStatus(post, time.Now()),
-		AuthorID:  post.AuthorID,
-		CreatedAt: post.CreatedAt,
-		UpdatedAt: post.UpdatedAt,
+	// Fetch the full post with author details so the response mirrors what ListPosts returns.
+	full, atts, ments, isLiked, err := h.service.GetPost(c.Request.Context(), postID, userID, isAdmin)
+	if err != nil {
+		h.log.Error("fetch updated post failed", zap.Error(err))
+		response.InternalError(c)
+		return
 	}
-	response.OK(c, resp)
+
+	response.OK(c, ToPostResponse(full, atts, ments, isLiked, time.Now()))
 }
 
 func (h *Handler) DeletePost(c *gin.Context) {
@@ -676,11 +674,13 @@ func (h *Handler) isAdminForScope(c *gin.Context, scopeType string, scopeID *uui
 			return false
 		}
 		return authz.Check(c, authz.ResourcePost, authz.ActionCreate, *scopeID)
-	case "course":
+	case ScopeCourse:
 		if scopeID == nil {
 			return false
 		}
-		return authz.Check(c, authz.ResourceCourse, authz.ActionGet, *scopeID)
+		role := authz.CourseRole(c, *scopeID)
+		return role == authz.CourseRoleTeacher ||
+			role == authz.CourseRoleAssistant
 	}
 	return false
 }

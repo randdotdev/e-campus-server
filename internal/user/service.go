@@ -5,13 +5,29 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/ranjdotdev/e-campus-server/internal/auth"
 	"github.com/ranjdotdev/e-campus-server/internal/authz"
+	"github.com/ranjdotdev/e-campus-server/internal/ctxversion"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/ranjdotdev/e-campus-server/internal/student"
+	"github.com/ranjdotdev/e-campus-server/internal/university"
+	"golang.org/x/sync/errgroup"
 )
 
 type RoleManager interface {
 	CanManageRole(ctx context.Context, actor, target *auth.RoleClaim) bool
+}
+
+type StudentReader interface {
+	GetStudentByUserID(ctx context.Context, userID uuid.UUID) (*student.StudentSummary, error)
+}
+
+type UniversityReader interface {
+	GetProgram(ctx context.Context, id uuid.UUID) (*university.Program, error)
+	GetDepartment(ctx context.Context, id uuid.UUID) (*university.Department, error)
+	GetCollege(ctx context.Context, id uuid.UUID) (*university.College, error)
+	ListColleges(ctx context.Context, params pagination.PageParams, filters university.CollegeFilters) ([]university.College, bool, error)
 }
 
 type UserRepository interface {
@@ -39,14 +55,17 @@ type Notifier interface {
 }
 
 type Service struct {
-	repo     UserRepository
-	tokens   auth.TokenRepository
-	notifier Notifier
-	roles    RoleManager
+	repo       UserRepository
+	tokens     auth.TokenRepository
+	notifier   Notifier
+	roles      RoleManager
+	students   StudentReader
+	university UniversityReader
+	rdb        *redis.Client
 }
 
-func NewService(repo UserRepository, tokens auth.TokenRepository, notifier Notifier, roles RoleManager) *Service {
-	return &Service{repo: repo, tokens: tokens, notifier: notifier, roles: roles}
+func NewService(repo UserRepository, tokens auth.TokenRepository, notifier Notifier, roles RoleManager, students StudentReader, university UniversityReader, rdb *redis.Client) *Service {
+	return &Service{repo: repo, tokens: tokens, notifier: notifier, roles: roles, students: students, university: university, rdb: rdb}
 }
 
 func (s *Service) GetProfile(ctx context.Context, userID uuid.UUID) (*User, error) {
@@ -307,6 +326,10 @@ func (s *Service) CreateStaffUser(ctx context.Context, adminID uuid.UUID, actorR
 		return nil, nil, nil, err
 	}
 
+	if role != nil {
+		ctxversion.Bump(ctx, s.rdb, user.ID)
+	}
+
 	return user, profile, role, nil
 }
 
@@ -414,6 +437,7 @@ func (s *Service) AssignRole(ctx context.Context, adminID, targetUserID uuid.UUI
 	}
 
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
+	ctxversion.Bump(ctx, s.rdb, targetUserID)
 
 	if s.notifier != nil {
 		body := "You have been assigned the role: " + role.Level + " (" + role.ScopeType + ")"
@@ -454,6 +478,7 @@ func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUI
 	}
 
 	_ = s.tokens.DeleteUserTokens(ctx, targetUserID)
+	ctxversion.Bump(ctx, s.rdb, targetUserID)
 
 	if s.notifier != nil {
 		body := "Your role has been removed."
@@ -461,6 +486,157 @@ func (s *Service) RemoveRole(ctx context.Context, adminID, targetUserID uuid.UUI
 	}
 
 	return nil
+}
+
+func (s *Service) ResolveUserContext(ctx context.Context, userID uuid.UUID, roleClaim *auth.RoleClaim) (*UserContextResponse, error) {
+	u, err := s.repo.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	role, err := s.repo.GetRole(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &UserContextResponse{
+		User:    ToUserResponse(u),
+		Role:    ToRoleResponse(role),
+		Scopes:  []ScopeRefResponse{},
+		Version: int(ctxversion.Get(ctx, s.rdb, userID)),
+	}
+
+	resp.Scopes = append(resp.Scopes, ScopeRefResponse{Name: "University", Type: "university"})
+
+	studentRecord, _ := s.students.GetStudentByUserID(ctx, userID)
+	if studentRecord != nil {
+		program, dept, college := s.resolveStudentHierarchy(ctx, studentRecord.ProgramID)
+		if program != nil && dept != nil && college != nil {
+			resp.Student = &StudentContextResponse{
+				Program:    ScopeRefResponse{ID: program.ID, Name: program.NameEN, NameLocal: program.NameLocal, Type: "program"},
+				Department: ScopeRefResponse{ID: dept.ID, Name: dept.NameEN, NameLocal: dept.NameLocal, Type: "department"},
+				College:    ScopeRefResponse{ID: college.ID, Name: college.NameEN, NameLocal: college.NameLocal, Type: "college"},
+			}
+			resp.Scopes = append(resp.Scopes, resp.Student.College, resp.Student.Department, resp.Student.Program)
+		}
+	}
+
+	if role != nil && role.ScopeType != "" && role.ScopeType != "university" && role.ScopeType != "platform" {
+		alreadyHas := false
+		for _, sc := range resp.Scopes {
+			if sc.Type == role.ScopeType && role.ScopeID != nil && sc.ID == *role.ScopeID {
+				alreadyHas = true
+				break
+			}
+		}
+		if !alreadyHas {
+			scopeName, scopeNameLocal := s.resolveScopeName(ctx, role.ScopeType, role.ScopeID)
+			resp.Scopes = append(resp.Scopes, ScopeRefResponse{
+				ID:        derefUUID(role.ScopeID),
+				Name:      scopeName,
+				NameLocal: scopeNameLocal,
+				Type:      role.ScopeType,
+			})
+		}
+	}
+
+	if isUniversityAdmin(roleClaim) {
+		colleges, _, _ := s.university.ListColleges(ctx, pagination.PageParams{Limit: 100}, university.CollegeFilters{IsActive: ptrBool(true)})
+		for _, c := range colleges {
+			resp.AccessibleColleges = append(resp.AccessibleColleges, ScopeRefResponse{
+				ID:        c.ID,
+				Name:      c.NameEN,
+				NameLocal: c.NameLocal,
+				Type:      "college",
+			})
+		}
+	}
+
+	return resp, nil
+}
+
+func (s *Service) resolveStudentHierarchy(ctx context.Context, programID uuid.UUID) (*university.Program, *university.Department, *university.College) {
+	var program *university.Program
+	var dept *university.Department
+	var college *university.College
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		p, err := s.university.GetProgram(gctx, programID)
+		if err != nil {
+			return err
+		}
+		program = p
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, nil, nil
+	}
+	if program == nil {
+		return nil, nil, nil
+	}
+
+	g, gctx = errgroup.WithContext(ctx)
+	g.Go(func() error {
+		d, err := s.university.GetDepartment(gctx, program.DepartmentID)
+		if err != nil {
+			return err
+		}
+		dept = d
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return program, nil, nil
+	}
+	if dept == nil {
+		return program, nil, nil
+	}
+
+	college, _ = s.university.GetCollege(ctx, dept.CollegeID)
+	return program, dept, college
+}
+
+func (s *Service) resolveScopeName(ctx context.Context, scopeType string, scopeID *uuid.UUID) (string, *string) {
+	if scopeID == nil {
+		return "", nil
+	}
+	switch scopeType {
+	case "college":
+		c, _ := s.university.GetCollege(ctx, *scopeID)
+		if c != nil {
+			return c.NameEN, c.NameLocal
+		}
+	case "department":
+		d, _ := s.university.GetDepartment(ctx, *scopeID)
+		if d != nil {
+			return d.NameEN, d.NameLocal
+		}
+	case "program":
+		p, _ := s.university.GetProgram(ctx, *scopeID)
+		if p != nil {
+			return p.NameEN, p.NameLocal
+		}
+	}
+	return "", nil
+}
+
+func isUniversityAdmin(role *auth.RoleClaim) bool {
+	if role == nil {
+		return false
+	}
+	return (role.Level == "admin" || role.Level == "super_admin") &&
+		(role.ScopeType == "university" || role.ScopeType == "platform")
+}
+
+func derefUUID(id *uuid.UUID) uuid.UUID {
+	if id == nil {
+		return uuid.Nil
+	}
+	return *id
+}
+
+func ptrBool(b bool) *bool {
+	return &b
 }
 
 func (s *Service) validateRoleScope(ctx context.Context, scopeType string, scopeID *uuid.UUID) error {

@@ -51,7 +51,8 @@ func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*Post
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title_en AS author_role_title
+			r.title_en AS author_role_title,
+			r.title_local AS author_role_title_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
@@ -97,7 +98,8 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title_en AS author_role_title
+			r.title_en AS author_role_title,
+			r.title_local AS author_role_title_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
@@ -159,7 +161,8 @@ func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params 
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
-			r.title_en AS author_role_title
+			r.title_en AS author_role_title,
+			r.title_local AS author_role_title_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
@@ -473,13 +476,19 @@ func (r *ScopeRepo) CanAccessScope(ctx context.Context, userID uuid.UUID, scopeT
 		return true, nil
 	}
 
-	// Check if user has a role at or above this scope
+	// All non-university scopes require a scopeID
+	if scopeID == nil {
+		return false, nil
+	}
+
+	// Check if user has a platform/university-level role (global read access)
+	// or a role scoped exactly to this resource
 	var hasRole bool
 	roleQuery := `
 		SELECT EXISTS(
 			SELECT 1 FROM roles
 			WHERE user_id = $1 AND (
-				scope_type = 'university' OR
+				scope_type IN ('platform', 'university') OR
 				(scope_type = $2 AND scope_id = $3)
 			)
 		)`
@@ -498,7 +507,7 @@ func (r *ScopeRepo) CanAccessScope(ctx context.Context, userID uuid.UUID, scopeT
 		return r.isEnrolledInDepartment(ctx, userID, *scopeID)
 	case ScopeProgram:
 		return r.isEnrolledInProgram(ctx, userID, *scopeID)
-	case "course":
+	case ScopeCourse:
 		return r.isMemberOfCourse(ctx, userID, *scopeID)
 	}
 

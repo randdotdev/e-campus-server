@@ -124,6 +124,20 @@ func (h *Handler) GetMyRole(c *gin.Context) {
 	response.OK(c, ToRoleResponse(role))
 }
 
+func (h *Handler) GetMyContext(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	role := middleware.GetUserRole(c)
+
+	ctx, err := h.service.ResolveUserContext(c.Request.Context(), userID, role)
+	if err != nil {
+		h.log.Error("resolve user context failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ctx)
+}
+
 func (h *Handler) GetMySessions(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 

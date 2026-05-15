@@ -27,10 +27,11 @@ type Post struct {
 
 type PostWithAuthor struct {
 	Post
-	AuthorName      string  `db:"author_name"`
-	AuthorNameLocal *string `db:"author_name_local"`
-	AuthorAvatar    *string `db:"author_avatar"`
-	AuthorRoleTitle *string `db:"author_role_title"`
+	AuthorName           string  `db:"author_name"`
+	AuthorNameLocal      *string `db:"author_name_local"`
+	AuthorAvatar         *string `db:"author_avatar"`
+	AuthorRoleTitle      *string `db:"author_role_title"`
+	AuthorRoleTitleLocal *string `db:"author_role_title_local"`
 }
 
 type PostAttachment struct {

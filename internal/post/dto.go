@@ -19,9 +19,10 @@ type CreateCommentRequest struct {
 }
 
 type UpdatePostRequest struct {
-	Body      *string    `json:"body" binding:"omitempty,min=1,max=10000"`
-	PublishAt *time.Time `json:"publish_at"`
-	ExpiresAt *time.Time `json:"expires_at"`
+	Body          *string    `json:"body" binding:"omitempty,min=1,max=10000"`
+	PublishAt     *time.Time `json:"publish_at"`
+	ExpiresAt     *time.Time `json:"expires_at"`
+	ClearSchedule bool       `json:"clear_schedule"`
 }
 
 type AddAttachmentRequest struct {
@@ -51,7 +52,8 @@ type PostResponse struct {
 	AuthorName      string               `json:"author_name"`
 	AuthorNameLocal *string              `json:"author_name_local,omitempty"`
 	AuthorAvatar    *string              `json:"author_avatar,omitempty"`
-	AuthorRoleTitle *string              `json:"author_role_title,omitempty"`
+	AuthorRoleTitle      *string         `json:"author_role_title,omitempty"`
+	AuthorRoleTitleLocal *string         `json:"author_role_title_local,omitempty"`
 	LikeCount       int                  `json:"like_count"`
 	CommentCount    int                  `json:"comment_count"`
 	IsLiked         bool                 `json:"is_liked"`
@@ -91,7 +93,8 @@ func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []
 		AuthorName:      p.AuthorName,
 		AuthorNameLocal: p.AuthorNameLocal,
 		AuthorAvatar:    p.AuthorAvatar,
-		AuthorRoleTitle: p.AuthorRoleTitle,
+		AuthorRoleTitle:      p.AuthorRoleTitle,
+		AuthorRoleTitleLocal: p.AuthorRoleTitleLocal,
 		LikeCount:       p.LikeCount,
 		CommentCount:    p.CommentCount,
 		IsLiked:         isLiked,

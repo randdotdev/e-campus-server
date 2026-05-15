@@ -195,7 +195,7 @@ func TestGetProfile_Success(t *testing.T) {
 			return &User{ID: userID, Email: "test@example.com", FullNameEN: "Test User", IsActive: true}, nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	user, err := service.GetProfile(context.Background(), userID)
 	if err != nil {
@@ -210,7 +210,7 @@ func TestGetProfile_NotFound(t *testing.T) {
 	repo := &MockUserRepository{
 		GetUserFunc: func(ctx context.Context, id uuid.UUID) (*User, error) { return nil, ErrUserNotFound },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, err := service.GetProfile(context.Background(), uuid.New())
 	if !errors.Is(err, ErrUserNotFound) {
@@ -234,7 +234,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 			return nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	user, err := service.UpdateProfile(context.Background(), userID, UpdateProfileRequest{FullNameEN: &newName})
 	if err != nil {
@@ -258,7 +258,7 @@ func TestUpdateEmail_Success(t *testing.T) {
 		EmailExistsFunc:     func(ctx context.Context, email string) (bool, error) { return false, nil },
 		UpdateEmailFunc:     func(ctx context.Context, id uuid.UUID, email string) error { return nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.UpdateEmail(context.Background(), userID, UpdateEmailRequest{Email: "new@example.com", Password: "Password123"})
 	if err != nil {
@@ -273,7 +273,7 @@ func TestUpdateEmail_SameEmail(t *testing.T) {
 			return &User{ID: userID, Email: "same@example.com"}, nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.UpdateEmail(context.Background(), userID, UpdateEmailRequest{Email: "same@example.com", Password: "Password123"})
 	if !errors.Is(err, ErrSameEmail) {
@@ -290,7 +290,7 @@ func TestUpdateEmail_InvalidPassword(t *testing.T) {
 		},
 		GetPasswordHashFunc: func(ctx context.Context, id uuid.UUID) (string, error) { return passwordHash, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.UpdateEmail(context.Background(), userID, UpdateEmailRequest{Email: "new@example.com", Password: "wrongpassword"})
 	if !errors.Is(err, ErrInvalidPassword) {
@@ -308,7 +308,7 @@ func TestUpdateEmail_EmailExists(t *testing.T) {
 		GetPasswordHashFunc: func(ctx context.Context, id uuid.UUID) (string, error) { return passwordHash, nil },
 		EmailExistsFunc:     func(ctx context.Context, email string) (bool, error) { return true, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.UpdateEmail(context.Background(), userID, UpdateEmailRequest{Email: "taken@example.com", Password: "Password123"})
 	if !errors.Is(err, ErrEmailExists) {
@@ -331,7 +331,7 @@ func TestGetSessions_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{}, nil, nil)
 
 	sessions, err := service.GetSessions(context.Background(), userID)
 	if err != nil {
@@ -363,7 +363,7 @@ func TestRevokeSession_Success(t *testing.T) {
 			return nil
 		},
 	}
-	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{}, nil, nil)
 
 	if err := service.RevokeSession(context.Background(), userID, sessionID); err != nil {
 		t.Fatalf("RevokeSession() error = %v", err)
@@ -379,7 +379,7 @@ func TestRevokeSession_NotFound(t *testing.T) {
 			return []auth.RefreshToken{}, nil
 		},
 	}
-	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, tokens, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.RevokeSession(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, ErrSessionNotFound) {
@@ -400,7 +400,7 @@ func TestCreateStaffProfile_Success(t *testing.T) {
 			return nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	profile, err := service.CreateStaffProfile(context.Background(), userID, UpdateStaffProfileRequest{HighestDegree: &degree})
 	if err != nil {
@@ -419,7 +419,7 @@ func TestCreateStaffProfile_AlreadyExists(t *testing.T) {
 			return &StaffProfile{ID: uuid.New()}, nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, err := service.CreateStaffProfile(context.Background(), userID, UpdateStaffProfileRequest{})
 	if !errors.Is(err, ErrStaffProfileExists) {
@@ -441,7 +441,7 @@ func TestChangePassword_Success(t *testing.T) {
 	tokens := &MockTokenRepository{
 		DeleteUserTokensFunc: func(ctx context.Context, uid uuid.UUID) error { tokensCalled = true; return nil },
 	}
-	service := NewService(repo, tokens, nil, &MockRoleManager{})
+	service := NewService(repo, tokens, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.ChangePassword(context.Background(), userID, ChangePasswordRequest{
 		CurrentPassword: "Current1pass",
@@ -460,7 +460,7 @@ func TestChangePassword_InvalidCurrentPassword(t *testing.T) {
 	repo := &MockUserRepository{
 		GetPasswordHashFunc: func(ctx context.Context, id uuid.UUID) (string, error) { return currentHash, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.ChangePassword(context.Background(), uuid.New(), ChangePasswordRequest{
 		CurrentPassword: "wrongpassword",
@@ -476,7 +476,7 @@ func TestChangePassword_SamePassword(t *testing.T) {
 	repo := &MockUserRepository{
 		GetPasswordHashFunc: func(ctx context.Context, id uuid.UUID) (string, error) { return currentHash, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.ChangePassword(context.Background(), uuid.New(), ChangePasswordRequest{
 		CurrentPassword: "Same1password",
@@ -492,7 +492,7 @@ func TestChangePassword_WeakNewPassword(t *testing.T) {
 	repo := &MockUserRepository{
 		GetPasswordHashFunc: func(ctx context.Context, id uuid.UUID) (string, error) { return currentHash, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.ChangePassword(context.Background(), uuid.New(), ChangePasswordRequest{
 		CurrentPassword: "Current1pass",
@@ -516,7 +516,7 @@ func TestAdminSetPassword_Success(t *testing.T) {
 	tokens := &MockTokenRepository{
 		DeleteUserTokensFunc: func(ctx context.Context, uid uuid.UUID) error { tokensCalled = true; return nil },
 	}
-	service := NewService(repo, tokens, nil, &MockRoleManager{})
+	service := NewService(repo, tokens, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.AdminSetPassword(context.Background(), userID, "StrongPass1")
 	if err != nil {
@@ -529,7 +529,7 @@ func TestAdminSetPassword_Success(t *testing.T) {
 
 func TestAdminSetPassword_WeakPassword(t *testing.T) {
 	repo := &MockUserRepository{}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.AdminSetPassword(context.Background(), uuid.New(), "weak")
 	if !errors.Is(err, auth.ErrPasswordTooShort) && !errors.Is(err, auth.ErrPasswordTooWeak) {
@@ -541,7 +541,7 @@ func TestAdminSetPassword_UserNotFound(t *testing.T) {
 	repo := &MockUserRepository{
 		GetUserFunc: func(ctx context.Context, id uuid.UUID) (*User, error) { return nil, ErrUserNotFound },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	err := service.AdminSetPassword(context.Background(), uuid.New(), "StrongPass1")
 	if !errors.Is(err, ErrUserNotFound) {
@@ -563,7 +563,7 @@ func TestCreateStaffUser_Success(t *testing.T) {
 			return nil
 		},
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	user, profile, _, err := service.CreateStaffUser(context.Background(), adminID, actorRole, CreateStaffUserRequest{
 		Email:        "new@example.com",
@@ -584,7 +584,7 @@ func TestCreateStaffUser_Success(t *testing.T) {
 
 func TestCreateStaffUser_WeakPassword(t *testing.T) {
 	actorRole := &auth.RoleClaim{Level: "admin", ScopeType: "university"}
-	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, _, _, err := service.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
@@ -602,7 +602,7 @@ func TestCreateStaffUser_EmailExists(t *testing.T) {
 	repo := &MockUserRepository{
 		EmailExistsFunc: func(ctx context.Context, email string) (bool, error) { return true, nil },
 	}
-	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(repo, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, _, _, err := service.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "existing@example.com",
@@ -617,7 +617,7 @@ func TestCreateStaffUser_EmailExists(t *testing.T) {
 
 func TestCreateStaffUser_ScopeIDRequired(t *testing.T) {
 	actorRole := &auth.RoleClaim{Level: "admin", ScopeType: "university"}
-	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, _, _, err := service.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
@@ -634,7 +634,7 @@ func TestCreateStaffUser_ScopeIDRequired(t *testing.T) {
 func TestCreateStaffUser_ScopeIDNotAllowed(t *testing.T) {
 	scopeID := uuid.New()
 	actorRole := &auth.RoleClaim{Level: "admin", ScopeType: "platform"}
-	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, _, _, err := service.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",
@@ -650,7 +650,7 @@ func TestCreateStaffUser_ScopeIDNotAllowed(t *testing.T) {
 
 func TestCreateStaffUser_CannotManageHigherRole(t *testing.T) {
 	actorRole := &auth.RoleClaim{Level: "admin", ScopeType: "university"}
-	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{})
+	service := NewService(&MockUserRepository{}, &MockTokenRepository{}, nil, &MockRoleManager{}, nil, nil)
 
 	_, _, _, err := service.CreateStaffUser(context.Background(), uuid.New(), actorRole, CreateStaffUserRequest{
 		Email:        "staff@example.com",

@@ -110,6 +110,28 @@ type UserDetailResponse struct {
 	StaffProfile *StaffProfileResponse `json:"staff_profile,omitempty"`
 }
 
+type ScopeRefResponse struct {
+	ID        uuid.UUID `json:"id,omitempty"`
+	Name      string    `json:"name"`
+	NameLocal *string   `json:"name_local,omitempty"`
+	Type      string    `json:"type"`
+}
+
+type StudentContextResponse struct {
+	Program    ScopeRefResponse `json:"program"`
+	Department ScopeRefResponse `json:"department"`
+	College    ScopeRefResponse `json:"college"`
+}
+
+type UserContextResponse struct {
+	User               UserResponse           `json:"user"`
+	Role               *RoleResponse          `json:"role,omitempty"`
+	Student            *StudentContextResponse `json:"student,omitempty"`
+	Scopes             []ScopeRefResponse     `json:"scopes"`
+	AccessibleColleges []ScopeRefResponse     `json:"accessible_colleges,omitempty"`
+	Version            int                    `json:"version"`
+}
+
 type RoleResponse struct {
 	ID         uuid.UUID  `json:"id"`
 	TitleEN    *string    `json:"title_en,omitempty"`

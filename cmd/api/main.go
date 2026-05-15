@@ -154,7 +154,7 @@ func run() error {
 	authzService := authz.NewService(db, courseRepo, enrollmentRepo, applicationRepo, academicRepo, rdb)
 	authz.SetDefault(authzService)
 
-	userService := user.NewService(userRepo, authRepo, notificationService, authzService)
+	userService := user.NewService(userRepo, authRepo, notificationService, authzService, studentRepo, universityRepo, rdb)
 	userHandler := user.NewHandler(userService, log)
 
 	examRepo := exam.NewRepository(db)
@@ -346,10 +346,12 @@ func run() error {
 
 		protected := v1.Group("")
 		protected.Use(middleware.Auth(authService))
+		protected.Use(middleware.ContextVersion(rdb))
 		{
 			protected.GET("/me", userHandler.GetMe)
 			protected.PUT("/me", userHandler.UpdateMe)
 			protected.PUT("/me/email", userHandler.UpdateEmail)
+			protected.GET("/me/context", userHandler.GetMyContext)
 			protected.GET("/me/role", userHandler.GetMyRole)
 			protected.GET("/me/sessions", userHandler.GetMySessions)
 			protected.DELETE("/me/sessions/:id", userHandler.RevokeSession)

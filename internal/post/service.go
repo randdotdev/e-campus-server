@@ -214,7 +214,7 @@ func (s *Service) ListComments(ctx context.Context, rootID uuid.UUID, params pag
 	return s.posts.ListComments(ctx, rootID, params)
 }
 
-func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin bool, body *string, publishAt, expiresAt *time.Time) (*Post, error) {
+func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin bool, body *string, publishAt, expiresAt *time.Time, clearSchedule bool) (*Post, error) {
 	post, err := s.posts.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -236,11 +236,16 @@ func (s *Service) UpdatePost(ctx context.Context, id, userID uuid.UUID, isAdmin 
 			return nil, err
 		}
 	}
-	if publishAt != nil {
-		post.PublishAt = publishAt
-	}
-	if expiresAt != nil {
-		post.ExpiresAt = expiresAt
+	if clearSchedule {
+		post.PublishAt = nil
+		post.ExpiresAt = nil
+	} else {
+		if publishAt != nil {
+			post.PublishAt = publishAt
+		}
+		if expiresAt != nil {
+			post.ExpiresAt = expiresAt
+		}
 	}
 
 	now := time.Now()
