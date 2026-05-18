@@ -30,7 +30,7 @@ logs service="":
         docker compose logs -f {{service}}; \
     fi
 
-_db_url := "postgres://" + env("DB_USER", "ecampus") + ":" + env("DB_PASSWORD", "ecampus_dev") + "@" + env("DB_HOST", "localhost") + ":" + env("DB_PORT", "5432") + "/" + env("DB_NAME", "ecampus") + "?sslmode=" + env("DB_SSLMODE", "disable")
+_db_url := "postgres://" + env("DB_USER", "ecampus") + ":" + env("DB_PASSWORD", "A112233a") + "@" + env("DB_HOST", "localhost") + ":" + env("DB_PORT", "5432") + "/" + env("DB_NAME", "ecampus") + "?sslmode=" + env("DB_SSLMODE", "disable")
 
 # Run migrations
 migrate-up:

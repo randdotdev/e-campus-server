@@ -12,6 +12,14 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
+// postView is a query-result type used when the display requires scope name via JOIN.
+// It is not part of the domain model.
+type postView struct {
+	PostWithAuthor
+	ScopeName      *string `db:"scope_name"`
+	ScopeNameLocal *string `db:"scope_name_local"`
+}
+
 type Repository struct {
 	db *sqlx.DB
 }
@@ -44,18 +52,22 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*Post, error) {
 	return &p, nil
 }
 
-func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*PostWithAuthor, error) {
-	var p PostWithAuthor
+func (r *Repository) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*postView, error) {
+	var p postView
 	query := `
 		SELECT p.*,
 			u.full_name_en AS author_name,
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title_en AS author_role_title,
-			r.title_local AS author_role_title_local
+			r.title_local AS author_role_title_local,
+			COALESCE(col.name_en, dept.name_en) AS scope_name,
+			COALESCE(col.name_local, dept.name_local) AS scope_name_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
+		LEFT JOIN colleges col ON p.scope_type = 'college' AND p.scope_id = col.id
+		LEFT JOIN departments dept ON p.scope_type = 'department' AND p.scope_id = dept.id
 		WHERE p.id = $1`
 
 	if err := r.db.GetContext(ctx, &p, query, id); err != nil {
@@ -89,7 +101,7 @@ func (r *Repository) HardDelete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]postView, bool, error) {
 	var args []interface{}
 	argIndex := 1
 
@@ -99,10 +111,14 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title_en AS author_role_title,
-			r.title_local AS author_role_title_local
+			r.title_local AS author_role_title_local,
+			COALESCE(col.name_en, dept.name_en) AS scope_name,
+			COALESCE(col.name_local, dept.name_local) AS scope_name_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
+		LEFT JOIN colleges col ON p.scope_type = 'college' AND p.scope_id = col.id
+		LEFT JOIN departments dept ON p.scope_type = 'department' AND p.scope_id = dept.id
 		WHERE p.scope_type = $1 AND p.parent_id IS NULL AND p.deleted_at IS NULL`
 	args = append(args, scopeType)
 	argIndex++
@@ -139,7 +155,7 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 	query += fmt.Sprintf(" LIMIT $%d", argIndex)
 	args = append(args, params.Limit+1)
 
-	var posts []PostWithAuthor
+	var posts []postView
 	if err := r.db.SelectContext(ctx, &posts, query, args...); err != nil {
 		return nil, false, err
 	}
@@ -152,7 +168,7 @@ func (r *Repository) ListByScope(ctx context.Context, scopeType string, scopeID 
 	return posts, hasMore, nil
 }
 
-func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]postView, bool, error) {
 	var args []interface{}
 	argIndex := 1
 
@@ -162,10 +178,14 @@ func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params 
 			u.full_name_local AS author_name_local,
 			u.avatar_url AS author_avatar,
 			r.title_en AS author_role_title,
-			r.title_local AS author_role_title_local
+			r.title_local AS author_role_title_local,
+			COALESCE(col.name_en, dept.name_en) AS scope_name,
+			COALESCE(col.name_local, dept.name_local) AS scope_name_local
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		LEFT JOIN roles r ON r.user_id = u.id
+		LEFT JOIN colleges col ON p.scope_type = 'college' AND p.scope_id = col.id
+		LEFT JOIN departments dept ON p.scope_type = 'department' AND p.scope_id = dept.id
 		WHERE p.root_id = $1 AND p.deleted_at IS NULL`
 	args = append(args, rootID)
 	argIndex++
@@ -184,7 +204,7 @@ func (r *Repository) ListComments(ctx context.Context, rootID uuid.UUID, params 
 	query += fmt.Sprintf(" LIMIT $%d", argIndex)
 	args = append(args, params.Limit+1)
 
-	var comments []PostWithAuthor
+	var comments []postView
 	if err := r.db.SelectContext(ctx, &comments, query, args...); err != nil {
 		return nil, false, err
 	}

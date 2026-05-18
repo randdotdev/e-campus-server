@@ -28,12 +28,12 @@ func (m *mockPostRepo) GetByID(ctx context.Context, id uuid.UUID) (*Post, error)
 	return m.posts[id], nil
 }
 
-func (m *mockPostRepo) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*PostWithAuthor, error) {
+func (m *mockPostRepo) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*postView, error) {
 	p := m.posts[id]
 	if p == nil {
 		return nil, nil
 	}
-	return &PostWithAuthor{Post: *p, AuthorName: "Test User"}, nil
+	return &postView{PostWithAuthor: PostWithAuthor{Post: *p, AuthorName: "Test User"}}, nil
 }
 
 func (m *mockPostRepo) Update(ctx context.Context, p *Post) error {
@@ -53,21 +53,21 @@ func (m *mockPostRepo) HardDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (m *mockPostRepo) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
-	var result []PostWithAuthor
+func (m *mockPostRepo) ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]postView, bool, error) {
+	var result []postView
 	for _, p := range m.posts {
 		if p.ScopeType == scopeType && p.ParentID == nil {
-			result = append(result, PostWithAuthor{Post: *p, AuthorName: "Test User"})
+			result = append(result, postView{PostWithAuthor: PostWithAuthor{Post: *p, AuthorName: "Test User"}})
 		}
 	}
 	return result, false, nil
 }
 
-func (m *mockPostRepo) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
-	var result []PostWithAuthor
+func (m *mockPostRepo) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]postView, bool, error) {
+	var result []postView
 	for _, p := range m.posts {
 		if p.RootID != nil && *p.RootID == rootID {
-			result = append(result, PostWithAuthor{Post: *p, AuthorName: "Test User"})
+			result = append(result, postView{PostWithAuthor: PostWithAuthor{Post: *p, AuthorName: "Test User"}})
 		}
 	}
 	return result, false, nil
@@ -403,7 +403,7 @@ func TestUpdatePost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newBody := tt.body
-			_, err := s.UpdatePost(ctx, post.ID, tt.userID, tt.isAdmin, &newBody, nil, nil)
+			_, err := s.UpdatePost(ctx, post.ID, tt.userID, tt.isAdmin, &newBody, nil, nil, false)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {

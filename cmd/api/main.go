@@ -28,7 +28,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/logger"
 	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/mute"
-	"github.com/ranjdotdev/e-campus-server/internal/news"
+	"github.com/ranjdotdev/e-campus-server/internal/activity"
 	"github.com/ranjdotdev/e-campus-server/internal/notification"
 	"github.com/ranjdotdev/e-campus-server/internal/authz"
 	"github.com/ranjdotdev/e-campus-server/internal/post"
@@ -211,17 +211,17 @@ func run() error {
 	)
 	postHandler := post.NewHandler(postService, log)
 
-	newsRepo := news.NewRepository(db)
-	newsAttachmentRepo := news.NewAttachmentRepository(db)
-	newsPublisherRepo := news.NewPublisherRepository(db)
-	newsSettingsRepo := news.NewSettingsRepository(db)
-	newsService := news.NewService(
-		newsRepo,
-		newsAttachmentRepo,
-		newsPublisherRepo,
-		newsSettingsRepo,
+	activityRepo := activity.NewRepository(db)
+	activityAttachmentRepo := activity.NewAttachmentRepository(db)
+	activityPublisherRepo := activity.NewPublisherRepository(db)
+	activitySettingsRepo := activity.NewSettingsRepository(db)
+	activityService := activity.NewService(
+		activityRepo,
+		activityAttachmentRepo,
+		activityPublisherRepo,
+		activitySettingsRepo,
 	)
-	newsHandler := news.NewHandler(newsService, log)
+	activityHandler := activity.NewHandler(activityService, log)
 
 	qaQuestionRepo := qa.NewQuestionRepository(db)
 	qaAnswerRepo := qa.NewAnswerRepository(db)
@@ -343,6 +343,8 @@ func run() error {
 			public.GET("/departments/:id", universityHandler.GetPublicDepartment)
 			public.GET("/departments/:id/programs", universityHandler.GetPublicPrograms)
 		}
+
+		v1.GET("/files/:id", filesHandler.ServeFile)
 
 		protected := v1.Group("")
 		protected.Use(middleware.Auth(authService))
@@ -524,8 +526,8 @@ func run() error {
 			// Post routes
 			postHandler.RegisterRoutes(protected, middleware.Auth(authService))
 
-			// News routes
-			newsHandler.RegisterRoutes(protected, middleware.Auth(authService))
+			// Activity routes
+			activityHandler.RegisterRoutes(protected, middleware.Auth(authService))
 
 			// Mute routes
 			muteHandler.RegisterRoutes(protected, middleware.Auth(authService))

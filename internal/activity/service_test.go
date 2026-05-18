@@ -1,4 +1,4 @@
-package news
+package activity
 
 import (
 	"context"
@@ -9,62 +9,62 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 )
 
-type mockNewsRepo struct {
-	news map[uuid.UUID]*News
+type mockActivityRepo struct {
+	activities map[uuid.UUID]*Activity
 }
 
-func newMockNewsRepo() *mockNewsRepo {
-	return &mockNewsRepo{news: make(map[uuid.UUID]*News)}
+func newMockActivityRepo() *mockActivityRepo {
+	return &mockActivityRepo{activities: make(map[uuid.UUID]*Activity)}
 }
 
-func (m *mockNewsRepo) Create(ctx context.Context, n *News) error {
-	m.news[n.ID] = n
+func (m *mockActivityRepo) Create(ctx context.Context, a *Activity) error {
+	m.activities[a.ID] = a
 	return nil
 }
 
-func (m *mockNewsRepo) GetByID(ctx context.Context, id uuid.UUID) (*News, error) {
-	return m.news[id], nil
+func (m *mockActivityRepo) GetByID(ctx context.Context, id uuid.UUID) (*Activity, error) {
+	return m.activities[id], nil
 }
 
-func (m *mockNewsRepo) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*NewsWithAuthor, error) {
-	n := m.news[id]
-	if n == nil {
+func (m *mockActivityRepo) GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*ActivityWithAuthor, error) {
+	a := m.activities[id]
+	if a == nil {
 		return nil, nil
 	}
-	return &NewsWithAuthor{News: *n, AuthorName: "Test User"}, nil
+	return &ActivityWithAuthor{Activity: *a, AuthorName: "Test User"}, nil
 }
 
-func (m *mockNewsRepo) Update(ctx context.Context, n *News) error {
-	m.news[n.ID] = n
+func (m *mockActivityRepo) Update(ctx context.Context, a *Activity) error {
+	m.activities[a.ID] = a
 	return nil
 }
 
-func (m *mockNewsRepo) SoftDelete(ctx context.Context, id uuid.UUID, deletedAt time.Time) error {
-	if n := m.news[id]; n != nil {
-		n.DeletedAt = &deletedAt
+func (m *mockActivityRepo) SoftDelete(ctx context.Context, id uuid.UUID, deletedAt time.Time) error {
+	if a := m.activities[id]; a != nil {
+		a.DeletedAt = &deletedAt
 	}
 	return nil
 }
 
-func (m *mockNewsRepo) ListByPublisher(ctx context.Context, publisherType string, publisherID *uuid.UUID, category string, isAdmin bool, params pagination.PageParams) ([]NewsWithAuthor, bool, error) {
-	var result []NewsWithAuthor
-	for _, n := range m.news {
-		if n.PublisherType == publisherType && n.DeletedAt == nil {
-			result = append(result, NewsWithAuthor{News: *n, AuthorName: "Test User"})
+func (m *mockActivityRepo) ListByPublisher(ctx context.Context, publisherType string, publisherID *uuid.UUID, activityType string, isAdmin bool, params pagination.PageParams) ([]ActivityWithAuthor, bool, error) {
+	var result []ActivityWithAuthor
+	for _, a := range m.activities {
+		if a.PublisherType == publisherType && a.DeletedAt == nil {
+			result = append(result, ActivityWithAuthor{Activity: *a, AuthorName: "Test User"})
 		}
 	}
 	return result, false, nil
 }
 
 type mockAttachmentRepo struct {
-	attachments map[uuid.UUID]*NewsAttachment
+	attachments map[uuid.UUID]*ActivityAttachment
 }
 
 func newMockAttachmentRepo() *mockAttachmentRepo {
-	return &mockAttachmentRepo{attachments: make(map[uuid.UUID]*NewsAttachment)}
+	return &mockAttachmentRepo{attachments: make(map[uuid.UUID]*ActivityAttachment)}
 }
 
-func (m *mockAttachmentRepo) Create(ctx context.Context, a *NewsAttachment) error {
+func (m *mockAttachmentRepo) Create(ctx context.Context, a *ActivityAttachment) error {
 	m.attachments[a.ID] = a
 	return nil
 }
@@ -74,26 +74,26 @@ func (m *mockAttachmentRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (m *mockAttachmentRepo) GetByID(ctx context.Context, id uuid.UUID) (*NewsAttachment, error) {
+func (m *mockAttachmentRepo) GetByID(ctx context.Context, id uuid.UUID) (*ActivityAttachment, error) {
 	return m.attachments[id], nil
 }
 
-func (m *mockAttachmentRepo) ListByNewsID(ctx context.Context, newsID uuid.UUID) ([]NewsAttachment, error) {
-	var result []NewsAttachment
+func (m *mockAttachmentRepo) ListByActivityID(ctx context.Context, activityID uuid.UUID) ([]ActivityAttachment, error) {
+	var result []ActivityAttachment
 	for _, a := range m.attachments {
-		if a.NewsID == newsID {
+		if a.ActivityID == activityID {
 			result = append(result, *a)
 		}
 	}
 	return result, nil
 }
 
-func (m *mockAttachmentRepo) ListByNewsIDs(ctx context.Context, newsIDs []uuid.UUID) (map[uuid.UUID][]NewsAttachment, error) {
-	result := make(map[uuid.UUID][]NewsAttachment)
+func (m *mockAttachmentRepo) ListByActivityIDs(ctx context.Context, activityIDs []uuid.UUID) (map[uuid.UUID][]ActivityAttachment, error) {
+	result := make(map[uuid.UUID][]ActivityAttachment)
 	for _, a := range m.attachments {
-		for _, newsID := range newsIDs {
-			if a.NewsID == newsID {
-				result[newsID] = append(result[newsID], *a)
+		for _, id := range activityIDs {
+			if a.ActivityID == id {
+				result[id] = append(result[id], *a)
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (m *mockSettingsProvider) GetDefaultLanguage(ctx context.Context) (string, 
 
 func newTestService() *Service {
 	return NewService(
-		newMockNewsRepo(),
+		newMockActivityRepo(),
 		newMockAttachmentRepo(),
 		newMockPublisherChecker(),
 		newMockSettingsProvider(),
@@ -141,7 +141,7 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-func TestCreateNews(t *testing.T) {
+func TestCreateActivity(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
@@ -150,49 +150,49 @@ func TestCreateNews(t *testing.T) {
 		name          string
 		publisherType string
 		publisherID   *uuid.UUID
-		category      string
+		activityType  string
 		wantErr       error
 	}{
-		{"university news", PublisherUniversity, nil, CategoryAnnouncement, nil},
-		{"college news", PublisherCollege, ptr(uuid.New()), CategoryEvent, nil},
-		{"department news", PublisherDepartment, ptr(uuid.New()), CategoryAchievement, nil},
-		{"invalid publisher type", "invalid", nil, CategoryGeneral, ErrInvalidPublisher},
-		{"college without id", PublisherCollege, nil, CategoryGeneral, ErrInvalidPublisher},
-		{"university with id", PublisherUniversity, ptr(uuid.New()), CategoryGeneral, ErrInvalidPublisher},
-		{"invalid category", PublisherUniversity, nil, "invalid", ErrInvalidCategory},
+		{"university news", PublisherUniversity, nil, TypeNews, nil},
+		{"college webinar", PublisherCollege, ptr(uuid.New()), TypeWebinar, nil},
+		{"department workshop", PublisherDepartment, ptr(uuid.New()), TypeWorkshop, nil},
+		{"invalid publisher type", "invalid", nil, TypeNews, ErrInvalidPublisher},
+		{"college without id", PublisherCollege, nil, TypeNews, ErrInvalidPublisher},
+		{"university with id", PublisherUniversity, ptr(uuid.New()), TypeNews, ErrInvalidPublisher},
+		{"invalid type", PublisherUniversity, nil, "invalid", ErrInvalidType},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			news, err := s.CreateNews(ctx, authorID, tt.publisherType, tt.publisherID, tt.category,
+			a, err := s.CreateActivity(ctx, authorID, tt.publisherType, tt.publisherID, tt.activityType,
 				"Title EN", nil, "Body EN", nil, nil, nil, nil)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("CreateNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("CreateActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("CreateNews() unexpected error: %v", err)
+				t.Fatalf("CreateActivity() unexpected error: %v", err)
 			}
-			if news.PublisherType != tt.publisherType {
-				t.Errorf("PublisherType = %v, want %v", news.PublisherType, tt.publisherType)
+			if a.PublisherType != tt.publisherType {
+				t.Errorf("PublisherType = %v, want %v", a.PublisherType, tt.publisherType)
 			}
-			if news.Category != tt.category {
-				t.Errorf("Category = %v, want %v", news.Category, tt.category)
+			if a.Type != tt.activityType {
+				t.Errorf("Type = %v, want %v", a.Type, tt.activityType)
 			}
 		})
 	}
 }
 
-func TestGetNews(t *testing.T) {
+func TestGetActivity(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Title", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -201,23 +201,23 @@ func TestGetNews(t *testing.T) {
 		isAdmin bool
 		wantErr error
 	}{
-		{"existing news", news.ID, false, nil},
-		{"non-existing news", uuid.New(), false, ErrNewsNotFound},
+		{"existing activity", a.ID, false, nil},
+		{"non-existing activity", uuid.New(), false, ErrActivityNotFound},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _, err := s.GetNews(ctx, tt.id, tt.isAdmin)
+			result, _, err := s.GetActivity(ctx, tt.id, tt.isAdmin)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("GetNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("GetActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("GetNews() unexpected error: %v", err)
+				t.Fatalf("GetActivity() unexpected error: %v", err)
 			}
 			if result.ID != tt.id {
 				t.Errorf("ID = %v, want %v", result.ID, tt.id)
@@ -226,7 +226,7 @@ func TestGetNews(t *testing.T) {
 	}
 }
 
-func TestGetNewsScheduledExpired(t *testing.T) {
+func TestGetActivityScheduledExpired(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
@@ -234,9 +234,9 @@ func TestGetNewsScheduledExpired(t *testing.T) {
 	future := time.Now().Add(time.Hour)
 	past := time.Now().Add(-time.Hour)
 
-	scheduled, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	scheduled, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Scheduled", nil, "Body", nil, nil, &future, nil)
-	expired, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	expired, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Expired", nil, "Body", nil, nil, nil, &past)
 
 	tests := []struct {
@@ -245,25 +245,25 @@ func TestGetNewsScheduledExpired(t *testing.T) {
 		isAdmin bool
 		wantErr error
 	}{
-		{"scheduled non-admin", scheduled.ID, false, ErrNewsNotFound},
+		{"scheduled non-admin", scheduled.ID, false, ErrActivityNotFound},
 		{"scheduled admin", scheduled.ID, true, nil},
-		{"expired non-admin", expired.ID, false, ErrNewsNotFound},
+		{"expired non-admin", expired.ID, false, ErrActivityNotFound},
 		{"expired admin", expired.ID, true, nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := s.GetNews(ctx, tt.id, tt.isAdmin)
+			_, _, err := s.GetActivity(ctx, tt.id, tt.isAdmin)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("GetNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("GetActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("GetNews() unexpected error: %v", err)
+				t.Errorf("GetActivity() unexpected error: %v", err)
 			}
 		})
 	}
@@ -277,9 +277,9 @@ func TestServiceGetTranslation(t *testing.T) {
 	titleLocal := "Local Title"
 	bodyLocal := "Local Body"
 
-	withLocal, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	withLocal, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"EN Title", &titleLocal, "EN Body", &bodyLocal, nil, nil, nil)
-	withoutLocal, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	withoutLocal, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"EN Title", nil, "EN Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -312,13 +312,13 @@ func TestServiceGetTranslation(t *testing.T) {
 	}
 }
 
-func TestUpdateNews(t *testing.T) {
+func TestUpdateActivity(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
 	otherID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Original", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -335,58 +335,58 @@ func TestUpdateNews(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newTitle := "Updated"
-			_, err := s.UpdateNews(ctx, news.ID, tt.userID, tt.isAdmin, &newTitle, nil, nil, nil, nil, nil, nil, nil)
+			_, err := s.UpdateActivity(ctx, a.ID, tt.userID, tt.isAdmin, &newTitle, nil, nil, nil, nil, nil, nil, nil)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("UpdateNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("UpdateActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("UpdateNews() unexpected error: %v", err)
+				t.Errorf("UpdateActivity() unexpected error: %v", err)
 			}
 		})
 	}
 }
 
-func TestUpdateNewsCategory(t *testing.T) {
+func TestUpdateActivityType(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Title", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
-		name     string
-		category string
-		wantErr  error
+		name         string
+		activityType string
+		wantErr      error
 	}{
-		{"valid category", CategoryEvent, nil},
-		{"invalid category", "invalid", ErrInvalidCategory},
+		{"valid type", TypeConference, nil},
+		{"invalid type", "invalid", ErrInvalidType},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.UpdateNews(ctx, news.ID, authorID, false, nil, nil, nil, nil, &tt.category, nil, nil, nil)
+			_, err := s.UpdateActivity(ctx, a.ID, authorID, false, nil, nil, nil, nil, &tt.activityType, nil, nil, nil)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("UpdateNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("UpdateActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("UpdateNews() unexpected error: %v", err)
+				t.Errorf("UpdateActivity() unexpected error: %v", err)
 			}
 		})
 	}
 }
 
-func TestDeleteNews(t *testing.T) {
+func TestDeleteActivity(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
@@ -405,30 +405,30 @@ func TestDeleteNews(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+			a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 				"To delete", nil, "Body", nil, nil, nil, nil)
-			err := s.DeleteNews(ctx, news.ID, tt.userID, tt.isAdmin)
+			err := s.DeleteActivity(ctx, a.ID, tt.userID, tt.isAdmin)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("DeleteNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("DeleteActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("DeleteNews() unexpected error: %v", err)
+				t.Errorf("DeleteActivity() unexpected error: %v", err)
 			}
 		})
 	}
 }
 
-func TestPinNews(t *testing.T) {
+func TestPinActivity(t *testing.T) {
 	s := newTestService()
 	ctx := context.Background()
 	authorID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"Pinnable", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -442,17 +442,17 @@ func TestPinNews(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := s.PinNews(ctx, news.ID, tt.isAdmin, true)
+			err := s.PinActivity(ctx, a.ID, tt.isAdmin, true)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
-					t.Errorf("PinNews() error = %v, want %v", err, tt.wantErr)
+					t.Errorf("PinActivity() error = %v, want %v", err, tt.wantErr)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("PinNews() unexpected error: %v", err)
+				t.Errorf("PinActivity() unexpected error: %v", err)
 			}
 		})
 	}
@@ -464,7 +464,7 @@ func TestAddAttachment(t *testing.T) {
 	authorID := uuid.New()
 	otherID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"With attachment", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -482,7 +482,7 @@ func TestAddAttachment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.AddAttachment(ctx, news.ID, tt.userID, tt.isAdmin, uuid.New(), "test.jpg", tt.fileType, 0)
+			_, err := s.AddAttachment(ctx, a.ID, tt.userID, tt.isAdmin, uuid.New(), "test.jpg", tt.fileType, 0)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
@@ -504,7 +504,7 @@ func TestRemoveAttachment(t *testing.T) {
 	authorID := uuid.New()
 	otherID := uuid.New()
 
-	news, _ := s.CreateNews(ctx, authorID, PublisherUniversity, nil, CategoryAnnouncement,
+	a, _ := s.CreateActivity(ctx, authorID, PublisherUniversity, nil, TypeAnnouncement,
 		"With attachment", nil, "Body", nil, nil, nil, nil)
 
 	tests := []struct {
@@ -520,7 +520,7 @@ func TestRemoveAttachment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			attachment, _ := s.AddAttachment(ctx, news.ID, authorID, false, uuid.New(), "test.jpg", FileTypeImage, 0)
+			attachment, _ := s.AddAttachment(ctx, a.ID, authorID, false, uuid.New(), "test.jpg", FileTypeImage, 0)
 			err := s.RemoveAttachment(ctx, attachment.ID, tt.userID, tt.isAdmin)
 
 			if tt.wantErr != nil {

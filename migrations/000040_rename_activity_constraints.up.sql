@@ -1,0 +1,11 @@
+-- Rename stale news_* constraints and indexes left over from migration 39
+
+ALTER TABLE activities RENAME CONSTRAINT news_pkey TO activities_pkey;
+ALTER TABLE activities RENAME CONSTRAINT news_publisher_type_check TO activities_publisher_type_check;
+ALTER TABLE activities RENAME CONSTRAINT news_author_id_fkey TO activities_author_id_fkey;
+ALTER TABLE activities RENAME CONSTRAINT news_cover_image_id_fkey TO activities_cover_image_id_fkey;
+
+ALTER TABLE activity_attachments RENAME CONSTRAINT news_attachments_pkey TO activity_attachments_pkey;
+ALTER TABLE activity_attachments RENAME CONSTRAINT news_attachments_file_type_check TO activity_attachments_file_type_check;
+ALTER TABLE activity_attachments RENAME CONSTRAINT news_attachments_news_id_fkey TO activity_attachments_activity_id_fkey;
+ALTER TABLE activity_attachments RENAME CONSTRAINT news_attachments_stored_file_id_fkey TO activity_attachments_stored_file_id_fkey;

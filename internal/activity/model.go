@@ -1,5 +1,4 @@
-// Package news handles university news and announcements.
-package news
+package activity
 
 import (
 	"time"
@@ -7,11 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type News struct {
+type Activity struct {
 	ID            uuid.UUID  `db:"id"`
 	PublisherType string     `db:"publisher_type"`
 	PublisherID   *uuid.UUID `db:"publisher_id"`
-	Category      string     `db:"category"`
+	Type          string     `db:"type"`
 	TitleEN       string     `db:"title_en"`
 	TitleLocal    *string    `db:"title_local"`
 	BodyEN        string     `db:"body_en"`
@@ -26,16 +25,16 @@ type News struct {
 	DeletedAt     *time.Time `db:"deleted_at"`
 }
 
-type NewsWithAuthor struct {
-	News
+type ActivityWithAuthor struct {
+	Activity
 	AuthorName      string  `db:"author_name"`
 	AuthorNameLocal *string `db:"author_name_local"`
 	AuthorAvatar    *string `db:"author_avatar"`
 }
 
-type NewsAttachment struct {
+type ActivityAttachment struct {
 	ID           uuid.UUID `db:"id"`
-	NewsID       uuid.UUID `db:"news_id"`
+	ActivityID   uuid.UUID `db:"activity_id"`
 	StoredFileID uuid.UUID `db:"stored_file_id"`
 	DisplayName  string    `db:"display_name"`
 	FileType     string    `db:"file_type"`
@@ -49,11 +48,13 @@ const (
 )
 
 const (
-	CategoryAnnouncement = "announcement"
-	CategoryEvent        = "event"
-	CategoryAchievement  = "achievement"
-	CategoryAcademic     = "academic"
-	CategoryGeneral      = "general"
+	TypeNews         = "news"
+	TypeAnnouncement = "announcement"
+	TypeWebinar      = "webinar"
+	TypeWorkshop     = "workshop"
+	TypeConference   = "conference"
+	TypeSymposium    = "symposium"
+	TypeTrainingCourse = "training_course"
 )
 
 const (
@@ -66,6 +67,12 @@ const (
 	FileTypeImage    = "image"
 	FileTypeDocument = "document"
 	FileTypeVideo    = "video"
+)
+
+const (
+	MaxImageSize    = 10 * 1024 * 1024 // 10MB
+	MaxVideoSize    = 50 * 1024 * 1024 // 50MB
+	MaxDocumentSize = 20 * 1024 * 1024 // 20MB
 )
 
 const (

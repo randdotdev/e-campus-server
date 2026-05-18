@@ -1,4 +1,4 @@
-package news
+package activity
 
 import (
 	"time"
@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateNewsRequest struct {
+type CreateActivityRequest struct {
 	PublisherType string     `json:"publisher_type" binding:"required,oneof=university college department"`
 	PublisherID   *uuid.UUID `json:"publisher_id"`
-	Category      string     `json:"category" binding:"required,oneof=announcement event achievement academic general"`
+	Type          string     `json:"type" binding:"required,oneof=news announcement webinar workshop conference symposium training_course"`
 	TitleEN       string     `json:"title_en" binding:"required,min=1,max=255"`
 	TitleLocal    *string    `json:"title_local" binding:"omitempty,max=255"`
 	BodyEN        string     `json:"body_en" binding:"required,min=1"`
@@ -19,12 +19,12 @@ type CreateNewsRequest struct {
 	ExpiresAt     *time.Time `json:"expires_at"`
 }
 
-type UpdateNewsRequest struct {
+type UpdateActivityRequest struct {
 	TitleEN      *string    `json:"title_en" binding:"omitempty,min=1,max=255"`
 	TitleLocal   *string    `json:"title_local" binding:"omitempty,max=255"`
 	BodyEN       *string    `json:"body_en" binding:"omitempty,min=1"`
 	BodyLocal    *string    `json:"body_local"`
-	Category     *string    `json:"category" binding:"omitempty,oneof=announcement event achievement academic general"`
+	Type         *string    `json:"type" binding:"omitempty,oneof=news announcement webinar workshop conference symposium training_course"`
 	CoverImageID *uuid.UUID `json:"cover_image_id"`
 	PublishAt    *time.Time `json:"publish_at"`
 	ExpiresAt    *time.Time `json:"expires_at"`
@@ -34,20 +34,23 @@ type AddAttachmentRequest struct {
 	StoredFileID uuid.UUID `json:"stored_file_id" binding:"required"`
 	DisplayName  string    `json:"display_name" binding:"required,max=255"`
 	FileType     string    `json:"file_type" binding:"required,oneof=image document video"`
+	SizeBytes    int64     `json:"size_bytes" binding:"required,min=1"`
 	OrderIndex   int       `json:"order_index"`
 }
 
-type PinNewsRequest struct {
+type PinActivityRequest struct {
 	Pinned bool `json:"pinned"`
 }
 
-type NewsResponse struct {
+type ActivityResponse struct {
 	ID              uuid.UUID            `json:"id"`
 	PublisherType   string               `json:"publisher_type"`
 	PublisherID     *uuid.UUID           `json:"publisher_id,omitempty"`
-	Category        string               `json:"category"`
-	Title           string               `json:"title"`
-	Body            string               `json:"body"`
+	Type            string               `json:"type"`
+	TitleEN         string               `json:"title_en"`
+	TitleLocal      *string              `json:"title_local,omitempty"`
+	BodyEN          string               `json:"body_en"`
+	BodyLocal       *string              `json:"body_local,omitempty"`
 	CoverImageID    *uuid.UUID           `json:"cover_image_id,omitempty"`
 	IsPinned        bool                 `json:"is_pinned"`
 	PublishAt       *time.Time           `json:"publish_at,omitempty"`
@@ -75,38 +78,40 @@ type TranslationResponse struct {
 	Body  string `json:"body"`
 }
 
-func ToNewsResponse(n *NewsWithAuthor, attachments []NewsAttachment, prefLang, defaultLang string, now time.Time) NewsResponse {
-	return NewsResponse{
-		ID:              n.ID,
-		PublisherType:   n.PublisherType,
-		PublisherID:     n.PublisherID,
-		Category:        n.Category,
-		Title:           ResolveTitle(&n.News, prefLang, defaultLang),
-		Body:            ResolveBody(&n.News, prefLang, defaultLang),
-		CoverImageID:    n.CoverImageID,
-		IsPinned:        n.IsPinned,
-		PublishAt:       n.PublishAt,
-		ExpiresAt:       n.ExpiresAt,
-		Status:          GetStatus(&n.News, now),
-		AuthorID:        n.AuthorID,
-		AuthorName:      n.AuthorName,
-		AuthorNameLocal: n.AuthorNameLocal,
-		AuthorAvatar:    n.AuthorAvatar,
+func ToActivityResponse(a *ActivityWithAuthor, attachments []ActivityAttachment, now time.Time) ActivityResponse {
+	return ActivityResponse{
+		ID:              a.ID,
+		PublisherType:   a.PublisherType,
+		PublisherID:     a.PublisherID,
+		Type:            a.Type,
+		TitleEN:         a.TitleEN,
+		TitleLocal:      a.TitleLocal,
+		BodyEN:          a.BodyEN,
+		BodyLocal:       a.BodyLocal,
+		CoverImageID:    a.CoverImageID,
+		IsPinned:        a.IsPinned,
+		PublishAt:       a.PublishAt,
+		ExpiresAt:       a.ExpiresAt,
+		Status:          GetStatus(&a.Activity, now),
+		AuthorID:        a.AuthorID,
+		AuthorName:      a.AuthorName,
+		AuthorNameLocal: a.AuthorNameLocal,
+		AuthorAvatar:    a.AuthorAvatar,
 		Attachments:     ToAttachmentResponses(attachments),
-		CreatedAt:       n.CreatedAt,
-		UpdatedAt:       n.UpdatedAt,
+		CreatedAt:       a.CreatedAt,
+		UpdatedAt:       a.UpdatedAt,
 	}
 }
 
-func ToNewsResponses(news []NewsWithAuthor, attachmentsMap map[uuid.UUID][]NewsAttachment, prefLang, defaultLang string, now time.Time) []NewsResponse {
-	result := make([]NewsResponse, len(news))
-	for i := range news {
-		result[i] = ToNewsResponse(&news[i], attachmentsMap[news[i].ID], prefLang, defaultLang, now)
+func ToActivityResponses(activities []ActivityWithAuthor, attachmentsMap map[uuid.UUID][]ActivityAttachment, now time.Time) []ActivityResponse {
+	result := make([]ActivityResponse, len(activities))
+	for i := range activities {
+		result[i] = ToActivityResponse(&activities[i], attachmentsMap[activities[i].ID], now)
 	}
 	return result
 }
 
-func ToAttachmentResponse(a *NewsAttachment) AttachmentResponse {
+func ToAttachmentResponse(a *ActivityAttachment) AttachmentResponse {
 	return AttachmentResponse{
 		ID:           a.ID,
 		StoredFileID: a.StoredFileID,
@@ -116,7 +121,7 @@ func ToAttachmentResponse(a *NewsAttachment) AttachmentResponse {
 	}
 }
 
-func ToAttachmentResponses(attachments []NewsAttachment) []AttachmentResponse {
+func ToAttachmentResponses(attachments []ActivityAttachment) []AttachmentResponse {
 	if len(attachments) == 0 {
 		return nil
 	}

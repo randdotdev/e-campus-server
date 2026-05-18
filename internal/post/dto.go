@@ -41,6 +41,8 @@ type PostResponse struct {
 	ID              uuid.UUID            `json:"id"`
 	ScopeType       string               `json:"scope_type"`
 	ScopeID         *uuid.UUID           `json:"scope_id,omitempty"`
+	ScopeName       *string              `json:"scope_name,omitempty"`
+	ScopeNameLocal  *string              `json:"scope_name_local,omitempty"`
 	ParentID        *uuid.UUID           `json:"parent_id,omitempty"`
 	RootID          *uuid.UUID           `json:"root_id,omitempty"`
 	Body            string               `json:"body"`
@@ -77,11 +79,13 @@ type MentionResponse struct {
 	FullName string    `json:"full_name"`
 }
 
-func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []MentionedUser, isLiked bool, now time.Time) PostResponse {
+func ToPostResponse(p *postView, attachments []PostAttachment, mentions []MentionedUser, isLiked bool, now time.Time) PostResponse {
 	return PostResponse{
 		ID:              p.ID,
 		ScopeType:       p.ScopeType,
 		ScopeID:         p.ScopeID,
+		ScopeName:       p.ScopeName,
+		ScopeNameLocal:  p.ScopeNameLocal,
 		ParentID:        p.ParentID,
 		RootID:          p.RootID,
 		Body:            p.Body,
@@ -105,7 +109,7 @@ func ToPostResponse(p *PostWithAuthor, attachments []PostAttachment, mentions []
 	}
 }
 
-func ToPostResponses(posts []PostWithAuthor, attachmentsMap map[uuid.UUID][]PostAttachment, mentionsMap map[uuid.UUID][]MentionedUser, likesMap map[uuid.UUID]bool, now time.Time) []PostResponse {
+func ToPostResponses(posts []postView, attachmentsMap map[uuid.UUID][]PostAttachment, mentionsMap map[uuid.UUID][]MentionedUser, likesMap map[uuid.UUID]bool, now time.Time) []PostResponse {
 	result := make([]PostResponse, len(posts))
 	for i := range posts {
 		result[i] = ToPostResponse(

@@ -358,3 +358,26 @@ func (h *Handler) GetStorageUsage(c *gin.Context) {
 	}
 	response.OK(c, usage)
 }
+
+// ServeFile redirects to a presigned MinIO URL for a stored_files.id.
+// No ownership check — any authenticated user can serve a file by its stored ID.
+func (h *Handler) ServeFile(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid file id")
+		return
+	}
+
+	url, err := h.service.ServeStoredFile(c.Request.Context(), id)
+	if errors.Is(err, ErrStoredFileNotFound) {
+		response.NotFound(c, "file not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("serve file failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	c.Redirect(302, url)
+}

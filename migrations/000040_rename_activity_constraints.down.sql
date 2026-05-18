@@ -1,0 +1,9 @@
+ALTER TABLE activities RENAME CONSTRAINT activities_pkey TO news_pkey;
+ALTER TABLE activities RENAME CONSTRAINT activities_publisher_type_check TO news_publisher_type_check;
+ALTER TABLE activities RENAME CONSTRAINT activities_author_id_fkey TO news_author_id_fkey;
+ALTER TABLE activities RENAME CONSTRAINT activities_cover_image_id_fkey TO news_cover_image_id_fkey;
+
+ALTER TABLE activity_attachments RENAME CONSTRAINT activity_attachments_pkey TO news_attachments_pkey;
+ALTER TABLE activity_attachments RENAME CONSTRAINT activity_attachments_file_type_check TO news_attachments_file_type_check;
+ALTER TABLE activity_attachments RENAME CONSTRAINT activity_attachments_activity_id_fkey TO news_attachments_news_id_fkey;
+ALTER TABLE activity_attachments RENAME CONSTRAINT activity_attachments_stored_file_id_fkey TO news_attachments_stored_file_id_fkey;

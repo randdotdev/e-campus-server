@@ -11,13 +11,13 @@ import (
 type PostRepository interface {
 	Create(ctx context.Context, p *Post) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Post, error)
-	GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*PostWithAuthor, error)
+	GetByIDWithAuthor(ctx context.Context, id uuid.UUID) (*postView, error)
 	Update(ctx context.Context, p *Post) error
 	SoftDelete(ctx context.Context, id uuid.UUID, deletedAt time.Time) error
 	HardDelete(ctx context.Context, id uuid.UUID) error
 
-	ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error)
-	ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]PostWithAuthor, bool, error)
+	ListByScope(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]postView, bool, error)
+	ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]postView, bool, error)
 
 	IncrementLikeCount(ctx context.Context, id uuid.UUID) error
 	DecrementLikeCount(ctx context.Context, id uuid.UUID) error
@@ -168,7 +168,7 @@ func (s *Service) CreateComment(ctx context.Context, authorID, parentID uuid.UUI
 	return comment, nil
 }
 
-func (s *Service) GetPost(ctx context.Context, id uuid.UUID, userID uuid.UUID, isAdmin bool) (*PostWithAuthor, []PostAttachment, []MentionedUser, bool, error) {
+func (s *Service) GetPost(ctx context.Context, id uuid.UUID, userID uuid.UUID, isAdmin bool) (*postView, []PostAttachment, []MentionedUser, bool, error) {
 	post, err := s.posts.GetByIDWithAuthor(ctx, id)
 	if err != nil {
 		return nil, nil, nil, false, err
@@ -206,11 +206,11 @@ func (s *Service) GetPost(ctx context.Context, id uuid.UUID, userID uuid.UUID, i
 	return post, attachments, mentions, liked, nil
 }
 
-func (s *Service) ListPosts(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (s *Service) ListPosts(ctx context.Context, scopeType string, scopeID *uuid.UUID, isAdmin bool, params pagination.PageParams) ([]postView, bool, error) {
 	return s.posts.ListByScope(ctx, scopeType, scopeID, isAdmin, params)
 }
 
-func (s *Service) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]PostWithAuthor, bool, error) {
+func (s *Service) ListComments(ctx context.Context, rootID uuid.UUID, params pagination.PageParams) ([]postView, bool, error) {
 	return s.posts.ListComments(ctx, rootID, params)
 }
 

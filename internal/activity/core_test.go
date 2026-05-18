@@ -1,4 +1,4 @@
-package news
+package activity
 
 import (
 	"testing"
@@ -54,25 +54,27 @@ func TestValidatePublisherID(t *testing.T) {
 	}
 }
 
-func TestValidateCategory(t *testing.T) {
+func TestValidateType(t *testing.T) {
 	tests := []struct {
-		name     string
-		category string
-		want     bool
+		name         string
+		activityType string
+		want         bool
 	}{
-		{"announcement", CategoryAnnouncement, true},
-		{"event", CategoryEvent, true},
-		{"achievement", CategoryAchievement, true},
-		{"academic", CategoryAcademic, true},
-		{"general", CategoryGeneral, true},
+		{"news", TypeNews, true},
+		{"announcement", TypeAnnouncement, true},
+		{"webinar", TypeWebinar, true},
+		{"workshop", TypeWorkshop, true},
+		{"conference", TypeConference, true},
+		{"symposium", TypeSymposium, true},
+		{"training_course", TypeTrainingCourse, true},
 		{"invalid", "invalid", false},
 		{"empty", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ValidateCategory(tt.category); got != tt.want {
-				t.Errorf("ValidateCategory() = %v, want %v", got, tt.want)
+			if got := ValidateType(tt.activityType); got != tt.want {
+				t.Errorf("ValidateType() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -191,8 +193,8 @@ func TestIsVisible(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{DeletedAt: tt.deletedAt, PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
-			if got := IsVisible(n, now); got != tt.want {
+			a := &Activity{DeletedAt: tt.deletedAt, PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
+			if got := IsVisible(a, now); got != tt.want {
 				t.Errorf("IsVisible() = %v, want %v", got, tt.want)
 			}
 		})
@@ -223,8 +225,8 @@ func TestCanView(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{DeletedAt: tt.deletedAt, PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
-			if got := CanView(n, tt.isAdmin, now); got != tt.want {
+			a := &Activity{DeletedAt: tt.deletedAt, PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
+			if got := CanView(a, tt.isAdmin, now); got != tt.want {
 				t.Errorf("CanView() = %v, want %v", got, tt.want)
 			}
 		})
@@ -251,8 +253,8 @@ func TestGetStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
-			if got := GetStatus(n, now); got != tt.want {
+			a := &Activity{PublishAt: tt.publishAt, ExpiresAt: tt.expiresAt}
+			if got := GetStatus(a, now); got != tt.want {
 				t.Errorf("GetStatus() = %v, want %v", got, tt.want)
 			}
 		})
@@ -276,8 +278,8 @@ func TestCanEdit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{AuthorID: authorID}
-			if got := CanEdit(n, tt.userID, tt.isAdmin); got != tt.want {
+			a := &Activity{AuthorID: authorID}
+			if got := CanEdit(a, tt.userID, tt.isAdmin); got != tt.want {
 				t.Errorf("CanEdit() = %v, want %v", got, tt.want)
 			}
 		})
@@ -302,8 +304,8 @@ func TestResolveTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{TitleEN: tt.titleEN, TitleLocal: tt.titleLocal}
-			if got := ResolveTitle(n, tt.prefLang, tt.defaultLang); got != tt.want {
+			a := &Activity{TitleEN: tt.titleEN, TitleLocal: tt.titleLocal}
+			if got := ResolveTitle(a, tt.prefLang, tt.defaultLang); got != tt.want {
 				t.Errorf("ResolveTitle() = %v, want %v", got, tt.want)
 			}
 		})
@@ -329,8 +331,8 @@ func TestGetTranslation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := &News{TitleEN: "EN", BodyEN: "EN Body", TitleLocal: tt.titleLocal, BodyLocal: tt.bodyLocal}
-			_, _, ok := GetTranslation(n, tt.lang)
+			a := &Activity{TitleEN: "EN", BodyEN: "EN Body", TitleLocal: tt.titleLocal, BodyLocal: tt.bodyLocal}
+			_, _, ok := GetTranslation(a, tt.lang)
 			if ok != tt.wantOK {
 				t.Errorf("GetTranslation() ok = %v, want %v", ok, tt.wantOK)
 			}
@@ -338,39 +340,39 @@ func TestGetTranslation(t *testing.T) {
 	}
 }
 
-func TestBuildNews(t *testing.T) {
+func TestBuildActivity(t *testing.T) {
 	authorID := uuid.New()
 	publisherID := uuid.New()
 	titleLocal := "Local"
 	bodyLocal := "Body Local"
 
-	n := BuildNews(authorID, PublisherCollege, &publisherID, CategoryEvent, "Title", &titleLocal, "Body", &bodyLocal, nil, nil, nil)
-
-	if n.ID == uuid.Nil {
-		t.Error("ID should be generated")
-	}
-	if n.AuthorID != authorID {
-		t.Errorf("AuthorID = %v, want %v", n.AuthorID, authorID)
-	}
-	if n.PublisherType != PublisherCollege {
-		t.Errorf("PublisherType = %v, want %v", n.PublisherType, PublisherCollege)
-	}
-	if n.Category != CategoryEvent {
-		t.Errorf("Category = %v, want %v", n.Category, CategoryEvent)
-	}
-}
-
-func TestBuildAttachment(t *testing.T) {
-	newsID := uuid.New()
-	fileID := uuid.New()
-
-	a := BuildAttachment(newsID, fileID, "file.pdf", FileTypeDocument, 0)
+	a := BuildActivity(authorID, PublisherCollege, &publisherID, TypeWebinar, "Title", &titleLocal, "Body", &bodyLocal, nil, nil, nil)
 
 	if a.ID == uuid.Nil {
 		t.Error("ID should be generated")
 	}
-	if a.NewsID != newsID {
-		t.Errorf("NewsID = %v, want %v", a.NewsID, newsID)
+	if a.AuthorID != authorID {
+		t.Errorf("AuthorID = %v, want %v", a.AuthorID, authorID)
+	}
+	if a.PublisherType != PublisherCollege {
+		t.Errorf("PublisherType = %v, want %v", a.PublisherType, PublisherCollege)
+	}
+	if a.Type != TypeWebinar {
+		t.Errorf("Type = %v, want %v", a.Type, TypeWebinar)
+	}
+}
+
+func TestBuildActivityAttachment(t *testing.T) {
+	activityID := uuid.New()
+	fileID := uuid.New()
+
+	a := BuildActivityAttachment(activityID, fileID, "file.pdf", FileTypeDocument, 0)
+
+	if a.ID == uuid.Nil {
+		t.Error("ID should be generated")
+	}
+	if a.ActivityID != activityID {
+		t.Errorf("ActivityID = %v, want %v", a.ActivityID, activityID)
 	}
 	if a.FileType != FileTypeDocument {
 		t.Errorf("FileType = %v, want %v", a.FileType, FileTypeDocument)

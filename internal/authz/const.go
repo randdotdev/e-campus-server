@@ -67,7 +67,7 @@ const (
 	ResourceProgram      Entity = "program"
 	ResourceUniversity   Entity = "university"
 	ResourcePolicy       Entity = "policy"
-	ResourceNews         Entity = "news"
+	ResourceActivity     Entity = "activity"
 	ResourcePost         Entity = "post"
 	ResourceQA           Entity = "qa"
 	ResourceSettings     Entity = "settings"

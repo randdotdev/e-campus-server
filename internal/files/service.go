@@ -396,6 +396,17 @@ func (s *Service) GetStorageUsage(ctx context.Context, ownerID uuid.UUID) (*Stor
 	return BuildStorageUsage(used, limit), nil
 }
 
+func (s *Service) ServeStoredFile(ctx context.Context, storedFileID uuid.UUID) (string, error) {
+	storedFile, err := s.repo.GetStoredFileByID(ctx, storedFileID)
+	if err != nil {
+		return "", err
+	}
+	if storedFile == nil {
+		return "", ErrStoredFileNotFound
+	}
+	return s.storage.PresignedGetURL(ctx, storedFile.StorageKey, time.Hour)
+}
+
 func isDuplicateKeyError(err error) bool {
 	return err != nil && (contains(err.Error(), "duplicate key") || contains(err.Error(), "unique constraint"))
 }

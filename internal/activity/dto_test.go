@@ -1,4 +1,4 @@
-package news
+package activity
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestToNewsResponse(t *testing.T) {
+func TestToActivityResponse(t *testing.T) {
 	now := time.Now()
 	titleLocal := "عنوان"
 	bodyLocal := "محتوى"
@@ -15,12 +15,12 @@ func TestToNewsResponse(t *testing.T) {
 	avatar := "https://example.com/avatar.jpg"
 	publisherID := uuid.New()
 
-	news := &NewsWithAuthor{
-		News: News{
+	a := &ActivityWithAuthor{
+		Activity: Activity{
 			ID:            uuid.New(),
 			PublisherType: PublisherCollege,
 			PublisherID:   &publisherID,
-			Category:      CategoryAnnouncement,
+			Type:          TypeAnnouncement,
 			TitleEN:       "Title EN",
 			TitleLocal:    &titleLocal,
 			BodyEN:        "Body EN",
@@ -33,23 +33,32 @@ func TestToNewsResponse(t *testing.T) {
 		AuthorAvatar:    &avatar,
 	}
 
-	attachments := []NewsAttachment{
-		{ID: uuid.New(), NewsID: news.ID, DisplayName: "file.pdf", FileType: FileTypeDocument},
+	attachments := []ActivityAttachment{
+		{ID: uuid.New(), ActivityID: a.ID, DisplayName: "file.pdf", FileType: FileTypeDocument},
 	}
 
-	resp := ToNewsResponse(news, attachments, LangEN, LangEN, now)
+	resp := ToActivityResponse(a, attachments, now)
 
-	if resp.ID != news.ID {
+	if resp.ID != a.ID {
 		t.Error("ID should match")
 	}
 	if resp.PublisherType != PublisherCollege {
 		t.Error("PublisherType should match")
 	}
-	if resp.Category != CategoryAnnouncement {
-		t.Error("Category should match")
+	if resp.Type != TypeAnnouncement {
+		t.Error("Type should match")
 	}
-	if resp.Title != "Title EN" {
-		t.Errorf("Title should be EN, got %s", resp.Title)
+	if resp.TitleEN != "Title EN" {
+		t.Errorf("TitleEN should match, got %s", resp.TitleEN)
+	}
+	if resp.TitleLocal == nil || *resp.TitleLocal != titleLocal {
+		t.Error("TitleLocal should match")
+	}
+	if resp.BodyEN != "Body EN" {
+		t.Errorf("BodyEN should match, got %s", resp.BodyEN)
+	}
+	if resp.BodyLocal == nil || *resp.BodyLocal != bodyLocal {
+		t.Error("BodyLocal should match")
 	}
 	if resp.AuthorName != "Author Name" {
 		t.Error("AuthorName should match")
@@ -65,60 +74,34 @@ func TestToNewsResponse(t *testing.T) {
 	}
 }
 
-func TestToNewsResponseWithLocalLang(t *testing.T) {
-	titleLocal := "عنوان"
-	bodyLocal := "محتوى"
-
-	news := &NewsWithAuthor{
-		News: News{
-			ID:         uuid.New(),
-			TitleEN:    "Title EN",
-			TitleLocal: &titleLocal,
-			BodyEN:     "Body EN",
-			BodyLocal:  &bodyLocal,
-			CreatedAt:  time.Now(),
-		},
-		AuthorName: "Author",
+func TestToActivityResponses(t *testing.T) {
+	activities := []ActivityWithAuthor{
+		{Activity: Activity{ID: uuid.New(), TitleEN: "First", BodyEN: "Body1", CreatedAt: time.Now()}, AuthorName: "A"},
+		{Activity: Activity{ID: uuid.New(), TitleEN: "Second", BodyEN: "Body2", CreatedAt: time.Now()}, AuthorName: "B"},
 	}
 
-	resp := ToNewsResponse(news, nil, LangLocal, LangEN, time.Now())
-
-	if resp.Title != titleLocal {
-		t.Errorf("Title should be local when preferring local, got %s", resp.Title)
-	}
-	if resp.Body != bodyLocal {
-		t.Errorf("Body should be local when preferring local, got %s", resp.Body)
-	}
-}
-
-func TestToNewsResponses(t *testing.T) {
-	newsList := []NewsWithAuthor{
-		{News: News{ID: uuid.New(), TitleEN: "First", BodyEN: "Body1", CreatedAt: time.Now()}, AuthorName: "A"},
-		{News: News{ID: uuid.New(), TitleEN: "Second", BodyEN: "Body2", CreatedAt: time.Now()}, AuthorName: "B"},
+	attachmentsMap := make(map[uuid.UUID][]ActivityAttachment)
+	attachmentsMap[activities[0].ID] = []ActivityAttachment{
+		{ID: uuid.New(), ActivityID: activities[0].ID, DisplayName: "file.jpg", FileType: FileTypeImage},
 	}
 
-	attachmentsMap := make(map[uuid.UUID][]NewsAttachment)
-	attachmentsMap[newsList[0].ID] = []NewsAttachment{
-		{ID: uuid.New(), NewsID: newsList[0].ID, DisplayName: "file.jpg", FileType: FileTypeImage},
-	}
-
-	result := ToNewsResponses(newsList, attachmentsMap, LangEN, LangEN, time.Now())
+	result := ToActivityResponses(activities, attachmentsMap, time.Now())
 
 	if len(result) != 2 {
 		t.Fatalf("expected 2 responses, got %d", len(result))
 	}
 	if len(result[0].Attachments) != 1 {
-		t.Error("first news should have 1 attachment")
+		t.Error("first activity should have 1 attachment")
 	}
 	if result[1].Attachments != nil {
-		t.Error("second news should have no attachments")
+		t.Error("second activity should have no attachments")
 	}
 }
 
 func TestToAttachmentResponse(t *testing.T) {
-	attachment := &NewsAttachment{
+	attachment := &ActivityAttachment{
 		ID:           uuid.New(),
-		NewsID:       uuid.New(),
+		ActivityID:   uuid.New(),
 		StoredFileID: uuid.New(),
 		DisplayName:  "document.pdf",
 		FileType:     FileTypeDocument,
@@ -148,11 +131,11 @@ func TestToAttachmentResponses(t *testing.T) {
 	if ToAttachmentResponses(nil) != nil {
 		t.Error("nil input should return nil")
 	}
-	if ToAttachmentResponses([]NewsAttachment{}) != nil {
+	if ToAttachmentResponses([]ActivityAttachment{}) != nil {
 		t.Error("empty input should return nil")
 	}
 
-	attachments := []NewsAttachment{
+	attachments := []ActivityAttachment{
 		{ID: uuid.New(), DisplayName: "a.jpg", FileType: FileTypeImage},
 		{ID: uuid.New(), DisplayName: "b.pdf", FileType: FileTypeDocument},
 	}
