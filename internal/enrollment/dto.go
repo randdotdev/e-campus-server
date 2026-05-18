@@ -67,14 +67,17 @@ type AssignToGroupRequest struct {
 // Response DTOs
 
 type EnrollmentResponse struct {
-	ID             uuid.UUID  `json:"id"`
-	OfferingID     uuid.UUID  `json:"offering_id"`
-	StudentID      uuid.UUID  `json:"student_id"`
-	EnrollmentType string     `json:"enrollment_type"`
-	Status         string     `json:"status"`
-	EnrolledAt     time.Time  `json:"enrolled_at"`
-	CompletedAt    *time.Time `json:"completed_at,omitempty"`
-	FinalGrade     *float64   `json:"final_grade,omitempty"`
+	ID                   uuid.UUID  `json:"id"`
+	OfferingID           uuid.UUID  `json:"offering_id"`
+	StudentID            uuid.UUID  `json:"student_id"`
+	EnrollmentType       string     `json:"enrollment_type"`
+	Status               string     `json:"status"`
+	EnrolledAt           time.Time  `json:"enrolled_at"`
+	CompletedAt          *time.Time `json:"completed_at,omitempty"`
+	FinalGrade           *float64   `json:"final_grade,omitempty"`
+	StudentFullNameEN    string     `json:"student_full_name_en"`
+	StudentFullNameLocal *string    `json:"student_full_name_local,omitempty"`
+	StudentEmail         string     `json:"student_email"`
 }
 
 type MyEnrollmentResponse struct {
@@ -131,7 +134,7 @@ type CreateRequestResponse struct {
 
 // Mappers
 
-func ToEnrollmentResponse(e *Enrollment) EnrollmentResponse {
+func ToEnrollmentBasicResponse(e *Enrollment) EnrollmentResponse {
 	return EnrollmentResponse{
 		ID:             e.ID,
 		OfferingID:     e.OfferingID,
@@ -144,7 +147,23 @@ func ToEnrollmentResponse(e *Enrollment) EnrollmentResponse {
 	}
 }
 
-func ToEnrollmentsResponse(enrollments []Enrollment) []EnrollmentResponse {
+func ToEnrollmentResponse(e *EnrollmentWithStudent) EnrollmentResponse {
+	return EnrollmentResponse{
+		ID:                   e.ID,
+		OfferingID:           e.OfferingID,
+		StudentID:            e.StudentID,
+		EnrollmentType:       e.EnrollmentType,
+		Status:               e.Status,
+		EnrolledAt:           e.EnrolledAt,
+		CompletedAt:          e.CompletedAt,
+		FinalGrade:           e.FinalGrade,
+		StudentFullNameEN:    e.StudentFullNameEN,
+		StudentFullNameLocal: e.StudentFullNameLocal,
+		StudentEmail:         e.StudentEmail,
+	}
+}
+
+func ToEnrollmentsResponse(enrollments []EnrollmentWithStudent) []EnrollmentResponse {
 	result := make([]EnrollmentResponse, len(enrollments))
 	for i := range enrollments {
 		result[i] = ToEnrollmentResponse(&enrollments[i])

@@ -93,7 +93,7 @@ func (h *Handler) EnrollStudent(c *gin.Context) {
 		return
 	}
 
-	response.Created(c, ToEnrollmentResponse(enrollment))
+	response.Created(c, ToEnrollmentBasicResponse(enrollment))
 }
 
 func (h *Handler) GetMyEnrollments(c *gin.Context) {

@@ -73,7 +73,7 @@ type UpdateOfferingRequest struct {
 
 type AddTeacherRequest struct {
 	UserID uuid.UUID `json:"user_id" binding:"required"`
-	Role   string    `json:"role" binding:"required,oneof=teacher assistant"`
+	Role   string    `json:"role" binding:"required,oneof=teacher assistant observer"`
 }
 
 type CreateSectionRequest struct {
@@ -120,11 +120,14 @@ type OfferingResponse struct {
 }
 
 type TeacherResponse struct {
-	ID         uuid.UUID `json:"id"`
-	OfferingID uuid.UUID `json:"offering_id"`
-	UserID     uuid.UUID `json:"user_id"`
-	Role       string    `json:"role"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID                uuid.UUID `json:"id"`
+	OfferingID        uuid.UUID `json:"offering_id"`
+	UserID            uuid.UUID `json:"user_id"`
+	Role              string    `json:"role"`
+	CreatedAt         time.Time `json:"created_at"`
+	UserFullNameEN    string    `json:"user_full_name_en"`
+	UserFullNameLocal *string   `json:"user_full_name_local,omitempty"`
+	UserEmail         string    `json:"user_email"`
 }
 
 type SectionResponse struct {
@@ -187,7 +190,7 @@ func ToOfferingsResponse(offerings []Offering) []OfferingResponse {
 	return result
 }
 
-func ToTeacherResponse(t *Teacher) TeacherResponse {
+func ToTeacherBasicResponse(t *Teacher) TeacherResponse {
 	return TeacherResponse{
 		ID:         t.ID,
 		OfferingID: t.OfferingID,
@@ -197,7 +200,20 @@ func ToTeacherResponse(t *Teacher) TeacherResponse {
 	}
 }
 
-func ToTeachersResponse(teachers []Teacher) []TeacherResponse {
+func ToTeacherResponse(t *TeacherWithUser) TeacherResponse {
+	return TeacherResponse{
+		ID:                t.ID,
+		OfferingID:        t.OfferingID,
+		UserID:            t.UserID,
+		Role:              t.Role,
+		CreatedAt:         t.CreatedAt,
+		UserFullNameEN:    t.UserFullNameEN,
+		UserFullNameLocal: t.UserFullNameLocal,
+		UserEmail:         t.UserEmail,
+	}
+}
+
+func ToTeachersResponse(teachers []TeacherWithUser) []TeacherResponse {
 	result := make([]TeacherResponse, len(teachers))
 	for i := range teachers {
 		result[i] = ToTeacherResponse(&teachers[i])
@@ -215,6 +231,42 @@ func ToSectionResponse(s *Section, now time.Time) SectionResponse {
 		IsUnlocked: IsSectionUnlocked(s.UnlockAt, now),
 		CreatedAt:  s.CreatedAt,
 	}
+}
+
+type MyTeachingResponse struct {
+	OfferingID      uuid.UUID `json:"offering_id"`
+	Role            string    `json:"role"`
+	CourseID        uuid.UUID `json:"course_id"`
+	CourseCode      string    `json:"course_code"`
+	CourseNameEN    string    `json:"course_name_en"`
+	CourseNameLocal *string   `json:"course_name_local,omitempty"`
+	CohortYear      int       `json:"cohort_year"`
+	Shift           string    `json:"shift"`
+	IsActive        bool      `json:"is_active"`
+	SemesterID      uuid.UUID `json:"semester_id"`
+}
+
+func ToMyTeachingResponse(m *MyTeachingOffering) MyTeachingResponse {
+	return MyTeachingResponse{
+		OfferingID:      m.OfferingID,
+		Role:            m.Role,
+		CourseID:        m.CourseID,
+		CourseCode:      m.CourseCode,
+		CourseNameEN:    m.CourseNameEN,
+		CourseNameLocal: m.CourseNameLocal,
+		CohortYear:      m.CohortYear,
+		Shift:           m.Shift,
+		IsActive:        m.IsActive,
+		SemesterID:      m.SemesterID,
+	}
+}
+
+func ToMyTeachingsResponse(items []MyTeachingOffering) []MyTeachingResponse {
+	result := make([]MyTeachingResponse, len(items))
+	for i := range items {
+		result[i] = ToMyTeachingResponse(&items[i])
+	}
+	return result
 }
 
 func ToSectionsResponse(sections []Section, now time.Time) []SectionResponse {

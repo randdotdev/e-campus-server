@@ -11,7 +11,7 @@ type EnrollmentRepository interface {
 	// Enrollment operations
 	CreateEnrollment(ctx context.Context, e *Enrollment) error
 	GetEnrollment(ctx context.Context, offeringID, studentID uuid.UUID) (*Enrollment, error)
-	ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error)
+	ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]EnrollmentWithStudent, bool, error)
 	UpdateEnrollment(ctx context.Context, e *Enrollment) error
 	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 	GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
@@ -146,7 +146,7 @@ func (s *Service) EnrollStudent(ctx context.Context, offeringID uuid.UUID, req E
 	return enrollment, nil
 }
 
-func (s *Service) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
+func (s *Service) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]EnrollmentWithStudent, bool, error) {
 	return s.repo.ListEnrollments(ctx, params, filters)
 }
 

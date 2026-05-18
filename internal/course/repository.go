@@ -334,9 +334,18 @@ func (r *Repository) IsTeacher(offeringID, userID uuid.UUID) (bool, error) {
 	return role == "teacher", nil
 }
 
-func (r *Repository) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error) {
-	var teachers []Teacher
-	query := `SELECT * FROM course_teachers WHERE offering_id = $1 ORDER BY created_at`
+func (r *Repository) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error) {
+	var teachers []TeacherWithUser
+	query := `
+		SELECT
+			ct.id, ct.offering_id, ct.user_id, ct.role, ct.created_at,
+			u.full_name_en  AS user_full_name_en,
+			u.full_name_local AS user_full_name_local,
+			u.email         AS user_email
+		FROM course_teachers ct
+		JOIN users u ON u.id = ct.user_id
+		WHERE ct.offering_id = $1
+		ORDER BY ct.created_at`
 
 	if err := r.db.SelectContext(ctx, &teachers, query, offeringID); err != nil {
 		return nil, err
@@ -381,6 +390,24 @@ func (r *Repository) GetTeacherOfferingsForUser(ctx context.Context, userID uuid
 	result := make(map[uuid.UUID]string, len(rows))
 	for _, r := range rows {
 		result[r.OfferingID] = r.Role
+	}
+	return result, nil
+}
+
+func (r *Repository) ListMyTeachingOfferings(ctx context.Context, userID uuid.UUID) ([]MyTeachingOffering, error) {
+	var result []MyTeachingOffering
+	query := `
+		SELECT
+			ct.offering_id, ct.role,
+			co.course_id, co.cohort_year, co.shift, co.is_active, co.semester_id,
+			c.code AS course_code, c.name_en AS course_name_en, c.name_local AS course_name_local
+		FROM course_teachers ct
+		JOIN course_offerings co ON co.id = ct.offering_id
+		JOIN courses c ON c.id = co.course_id
+		WHERE ct.user_id = $1
+		ORDER BY co.cohort_year DESC, ct.created_at DESC`
+	if err := r.db.SelectContext(ctx, &result, query, userID); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

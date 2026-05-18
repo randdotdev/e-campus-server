@@ -26,7 +26,7 @@ type CourseRepository interface {
 	// Teacher operations
 	AddTeacher(ctx context.Context, t *Teacher) error
 	GetTeacher(ctx context.Context, offeringID, userID uuid.UUID) (*Teacher, error)
-	ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error)
+	ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error)
 	RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error
 	TeacherExists(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 
@@ -36,6 +36,9 @@ type CourseRepository interface {
 	ListSections(ctx context.Context, offeringID uuid.UUID) ([]Section, error)
 	UpdateSection(ctx context.Context, s *Section) error
 	DeleteSection(ctx context.Context, id uuid.UUID) error
+
+	// My teaching offerings
+	ListMyTeachingOfferings(ctx context.Context, userID uuid.UUID) ([]MyTeachingOffering, error)
 
 	// Access level helpers
 	GetOfferingsByCourseCodeAndCohort(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]Offering, error)
@@ -227,7 +230,7 @@ func (s *Service) GetTeacherRole(ctx context.Context, offeringID, userID uuid.UU
 	return s.repo.GetTeacher(ctx, offeringID, userID)
 }
 
-func (s *Service) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error) {
+func (s *Service) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error) {
 	if _, err := s.repo.GetOffering(ctx, offeringID); err != nil {
 		return nil, err
 	}
@@ -236,6 +239,10 @@ func (s *Service) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Tea
 
 func (s *Service) RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error {
 	return s.repo.RemoveTeacher(ctx, offeringID, userID)
+}
+
+func (s *Service) ListMyTeachingOfferings(ctx context.Context, userID uuid.UUID) ([]MyTeachingOffering, error) {
+	return s.repo.ListMyTeachingOfferings(ctx, userID)
 }
 
 // Section operations

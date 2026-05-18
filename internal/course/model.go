@@ -43,6 +43,13 @@ type Teacher struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
+type TeacherWithUser struct {
+	Teacher
+	UserFullNameEN    string  `db:"user_full_name_en"`
+	UserFullNameLocal *string `db:"user_full_name_local"`
+	UserEmail         string  `db:"user_email"`
+}
+
 type Section struct {
 	ID         uuid.UUID  `db:"id"`
 	OfferingID uuid.UUID  `db:"offering_id"`
@@ -60,6 +67,7 @@ const (
 const (
 	TeacherRoleTeacher   = "teacher"
 	TeacherRoleAssistant = "assistant"
+	TeacherRoleObserver  = "observer"
 )
 
 type Group struct {
@@ -81,6 +89,19 @@ const (
 	GroupTypeTheory   = "theory"
 	GroupTypePractice = "practice"
 )
+
+type MyTeachingOffering struct {
+	OfferingID      uuid.UUID `db:"offering_id"`
+	Role            string    `db:"role"`
+	CourseID        uuid.UUID `db:"course_id"`
+	CourseCode      string    `db:"course_code"`
+	CourseNameEN    string    `db:"course_name_en"`
+	CourseNameLocal *string   `db:"course_name_local"`
+	CohortYear      int       `db:"cohort_year"`
+	Shift           string    `db:"shift"`
+	IsActive        bool      `db:"is_active"`
+	SemesterID      uuid.UUID `db:"semester_id"`
+}
 
 type AccessLevel int
 

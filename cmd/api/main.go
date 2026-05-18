@@ -503,6 +503,7 @@ func run() error {
 			protected.PUT("/schedules/:id", contentHandler.UpdateSchedule)
 			protected.DELETE("/schedules/:id", contentHandler.RemoveSchedule)
 
+			protected.GET("/me/teachings", courseHandler.GetMyTeachingOfferings)
 			protected.GET("/me/classes", contentHandler.GetMyClasses)
 
 			// Attendance routes - teacher/assistant

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranjdotdev/e-campus-server/internal/pagination"
 	"github.com/ranjdotdev/e-campus-server/internal/authz"
+	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
@@ -328,7 +329,7 @@ func (h *Handler) AddTeacher(c *gin.Context) {
 		h.log.Error("add teacher failed", zap.Error(err))
 		response.InternalError(c)
 	} else {
-		response.Created(c, ToTeacherResponse(teacher))
+		response.Created(c, ToTeacherBasicResponse(teacher))
 	}
 }
 
@@ -394,6 +395,21 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 	} else {
 		response.NoContent(c)
 	}
+}
+
+// My teaching offerings handler
+
+func (h *Handler) GetMyTeachingOfferings(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	offerings, err := h.service.ListMyTeachingOfferings(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("list my teaching offerings failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, ToMyTeachingsResponse(offerings))
 }
 
 // Section handlers

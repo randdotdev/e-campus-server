@@ -73,12 +73,7 @@ func (r *Repository) GetEnrollment(ctx context.Context, offeringID, studentID uu
 	return &enrollment, nil
 }
 
-func (r *Repository) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
-	joins := ""
-	if filters.Query != "" {
-		joins = "JOIN users u ON e.student_id = u.id"
-	}
-
+func (r *Repository) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]EnrollmentWithStudent, bool, error) {
 	var conditions []string
 	var args []any
 	argN := 1
@@ -117,13 +112,21 @@ func (r *Repository) ListEnrollments(ctx context.Context, params pagination.Page
 	if len(conditions) > 0 {
 		where = "WHERE " + strings.Join(conditions, " AND ")
 	}
-	query := fmt.Sprintf(
-		"SELECT e.* FROM course_enrollments e %s %s ORDER BY e.enrolled_at DESC, e.id DESC LIMIT $%d",
-		joins, where, argN,
+	query := fmt.Sprintf(`
+		SELECT
+			e.id, e.offering_id, e.student_id, e.enrollment_type, e.status,
+			e.enrolled_at, e.completed_at, e.final_grade,
+			u.full_name_en  AS student_full_name_en,
+			u.full_name_local AS student_full_name_local,
+			u.email         AS student_email
+		FROM course_enrollments e
+		JOIN users u ON u.id = e.student_id
+		%s ORDER BY e.enrolled_at DESC, e.id DESC LIMIT $%d`,
+		where, argN,
 	)
 	args = append(args, params.Limit+1)
 
-	var enrollments []Enrollment
+	var enrollments []EnrollmentWithStudent
 	if err := r.db.SelectContext(ctx, &enrollments, query, args...); err != nil {
 		return nil, false, err
 	}

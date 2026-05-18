@@ -17,6 +17,13 @@ type Enrollment struct {
 	FinalGrade     *float64   `db:"final_grade"`
 }
 
+type EnrollmentWithStudent struct {
+	Enrollment
+	StudentFullNameEN    string  `db:"student_full_name_en"`
+	StudentFullNameLocal *string `db:"student_full_name_local"`
+	StudentEmail         string  `db:"student_email"`
+}
+
 const (
 	EnrollmentTypeCurriculum = "curriculum"
 	EnrollmentTypeRetake     = "retake"
