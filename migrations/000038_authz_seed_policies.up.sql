@@ -124,12 +124,17 @@ INSERT INTO authz_policies (resource, verb, course_role) VALUES
   ('offering', 'get',    'student'),
   ('offering', 'get',    'observer');
 
+--  Course-role access: teaching staff can update their own offering
+--  (this gates section, lesson, attachment, schedule, and teacher mutations).
+INSERT INTO authz_policies (resource, verb, course_role) VALUES
+  ('offering', 'update', 'teacher'),
+  ('offering', 'update', 'assistant');
+
 --  Scope-based access:
 --  • get    → viewers inside the department chain can read offerings.
 --  • list   → admins use this for oversight dashboards.
---  • update → teaching staff update their own offering; scope admins update
---             for moderation (enrollment.update is the separate gate for
---             enrollment-level moderation).
+--  • update → scope admins update for moderation (enrollment.update is the
+--             separate gate for enrollment-level moderation).
 INSERT INTO authz_policies (resource, verb, scope_type, min_level) VALUES
   ('offering', 'get',    'department', 'viewer'),
   ('offering', 'get',    'university', 'viewer'),

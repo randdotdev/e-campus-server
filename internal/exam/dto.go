@@ -80,7 +80,7 @@ type RandomSelectRequest struct {
 }
 
 type CreateExamRequest struct {
-	OfferingID       uuid.UUID      `json:"offering_id" binding:"required"`
+	OfferingID       uuid.UUID      `json:"offering_id"`
 	SectionID        *uuid.UUID     `json:"section_id"`
 	Title            string         `json:"title" binding:"required,min=1,max=255"`
 	Description      *string        `json:"description"`

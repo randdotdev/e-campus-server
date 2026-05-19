@@ -56,8 +56,9 @@ type LessonWithMeta struct {
 }
 
 type AttachmentInfo struct {
-	ID          uuid.UUID `db:"id"`
-	DisplayName string    `db:"display_name"`
+	ID           uuid.UUID `db:"id"`
+	DisplayName  string    `db:"display_name"`
+	StoredFileID uuid.UUID `db:"stored_file_id"`
 }
 
 type ScheduleInfo struct {

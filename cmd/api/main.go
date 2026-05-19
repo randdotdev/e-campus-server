@@ -429,6 +429,7 @@ func run() error {
 			protected.POST("/courses", courseHandler.CreateCourse)
 			protected.GET("/courses/:id", courseHandler.GetCourse)
 			protected.PUT("/courses/:id", courseHandler.UpdateCourse)
+			protected.DELETE("/courses/:id", courseHandler.DeleteCourse)
 			protected.GET("/courses/:id/siblings", courseHandler.GetSiblingCourses)
 
 			// Offering routes

@@ -601,7 +601,7 @@ func (r *ScopeRepo) ScopeExists(ctx context.Context, scopeType string, scopeID u
 	case ScopeProgram:
 		query = `SELECT EXISTS(SELECT 1 FROM programs WHERE id = $1 AND is_active = true)`
 	case "course":
-		query = `SELECT EXISTS(SELECT 1 FROM courses WHERE id = $1 AND is_active = true)`
+		query = `SELECT EXISTS(SELECT 1 FROM course_offerings WHERE id = $1 AND is_active = true)`
 	default:
 		return false, nil
 	}

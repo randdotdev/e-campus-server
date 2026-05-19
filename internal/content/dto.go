@@ -129,8 +129,9 @@ type AddAttachmentRequest struct {
 }
 
 type AttachmentResponse struct {
-	ID          uuid.UUID `json:"id"`
-	DisplayName string    `json:"display_name"`
+	ID           uuid.UUID `json:"id"`
+	DisplayName  string    `json:"display_name"`
+	StoredFileID uuid.UUID `json:"stored_file_id"`
 }
 
 func ToAttachmentResponse(a AttachmentInfo) AttachmentResponse {

@@ -13,6 +13,7 @@ type CourseRepository interface {
 	GetCourse(ctx context.Context, id uuid.UUID) (*Course, error)
 	ListCourses(ctx context.Context, params pagination.PageParams, filters CourseFilters) ([]Course, bool, error)
 	UpdateCourse(ctx context.Context, c *Course) error
+	DeleteCourse(ctx context.Context, id uuid.UUID) error
 	GetCoursesByCode(ctx context.Context, departmentID uuid.UUID, code string) ([]Course, error)
 	CourseCodeExists(ctx context.Context, departmentID uuid.UUID, code string, groupOrder int, excludeID *uuid.UUID) (bool, error)
 
@@ -133,6 +134,10 @@ func (s *Service) UpdateCourse(ctx context.Context, id uuid.UUID, req UpdateCour
 	}
 
 	return course, nil
+}
+
+func (s *Service) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteCourse(ctx, id)
 }
 
 func (s *Service) GetSiblingCourses(ctx context.Context, courseID uuid.UUID) ([]Course, error) {

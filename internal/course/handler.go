@@ -137,6 +137,38 @@ func (h *Handler) UpdateCourse(c *gin.Context) {
 	response.OK(c, ToCourseResponse(updated))
 }
 
+func (h *Handler) DeleteCourse(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid course id")
+		return
+	}
+
+	course, err := h.service.GetCourse(c.Request.Context(), id)
+	if errors.Is(err, ErrCourseNotFound) {
+		response.NotFound(c, "course not found")
+		return
+	} else if err != nil {
+		h.log.Error("get course failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.DeleteCourse(c.Request.Context(), id); errors.Is(err, ErrCourseNotFound) {
+		response.NotFound(c, "course not found")
+	} else if err != nil {
+		h.log.Error("delete course failed", zap.Error(err))
+		response.InternalError(c)
+	} else {
+		response.NoContent(c)
+	}
+}
+
 func (h *Handler) GetSiblingCourses(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

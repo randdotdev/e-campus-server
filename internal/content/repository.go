@@ -159,7 +159,7 @@ func (r *Repository) GetAttachmentByName(ctx context.Context, lessonID uuid.UUID
 
 func (r *Repository) ListAttachments(ctx context.Context, lessonID uuid.UUID) ([]AttachmentInfo, error) {
 	var attachments []AttachmentInfo
-	query := `SELECT id, display_name FROM lesson_attachments WHERE lesson_id = $1 ORDER BY order_index`
+	query := `SELECT id, display_name, stored_file_id FROM lesson_attachments WHERE lesson_id = $1 ORDER BY order_index`
 	err := r.db.SelectContext(ctx, &attachments, query, lessonID)
 	return attachments, err
 }

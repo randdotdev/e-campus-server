@@ -146,6 +146,17 @@ func (r *Repository) UpdateCourse(ctx context.Context, c *Course) error {
 	return err
 }
 
+func (r *Repository) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM courses WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrCourseNotFound
+	}
+	return nil
+}
+
 func (r *Repository) GetCoursesByCode(ctx context.Context, departmentID uuid.UUID, code string) ([]Course, error) {
 	var courses []Course
 	query := `SELECT * FROM courses WHERE department_id = $1 AND code = $2 ORDER BY group_order`
