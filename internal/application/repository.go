@@ -42,7 +42,19 @@ func (r *Repository) Create(ctx context.Context, app *Application) error {
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*Application, error) {
 	var app Application
-	query := `SELECT * FROM applications WHERE id = $1`
+	query := `
+		SELECT a.*,
+			p.name_en AS program_name_en, p.name_local AS program_name_local,
+			d.name_en AS department_name_en, d.name_local AS department_name_local,
+			c.name_en AS college_name_en, c.name_local AS college_name_local,
+			u.full_name_en AS applicant_name_en, u.full_name_local AS applicant_name_local,
+			u.email AS applicant_email, u.avatar_url AS applicant_avatar_url
+		FROM applications a
+		JOIN programs p ON a.program_id = p.id
+		JOIN departments d ON p.department_id = d.id
+		JOIN colleges c ON d.college_id = c.id
+		LEFT JOIN users u ON a.user_id = u.id
+		WHERE a.id = $1`
 
 	if err := r.db.GetContext(ctx, &app, query, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -162,9 +174,17 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 		where = "WHERE " + strings.Join(conditions, " AND ")
 	}
 	query := fmt.Sprintf(`
-		SELECT a.* FROM applications a
+		SELECT a.*,
+			p.name_en AS program_name_en, p.name_local AS program_name_local,
+			d.name_en AS department_name_en, d.name_local AS department_name_local,
+			c.name_en AS college_name_en, c.name_local AS college_name_local,
+			u.full_name_en AS applicant_name_en, u.full_name_local AS applicant_name_local,
+			u.email AS applicant_email, u.avatar_url AS applicant_avatar_url
+		FROM applications a
 		JOIN programs p ON a.program_id = p.id
 		JOIN departments d ON p.department_id = d.id
+		JOIN colleges c ON d.college_id = c.id
+		LEFT JOIN users u ON a.user_id = u.id
 		%s
 		ORDER BY a.created_at DESC, a.id DESC LIMIT $%d`, where, argN)
 	args = append(args, params.Limit+1)

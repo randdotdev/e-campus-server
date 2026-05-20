@@ -56,15 +56,15 @@ type ReviewApplicationRequest struct {
 // Response DTOs
 
 type ApplicationResponse struct {
-	ID            uuid.UUID      `json:"id"`
-	UserID        *uuid.UUID     `json:"user_id,omitempty"`
-	ProgramID     uuid.UUID      `json:"program_id"`
-	AdmissionYear int            `json:"admission_year"`
-	Shift         string         `json:"shift"`
-	Tuition       string         `json:"tuition"`
-	DateOfBirth   string         `json:"date_of_birth"`
-	Gender        string         `json:"gender"`
-	Nationality   string         `json:"nationality"`
+	ID            uuid.UUID  `json:"id"`
+	UserID        *uuid.UUID `json:"user_id,omitempty"`
+	ProgramID     uuid.UUID  `json:"program_id"`
+	AdmissionYear int        `json:"admission_year"`
+	Shift         string     `json:"shift"`
+	Tuition       string     `json:"tuition"`
+	DateOfBirth   string     `json:"date_of_birth"`
+	Gender        string     `json:"gender"`
+	Nationality   string     `json:"nationality"`
 	PersonalExtra map[string]any `json:"personal_extra"`
 	Academic      map[string]any `json:"academic"`
 	Documents     []any          `json:"documents"`
@@ -74,25 +74,49 @@ type ApplicationResponse struct {
 	ReviewNotes   *string        `json:"review_notes,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
+
+	// Hierarchy names
+	ProgramNameEN       string  `json:"program_name_en,omitempty"`
+	ProgramNameLocal    *string `json:"program_name_local,omitempty"`
+	DepartmentNameEN    string  `json:"department_name_en,omitempty"`
+	DepartmentNameLocal *string `json:"department_name_local,omitempty"`
+	CollegeNameEN       string  `json:"college_name_en,omitempty"`
+	CollegeNameLocal    *string `json:"college_name_local,omitempty"`
+
+	// Applicant info (present on admin endpoints)
+	ApplicantNameEN    *string `json:"applicant_name_en,omitempty"`
+	ApplicantNameLocal *string `json:"applicant_name_local,omitempty"`
+	ApplicantEmail     *string `json:"applicant_email,omitempty"`
+	ApplicantAvatarURL *string `json:"applicant_avatar_url,omitempty"`
 }
 
 func ToApplicationResponse(a *Application) ApplicationResponse {
 	resp := ApplicationResponse{
-		ID:            a.ID,
-		UserID:        a.UserID,
-		ProgramID:     a.ProgramID,
-		AdmissionYear: a.AdmissionYear,
-		Shift:         a.Shift,
-		Tuition:       a.Tuition,
-		DateOfBirth:   a.DateOfBirth,
-		Gender:        a.Gender,
-		Nationality:   a.Nationality,
-		Status:        a.Status,
-		ReviewedBy:    a.ReviewedBy,
-		ReviewedAt:    a.ReviewedAt,
-		ReviewNotes:   a.ReviewNotes,
-		CreatedAt:     a.CreatedAt,
-		UpdatedAt:     a.UpdatedAt,
+		ID:                  a.ID,
+		UserID:              a.UserID,
+		ProgramID:           a.ProgramID,
+		AdmissionYear:       a.AdmissionYear,
+		Shift:               a.Shift,
+		Tuition:             a.Tuition,
+		DateOfBirth:         a.DateOfBirth,
+		Gender:              a.Gender,
+		Nationality:         a.Nationality,
+		Status:              a.Status,
+		ReviewedBy:          a.ReviewedBy,
+		ReviewedAt:          a.ReviewedAt,
+		ReviewNotes:         a.ReviewNotes,
+		CreatedAt:           a.CreatedAt,
+		UpdatedAt:           a.UpdatedAt,
+		ProgramNameEN:       a.ProgramNameEN,
+		ProgramNameLocal:    a.ProgramNameLocal,
+		DepartmentNameEN:    a.DepartmentNameEN,
+		DepartmentNameLocal: a.DepartmentNameLocal,
+		CollegeNameEN:       a.CollegeNameEN,
+		CollegeNameLocal:    a.CollegeNameLocal,
+		ApplicantNameEN:     a.ApplicantNameEN,
+		ApplicantNameLocal:  a.ApplicantNameLocal,
+		ApplicantEmail:      a.ApplicantEmail,
+		ApplicantAvatarURL:  a.ApplicantAvatarURL,
 	}
 
 	if len(a.PersonalExtra) > 0 {
@@ -128,3 +152,4 @@ func ToApplicationsResponse(apps []Application) []ApplicationResponse {
 	}
 	return result
 }
+
