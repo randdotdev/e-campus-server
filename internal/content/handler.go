@@ -53,6 +53,21 @@ func (h *Handler) GetSection(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDBySectionID(c.Request.Context(), id)
+	if errors.Is(err, ErrSectionNotFound) {
+		response.NotFound(c, "section not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	section, err := h.service.GetSection(c.Request.Context(), id)
 	if errors.Is(err, ErrSectionNotFound) {
 		response.NotFound(c, "section not found")
@@ -68,6 +83,11 @@ func (h *Handler) ListSections(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 
@@ -197,6 +217,21 @@ func (h *Handler) GetLesson(c *gin.Context) {
 		return
 	}
 
+	offeringID, err := h.service.GetOfferingIDByLessonID(c.Request.Context(), id)
+	if errors.Is(err, ErrLessonNotFound) {
+		response.NotFound(c, "lesson not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "forbidden")
+		return
+	}
+
 	var studentID *uuid.UUID
 	if uid := middleware.GetUserID(c); uid != uuid.Nil {
 		studentID = &uid
@@ -217,6 +252,21 @@ func (h *Handler) ListLessons(c *gin.Context) {
 	sectionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.BadRequest(c, "invalid section id")
+		return
+	}
+
+	offeringID, err := h.service.GetOfferingIDBySectionID(c.Request.Context(), sectionID)
+	if errors.Is(err, ErrSectionNotFound) {
+		response.NotFound(c, "section not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("resolve offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "forbidden")
 		return
 	}
 

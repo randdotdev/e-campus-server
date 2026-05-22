@@ -39,7 +39,9 @@ type TeacherChecker interface {
 }
 
 type EnrollmentChecker interface {
-	IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
+	// IsUserEnrolled checks enrollment by the user's own UUID (not student record UUID).
+	// assignment_submissions.student_id references users.id, not students.id.
+	IsUserEnrolled(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 }
 
 type Notifier interface {
@@ -161,7 +163,7 @@ func (s *Service) CreateSubmission(ctx context.Context, assignmentID, studentID 
 		return nil, ErrNotPublished
 	}
 
-	enrolled, err := s.enrollment.IsEnrolled(ctx, a.OfferingID, studentID)
+	enrolled, err := s.enrollment.IsUserEnrolled(ctx, a.OfferingID, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -438,8 +440,8 @@ func (s *Service) IsTeacherOrAssistant(ctx context.Context, offeringID, userID u
 	return role == "teacher" || role == "assistant", nil
 }
 
-func (s *Service) IsEnrolled(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error) {
-	return s.enrollment.IsEnrolled(ctx, offeringID, studentID)
+func (s *Service) IsEnrolled(ctx context.Context, offeringID, userID uuid.UUID) (bool, error) {
+	return s.enrollment.IsUserEnrolled(ctx, offeringID, userID)
 }
 
 type AssignmentUpdates struct {

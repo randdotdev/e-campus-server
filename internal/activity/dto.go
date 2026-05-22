@@ -1,6 +1,8 @@
 package activity
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,13 +12,31 @@ type CreateActivityRequest struct {
 	PublisherType string     `json:"publisher_type" binding:"required,oneof=university college department"`
 	PublisherID   *uuid.UUID `json:"publisher_id"`
 	Type          string     `json:"type" binding:"required,oneof=news announcement webinar workshop conference symposium training_course"`
-	TitleEN       string     `json:"title_en" binding:"required,min=1,max=255"`
+	TitleEN       *string    `json:"title_en" binding:"omitempty,min=1,max=255"`
 	TitleLocal    *string    `json:"title_local" binding:"omitempty,max=255"`
-	BodyEN        string     `json:"body_en" binding:"required,min=1"`
+	BodyEN        *string    `json:"body_en" binding:"omitempty,min=1"`
 	BodyLocal     *string    `json:"body_local"`
 	CoverImageID  *uuid.UUID `json:"cover_image_id"`
 	PublishAt     *time.Time `json:"publish_at"`
 	ExpiresAt     *time.Time `json:"expires_at"`
+}
+
+func (r *CreateActivityRequest) Validate() error {
+	enTitle := r.TitleEN != nil && strings.TrimSpace(*r.TitleEN) != ""
+	enBody := r.BodyEN != nil && strings.TrimSpace(*r.BodyEN) != ""
+	localTitle := r.TitleLocal != nil && strings.TrimSpace(*r.TitleLocal) != ""
+	localBody := r.BodyLocal != nil && strings.TrimSpace(*r.BodyLocal) != ""
+
+	if enTitle != enBody {
+		return errors.New("english title and body must both be provided")
+	}
+	if localTitle != localBody {
+		return errors.New("kurdish title and body must both be provided")
+	}
+	if !enTitle && !localTitle {
+		return errors.New("provide title and body in at least one language")
+	}
+	return nil
 }
 
 type UpdateActivityRequest struct {

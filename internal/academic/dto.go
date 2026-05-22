@@ -144,7 +144,7 @@ type AddCurriculumRequest struct {
 	ProgramID  uuid.UUID `json:"program_id" binding:"required"`
 	CohortYear int       `json:"cohort_year" binding:"required,gte=2000,lte=2100"`
 	Stage      int       `json:"stage" binding:"required,gte=1,lte=8"`
-	Semester   string    `json:"semester" binding:"required,oneof=fall spring summer annual"`
+	Semester   string    `json:"semester" binding:"required,oneof=fall spring"`
 	CourseID   uuid.UUID `json:"course_id" binding:"required"`
 	IsRequired *bool     `json:"is_required"`
 }
@@ -234,7 +234,7 @@ type SetRequirementRequest struct {
 	ProgramID  uuid.UUID `json:"program_id" binding:"required"`
 	CohortYear int       `json:"cohort_year" binding:"required,gte=2000,lte=2100"`
 	Stage      int       `json:"stage" binding:"required,gte=1,lte=8"`
-	Semester   string    `json:"semester" binding:"required,oneof=fall spring summer annual"`
+	Semester   string    `json:"semester" binding:"required,oneof=fall spring"`
 	MinCredits int       `json:"min_credits" binding:"required,gte=1"`
 	CreatedBy  uuid.UUID `json:"-"`
 }

@@ -171,6 +171,18 @@ func (r *Repository) IsStudentEnrolled(ctx context.Context, studentID, offeringI
 	return r.IsEnrolled(ctx, offeringID, studentID)
 }
 
+func (r *Repository) IsUserEnrolled(ctx context.Context, offeringID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM course_enrollments e
+			JOIN students s ON e.student_id = s.id
+			WHERE e.offering_id = $1 AND s.user_id = $2 AND e.status = 'enrolled'
+		)`
+	err := r.db.GetContext(ctx, &exists, query, offeringID, userID)
+	return exists, err
+}
+
 func (r *Repository) GetEnrolledStudentIDs(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
 	query := `SELECT student_id FROM course_enrollments WHERE offering_id = $1 AND status = 'enrolled'`

@@ -482,7 +482,7 @@ func TestAddAttachment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.AddAttachment(ctx, a.ID, tt.userID, tt.isAdmin, uuid.New(), "test.jpg", tt.fileType, 0)
+			_, err := s.AddAttachment(ctx, a.ID, tt.userID, tt.isAdmin, uuid.New(), "test.jpg", tt.fileType, 1024, 0)
 
 			if tt.wantErr != nil {
 				if err != tt.wantErr {
@@ -520,7 +520,7 @@ func TestRemoveAttachment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			attachment, _ := s.AddAttachment(ctx, a.ID, authorID, false, uuid.New(), "test.jpg", FileTypeImage, 0)
+			attachment, _ := s.AddAttachment(ctx, a.ID, authorID, false, uuid.New(), "test.jpg", FileTypeImage, 1024, 0)
 			err := s.RemoveAttachment(ctx, attachment.ID, tt.userID, tt.isAdmin)
 
 			if tt.wantErr != nil {

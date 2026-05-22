@@ -300,6 +300,8 @@ func TestResolveTitle(t *testing.T) {
 		{"prefer en", "English", &titleLocal, LangEN, LangEN, "English"},
 		{"prefer local exists", "English", &titleLocal, LangLocal, LangEN, "Local Title"},
 		{"prefer local missing", "English", nil, LangLocal, LangEN, "English"},
+		{"en empty prefer en falls back to local", "", &titleLocal, LangEN, LangEN, "Local Title"},
+		{"en empty prefer local", "", &titleLocal, LangLocal, LangEN, "Local Title"},
 	}
 
 	for _, tt := range tests {
@@ -318,20 +320,23 @@ func TestGetTranslation(t *testing.T) {
 
 	tests := []struct {
 		name       string
+		titleEN    string
+		bodyEN     string
 		titleLocal *string
 		bodyLocal  *string
 		lang       string
 		wantOK     bool
 	}{
-		{"en always ok", nil, nil, LangEN, true},
-		{"local exists", &titleLocal, &bodyLocal, LangLocal, true},
-		{"local missing title", nil, &bodyLocal, LangLocal, false},
-		{"local missing body", &titleLocal, nil, LangLocal, false},
+		{"en with content ok", "EN", "EN Body", nil, nil, LangEN, true},
+		{"en empty not ok", "", "", nil, nil, LangEN, false},
+		{"local exists", "EN", "EN Body", &titleLocal, &bodyLocal, LangLocal, true},
+		{"local missing title", "EN", "EN Body", nil, &bodyLocal, LangLocal, false},
+		{"local missing body", "EN", "EN Body", &titleLocal, nil, LangLocal, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &Activity{TitleEN: "EN", BodyEN: "EN Body", TitleLocal: tt.titleLocal, BodyLocal: tt.bodyLocal}
+			a := &Activity{TitleEN: tt.titleEN, BodyEN: tt.bodyEN, TitleLocal: tt.titleLocal, BodyLocal: tt.bodyLocal}
 			_, _, ok := GetTranslation(a, tt.lang)
 			if ok != tt.wantOK {
 				t.Errorf("GetTranslation() ok = %v, want %v", ok, tt.wantOK)

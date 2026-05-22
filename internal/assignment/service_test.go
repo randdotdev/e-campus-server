@@ -177,9 +177,9 @@ func (m *mockCourseChecker) GetTeacherRole(_ context.Context, offeringID, userID
 	return "", nil
 }
 
-func (m *mockCourseChecker) IsEnrolled(_ context.Context, offeringID, studentID uuid.UUID) (bool, error) {
+func (m *mockCourseChecker) IsUserEnrolled(_ context.Context, offeringID, userID uuid.UUID) (bool, error) {
 	if enrollees, ok := m.enrollees[offeringID]; ok {
-		return enrollees[studentID], nil
+		return enrollees[userID], nil
 	}
 	return false, nil
 }

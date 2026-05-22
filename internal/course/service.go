@@ -21,6 +21,7 @@ type CourseRepository interface {
 	CreateOffering(ctx context.Context, o *Offering) error
 	GetOffering(ctx context.Context, id uuid.UUID) (*Offering, error)
 	ListOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]Offering, bool, error)
+	ListRichOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]RichOffering, bool, error)
 	UpdateOffering(ctx context.Context, o *Offering) error
 	SemesterExists(ctx context.Context, semesterID uuid.UUID) (bool, error)
 
@@ -184,6 +185,10 @@ func (s *Service) GetOffering(ctx context.Context, id uuid.UUID) (*Offering, err
 
 func (s *Service) ListOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]Offering, bool, error) {
 	return s.repo.ListOfferings(ctx, params, filters)
+}
+
+func (s *Service) ListRichOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]RichOffering, bool, error) {
+	return s.repo.ListRichOfferings(ctx, params, filters)
 }
 
 func (s *Service) UpdateOffering(ctx context.Context, id uuid.UUID, req UpdateOfferingRequest) (*Offering, error) {

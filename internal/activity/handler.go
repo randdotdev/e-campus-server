@@ -53,6 +53,11 @@ func (h *Handler) CreateActivity(c *gin.Context) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
 	if !h.canPublish(c, req.PublisherType, req.PublisherID) {
 		response.Forbidden(c, "not authorized to publish activity")
 		return
@@ -60,15 +65,24 @@ func (h *Handler) CreateActivity(c *gin.Context) {
 
 	userID := middleware.GetUserID(c)
 
+	titleEN := ""
+	if req.TitleEN != nil {
+		titleEN = *req.TitleEN
+	}
+	bodyEN := ""
+	if req.BodyEN != nil {
+		bodyEN = *req.BodyEN
+	}
+
 	a, err := h.service.CreateActivity(
 		c.Request.Context(),
 		userID,
 		req.PublisherType,
 		req.PublisherID,
 		req.Type,
-		req.TitleEN,
+		titleEN,
 		req.TitleLocal,
-		req.BodyEN,
+		bodyEN,
 		req.BodyLocal,
 		req.CoverImageID,
 		req.PublishAt,

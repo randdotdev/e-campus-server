@@ -116,28 +116,34 @@ func CanPin(isAdmin bool) bool {
 	return isAdmin
 }
 
-func ResolveTitle(a *Activity, preferredLang, defaultLang string) string {
+func ResolveTitle(a *Activity, preferredLang, _ string) string {
 	if preferredLang == LangLocal {
 		if a.TitleLocal != nil && *a.TitleLocal != "" {
 			return *a.TitleLocal
 		}
-		if defaultLang == LangLocal {
-			return a.TitleEN
-		}
 	}
-	return a.TitleEN
+	if a.TitleEN != "" {
+		return a.TitleEN
+	}
+	if a.TitleLocal != nil {
+		return *a.TitleLocal
+	}
+	return ""
 }
 
-func ResolveBody(a *Activity, preferredLang, defaultLang string) string {
+func ResolveBody(a *Activity, preferredLang, _ string) string {
 	if preferredLang == LangLocal {
 		if a.BodyLocal != nil && *a.BodyLocal != "" {
 			return *a.BodyLocal
 		}
-		if defaultLang == LangLocal {
-			return a.BodyEN
-		}
 	}
-	return a.BodyEN
+	if a.BodyEN != "" {
+		return a.BodyEN
+	}
+	if a.BodyLocal != nil {
+		return *a.BodyLocal
+	}
+	return ""
 }
 
 func GetTranslation(a *Activity, lang string) (title, body string, ok bool) {
@@ -146,6 +152,9 @@ func GetTranslation(a *Activity, lang string) (title, body string, ok bool) {
 			return "", "", false
 		}
 		return *a.TitleLocal, *a.BodyLocal, true
+	}
+	if a.TitleEN == "" || a.BodyEN == "" {
+		return "", "", false
 	}
 	return a.TitleEN, a.BodyEN, true
 }

@@ -52,7 +52,7 @@ INSERT INTO departments (id, college_id, name_en, name_local, code) VALUES (
     'CS'
 ) ON CONFLICT DO NOTHING;
 
-INSERT INTO programs (id, department_id, name_en, name_local, code, degree_type, duration_years, total_ects) VALUES (
+INSERT INTO programs (id, department_id, name_en, name_local, code, degree_type, duration_years, total_credits) VALUES (
     'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
     'Bachelor of Computer Science',

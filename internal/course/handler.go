@@ -231,6 +231,11 @@ func (h *Handler) GetOffering(c *gin.Context) {
 		return
 	}
 
+	if !authz.Check(c, authz.ResourceOffering, authz.ActionGet, id) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
 	offering, err := h.service.GetOffering(c.Request.Context(), id)
 	if errors.Is(err, ErrOfferingNotFound) {
 		response.NotFound(c, "offering not found")
@@ -250,7 +255,7 @@ func (h *Handler) ListOfferings(c *gin.Context) {
 		return
 	}
 
-	offerings, hasMore, err := h.service.ListOfferings(c.Request.Context(), params, filters)
+	offerings, hasMore, err := h.service.ListRichOfferings(c.Request.Context(), params, filters)
 	if errors.Is(err, pagination.ErrInvalidCursor) {
 		response.BadRequest(c, "invalid cursor")
 		return
@@ -260,8 +265,8 @@ func (h *Handler) ListOfferings(c *gin.Context) {
 		return
 	}
 
-	result := pagination.PageResult[OfferingResponse]{
-		Data:    ToOfferingsResponse(offerings),
+	result := pagination.PageResult[RichOfferingResponse]{
+		Data:    ToRichOfferingsResponse(offerings),
 		HasMore: hasMore,
 	}
 	if hasMore && len(offerings) > 0 {

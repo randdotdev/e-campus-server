@@ -90,6 +90,14 @@ const (
 	GroupTypePractice = "practice"
 )
 
+type RichOffering struct {
+	Offering
+	CourseCode      string  `db:"course_code"`
+	CourseNameEN    string  `db:"course_name_en"`
+	CourseNameLocal *string `db:"course_name_local"`
+	DepartmentID    uuid.UUID `db:"department_id"`
+}
+
 type MyTeachingOffering struct {
 	OfferingID      uuid.UUID `db:"offering_id"`
 	Role            string    `db:"role"`

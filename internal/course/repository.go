@@ -274,6 +274,72 @@ func (r *Repository) ListOfferings(ctx context.Context, params pagination.PagePa
 	return offerings, hasMore, nil
 }
 
+func (r *Repository) ListRichOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]RichOffering, bool, error) {
+	var conditions []string
+	var args []any
+	argN := 1
+
+	if params.Cursor != "" {
+		createdAt, id, err := pagination.DecodeCursor(params.Cursor)
+		if err != nil {
+			return nil, false, err
+		}
+		conditions = append(conditions, fmt.Sprintf("(co.created_at, co.id) < ($%d, $%d)", argN, argN+1))
+		args = append(args, createdAt, id)
+		argN += 2
+	}
+	if filters.CourseID != nil {
+		conditions = append(conditions, fmt.Sprintf("co.course_id = $%d", argN))
+		args = append(args, *filters.CourseID)
+		argN++
+	}
+	if filters.SemesterID != nil {
+		conditions = append(conditions, fmt.Sprintf("co.semester_id = $%d", argN))
+		args = append(args, *filters.SemesterID)
+		argN++
+	}
+	if filters.Shift != nil {
+		conditions = append(conditions, fmt.Sprintf("co.shift = $%d", argN))
+		args = append(args, *filters.Shift)
+		argN++
+	}
+	if filters.CohortYear != nil {
+		conditions = append(conditions, fmt.Sprintf("co.cohort_year = $%d", argN))
+		args = append(args, *filters.CohortYear)
+		argN++
+	}
+	if filters.IsActive != nil {
+		conditions = append(conditions, fmt.Sprintf("co.is_active = $%d", argN))
+		args = append(args, *filters.IsActive)
+		argN++
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	query := fmt.Sprintf(`
+		SELECT co.id, co.course_id, co.semester_id, co.cohort_year, co.shift, co.is_active, co.created_at,
+		       c.code AS course_code, c.name_en AS course_name_en, c.name_local AS course_name_local,
+		       c.department_id AS department_id
+		FROM course_offerings co
+		JOIN courses c ON c.id = co.course_id
+		%s ORDER BY co.created_at DESC, co.id DESC LIMIT $%d`, where, argN)
+	args = append(args, params.Limit+1)
+
+	var offerings []RichOffering
+	if err := r.db.SelectContext(ctx, &offerings, query, args...); err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(offerings) > params.Limit
+	if hasMore {
+		offerings = offerings[:params.Limit]
+	}
+
+	return offerings, hasMore, nil
+}
+
 func (r *Repository) UpdateOffering(ctx context.Context, o *Offering) error {
 	query := `UPDATE course_offerings SET is_active = $2 WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, o.ID, o.IsActive)

@@ -119,6 +119,44 @@ type OfferingResponse struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type RichOfferingResponse struct {
+	ID              uuid.UUID `json:"id"`
+	CourseID        uuid.UUID `json:"course_id"`
+	CourseCode      string    `json:"course_code"`
+	CourseNameEN    string    `json:"course_name_en"`
+	CourseNameLocal *string   `json:"course_name_local,omitempty"`
+	DepartmentID    uuid.UUID `json:"department_id"`
+	SemesterID      uuid.UUID `json:"semester_id"`
+	CohortYear      int       `json:"cohort_year"`
+	Shift           string    `json:"shift"`
+	IsActive        bool      `json:"is_active"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+func ToRichOfferingResponse(o *RichOffering) RichOfferingResponse {
+	return RichOfferingResponse{
+		ID:              o.ID,
+		CourseID:        o.CourseID,
+		CourseCode:      o.CourseCode,
+		CourseNameEN:    o.CourseNameEN,
+		CourseNameLocal: o.CourseNameLocal,
+		DepartmentID:    o.DepartmentID,
+		SemesterID:      o.SemesterID,
+		CohortYear:      o.CohortYear,
+		Shift:           o.Shift,
+		IsActive:        o.IsActive,
+		CreatedAt:       o.CreatedAt,
+	}
+}
+
+func ToRichOfferingsResponse(offerings []RichOffering) []RichOfferingResponse {
+	result := make([]RichOfferingResponse, len(offerings))
+	for i := range offerings {
+		result[i] = ToRichOfferingResponse(&offerings[i])
+	}
+	return result
+}
+
 type TeacherResponse struct {
 	ID                uuid.UUID `json:"id"`
 	OfferingID        uuid.UUID `json:"offering_id"`
