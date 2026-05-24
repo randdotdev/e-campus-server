@@ -21,6 +21,7 @@ type OfferingFilters struct {
 	Shift      *string
 	CohortYear *int
 	IsActive   *bool
+	CollegeID  *uuid.UUID
 }
 
 type TeacherFilters struct {

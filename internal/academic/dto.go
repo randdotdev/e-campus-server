@@ -280,6 +280,7 @@ func ToRequirementsResponse(rs []SemesterRequirement) []RequirementResponse {
 type GenerateOfferingsRequest struct {
 	ProgramID  *uuid.UUID `json:"program_id"`
 	CohortYear *int       `json:"cohort_year"`
+	Shift      *string    `json:"shift"`
 }
 
 type BulkEnrollRequest struct {

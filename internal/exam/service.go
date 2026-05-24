@@ -288,6 +288,36 @@ func (s *Service) GetExam(ctx context.Context, id uuid.UUID) (*Exam, error) {
 	return s.repo.GetExam(ctx, id)
 }
 
+func (s *Service) GetExamQuestionsPublic(ctx context.Context, examID uuid.UUID) ([]QuestionPublicResponse, error) {
+	exam, err := s.repo.GetExam(ctx, examID)
+	if err != nil {
+		return nil, err
+	}
+
+	examQuestions, _ := ParseExamQuestions(exam.Questions)
+	if len(examQuestions) == 0 {
+		return []QuestionPublicResponse{}, nil
+	}
+
+	ids := make([]uuid.UUID, len(examQuestions))
+	scoreByID := make(map[uuid.UUID]float64, len(examQuestions))
+	for i, eq := range examQuestions {
+		ids[i] = eq.ID
+		scoreByID[eq.ID] = eq.Score
+	}
+
+	questions, err := s.repo.GetQuestionsByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]QuestionPublicResponse, 0, len(questions))
+	for i := range questions {
+		result = append(result, ToQuestionPublicResponse(&questions[i], scoreByID[questions[i].ID]))
+	}
+	return result, nil
+}
+
 func (s *Service) ListExams(ctx context.Context, params pagination.PageParams, filters ExamFilters) ([]Exam, bool, error) {
 	return s.repo.ListExams(ctx, params, filters)
 }

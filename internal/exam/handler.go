@@ -402,6 +402,38 @@ func (h *Handler) DeleteExam(c *gin.Context) {
 	}
 }
 
+func (h *Handler) GetExamQuestionsPublic(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid exam id")
+		return
+	}
+
+	exam, err := h.service.GetExam(c.Request.Context(), id)
+	if errors.Is(err, ErrExamNotFound) {
+		response.NotFound(c, "exam not found")
+		return
+	} else if err != nil {
+		h.log.Error("get exam failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceExam, authz.ActionGet, exam.OfferingID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	questions, err := h.service.GetExamQuestionsPublic(c.Request.Context(), id)
+	if err != nil {
+		h.log.Error("get exam questions failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	response.OK(c, questions)
+}
+
 func (h *Handler) PublishExam(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -872,6 +904,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerF
 		exams.GET("/:id/attempts", h.ListAttempts)
 		exams.POST("/:id/results", h.BulkCreateResults)
 		exams.GET("/:id/my-attempt", h.GetMyAttempt)
+		exams.GET("/:id/questions", h.GetExamQuestionsPublic)
 	}
 
 	// Attempt routes

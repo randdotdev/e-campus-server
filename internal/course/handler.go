@@ -732,5 +732,13 @@ func (h *Handler) parseOfferingFilters(c *gin.Context) (OfferingFilters, error) 
 		}
 	}
 
+	if collegeIDStr := c.Query("college_id"); collegeIDStr != "" {
+		id, err := uuid.Parse(collegeIDStr)
+		if err != nil {
+			return filters, errors.New("invalid college_id")
+		}
+		filters.CollegeID = &id
+	}
+
 	return filters, nil
 }

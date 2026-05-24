@@ -431,7 +431,7 @@ func (s *Service) ListRequirements(ctx context.Context, programID uuid.UUID, coh
 	return s.repo.ListRequirements(ctx, programID, cohortYear)
 }
 
-func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, programID *uuid.UUID, cohortYear *int) (*GenerateOfferingsResult, error) {
+func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, programID *uuid.UUID, cohortYear *int, shift *string) (*GenerateOfferingsResult, error) {
 	sem, err := s.repo.GetSemester(ctx, semesterID)
 	if err != nil {
 		return nil, err
@@ -489,7 +489,11 @@ func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, p
 				continue
 			}
 
-			for _, shift := range []string{ShiftDay, ShiftEvening} {
+			shifts := []string{ShiftDay, ShiftEvening}
+			if shift != nil && (*shift == ShiftDay || *shift == ShiftEvening) {
+				shifts = []string{*shift}
+			}
+			for _, shift := range shifts {
 				existingID, err := s.offerings.GetOfferingID(ctx, item.CourseID, semesterID, key.cohortYear, shift)
 				if err != nil {
 					return nil, err

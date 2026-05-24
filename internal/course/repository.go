@@ -324,6 +324,11 @@ func (r *Repository) ListRichOfferings(ctx context.Context, params pagination.Pa
 		args = append(args, *filters.IsActive)
 		argN++
 	}
+	if filters.CollegeID != nil {
+		conditions = append(conditions, fmt.Sprintf("d.college_id = $%d", argN))
+		args = append(args, *filters.CollegeID)
+		argN++
+	}
 
 	where := ""
 	if len(conditions) > 0 {
@@ -335,6 +340,7 @@ func (r *Repository) ListRichOfferings(ctx context.Context, params pagination.Pa
 		       c.department_id AS department_id
 		FROM course_offerings co
 		JOIN courses c ON c.id = co.course_id
+		JOIN departments d ON d.id = c.department_id
 		%s ORDER BY co.created_at DESC, co.id DESC LIMIT $%d`, where, argN)
 	args = append(args, params.Limit+1)
 

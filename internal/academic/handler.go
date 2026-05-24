@@ -266,7 +266,7 @@ func (h *Handler) GenerateOfferings(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.GenerateOfferings(c.Request.Context(), id, req.ProgramID, req.CohortYear)
+	result, err := h.service.GenerateOfferings(c.Request.Context(), id, req.ProgramID, req.CohortYear, req.Shift)
 	if err != nil {
 		h.handleError(c, err)
 		return
