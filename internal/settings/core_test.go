@@ -2,8 +2,6 @@ package settings
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestValidateSettings(t *testing.T) {
@@ -90,27 +88,6 @@ func TestIsValidGradingDisplay(t *testing.T) {
 		t.Run(tt.display, func(t *testing.T) {
 			if got := IsValidGradingDisplay(tt.display); got != tt.want {
 				t.Errorf("IsValidGradingDisplay(%q) = %v, want %v", tt.display, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestIsValidLanguage(t *testing.T) {
-	tests := []struct {
-		lang string
-		want bool
-	}{
-		{LanguageEnglish, true},
-		{LanguageKurdish, true},
-		{LanguageArabic, true},
-		{"fr", false},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.lang, func(t *testing.T) {
-			if got := IsValidLanguage(tt.lang); got != tt.want {
-				t.Errorf("IsValidLanguage(%q) = %v, want %v", tt.lang, got, tt.want)
 			}
 		})
 	}
@@ -226,27 +203,6 @@ func TestDefaultSettings(t *testing.T) {
 	}
 }
 
-func TestDefaultPreferences(t *testing.T) {
-	userID := uuid.New()
-	p := DefaultPreferences(userID)
-
-	if p.UserID != userID {
-		t.Errorf("UserID = %v, want %v", p.UserID, userID)
-	}
-	if p.Language != LanguageEnglish {
-		t.Errorf("Language = %v, want %v", p.Language, LanguageEnglish)
-	}
-	if p.Timezone != "UTC" {
-		t.Errorf("Timezone = %v, want UTC", p.Timezone)
-	}
-	if !p.EmailNotifications {
-		t.Error("EmailNotifications should be true")
-	}
-	if !p.PushNotifications {
-		t.Error("PushNotifications should be true")
-	}
-}
-
 func TestApplyUpdates(t *testing.T) {
 	current := DefaultSettings()
 
@@ -287,37 +243,6 @@ func TestApplyUpdates(t *testing.T) {
 
 		if result.Institution.GetName("en") != current.Institution.GetName("en") {
 			t.Error("Institution should remain unchanged")
-		}
-	})
-}
-
-func TestApplyPreferencesUpdates(t *testing.T) {
-	userID := uuid.New()
-	current := DefaultPreferences(userID)
-
-	t.Run("update language", func(t *testing.T) {
-		lang := LanguageKurdish
-		updates := PreferencesUpdates{Language: &lang}
-		result := ApplyPreferencesUpdates(current, updates)
-
-		if result.Language != LanguageKurdish {
-			t.Errorf("Language = %v, want %v", result.Language, LanguageKurdish)
-		}
-		if result.Timezone != current.Timezone {
-			t.Error("Timezone should remain unchanged")
-		}
-	})
-
-	t.Run("update notifications", func(t *testing.T) {
-		emailOff := false
-		updates := PreferencesUpdates{EmailNotifications: &emailOff}
-		result := ApplyPreferencesUpdates(current, updates)
-
-		if result.EmailNotifications {
-			t.Error("EmailNotifications should be false")
-		}
-		if !result.PushNotifications {
-			t.Error("PushNotifications should remain true")
 		}
 	})
 }

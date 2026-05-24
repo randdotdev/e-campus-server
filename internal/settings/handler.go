@@ -4,19 +4,30 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/authz"
+	"github.com/ranjdotdev/e-campus-server/internal/middleware"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
 	service *Service
-	log *zap.Logger
+	log     *zap.Logger
 }
 
 func NewHandler(service *Service, log *zap.Logger) *Handler {
 	return &Handler{service: service, log: log}
+}
+
+// canUpdateSettings requires super_admin level at university scope or above.
+func canUpdateSettings(c *gin.Context) bool {
+	role := middleware.GetUserRole(c)
+	if role == nil {
+		return false
+	}
+	isSuperAdmin := role.Level == authz.SuperAdmin
+	hasSufficientScope := role.ScopeType == authz.ScopeUniversity || role.ScopeType == authz.ScopePlatform
+	return isSuperAdmin && hasSufficientScope
 }
 
 func (h *Handler) GetSettings(c *gin.Context) {
@@ -35,7 +46,7 @@ func (h *Handler) GetSettings(c *gin.Context) {
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
-	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+	if !canUpdateSettings(c) {
 		response.Forbidden(c, "insufficient permissions")
 		return
 	}
@@ -83,7 +94,7 @@ func (h *Handler) GetInstitution(c *gin.Context) {
 }
 
 func (h *Handler) UpdateInstitution(c *gin.Context) {
-	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+	if !canUpdateSettings(c) {
 		response.Forbidden(c, "insufficient permissions")
 		return
 	}
@@ -134,7 +145,7 @@ func (h *Handler) GetFeatures(c *gin.Context) {
 }
 
 func (h *Handler) UpdateFeatures(c *gin.Context) {
-	if !authz.Check(c, authz.ResourceSettings, authz.ActionUpdate) {
+	if !canUpdateSettings(c) {
 		response.Forbidden(c, "insufficient permissions")
 		return
 	}
@@ -166,43 +177,6 @@ func (h *Handler) UpdateFeatures(c *gin.Context) {
 	}
 
 	response.OK(c, ToFeaturesResponse(result.Features))
-}
-
-func (h *Handler) GetMyPreferences(c *gin.Context) {
-	userID := middleware.GetUserID(c)
-
-	prefs, err := h.service.GetPreferences(c.Request.Context(), userID)
-	if err != nil {
-		h.log.Error("get preferences failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	response.OK(c, ToPreferencesResponse(prefs))
-}
-
-func (h *Handler) UpdateMyPreferences(c *gin.Context) {
-	userID := middleware.GetUserID(c)
-
-	var req UpdatePreferencesRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "invalid request body")
-		return
-	}
-
-	updates := ToPreferencesUpdates(req)
-	prefs, err := h.service.UpdatePreferences(c.Request.Context(), userID, updates)
-	if errors.Is(err, ErrInvalidLanguage) {
-		response.BadRequest(c, "invalid language")
-		return
-	}
-	if err != nil {
-		h.log.Error("update preferences failed", zap.Error(err))
-		response.InternalError(c)
-		return
-	}
-
-	response.OK(c, ToPreferencesResponse(prefs))
 }
 
 func (h *Handler) GetPublicAbout(c *gin.Context) {

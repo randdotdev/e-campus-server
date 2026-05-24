@@ -76,6 +76,10 @@ type AddTeacherRequest struct {
 	Role   string    `json:"role" binding:"required,oneof=teacher assistant observer"`
 }
 
+type UpdateTeacherRoleRequest struct {
+	Role string `json:"role" binding:"required,oneof=teacher assistant observer"`
+}
+
 type CreateSectionRequest struct {
 	OfferingID uuid.UUID  `json:"offering_id" binding:"required"`
 	Title      string     `json:"title" binding:"required,min=1,max=100"`

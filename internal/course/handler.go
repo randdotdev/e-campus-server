@@ -322,6 +322,45 @@ func (h *Handler) UpdateOffering(c *gin.Context) {
 	response.OK(c, ToOfferingResponse(updated))
 }
 
+func (h *Handler) DeleteOffering(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	offering, err := h.service.GetOffering(c.Request.Context(), id)
+	if errors.Is(err, ErrOfferingNotFound) {
+		response.NotFound(c, "offering not found")
+		return
+	} else if err != nil {
+		h.log.Error("get offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	course, err := h.service.GetCourse(c.Request.Context(), offering.CourseID)
+	if err != nil {
+		h.log.Error("get course failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	if err := h.service.DeleteOffering(c.Request.Context(), id); errors.Is(err, ErrOfferingNotFound) {
+		response.NotFound(c, "offering not found")
+	} else if err != nil {
+		h.log.Error("delete offering failed", zap.Error(err))
+		response.InternalError(c)
+	} else {
+		response.NoContent(c)
+	}
+}
+
 // Teacher handlers
 
 func (h *Handler) AddTeacher(c *gin.Context) {
@@ -432,6 +471,60 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 	} else {
 		response.NoContent(c)
 	}
+}
+
+func (h *Handler) UpdateTeacherRole(c *gin.Context) {
+	offeringID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	userID, err := uuid.Parse(c.Param("user_id"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	offering, err := h.service.GetOffering(c.Request.Context(), offeringID)
+	if errors.Is(err, ErrOfferingNotFound) {
+		response.NotFound(c, "offering not found")
+		return
+	} else if err != nil {
+		h.log.Error("get offering failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	course, err := h.service.GetCourse(c.Request.Context(), offering.CourseID)
+	if err != nil {
+		h.log.Error("get course failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceDepartment, authz.ActionUpdate, course.DepartmentID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	var req UpdateTeacherRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request body")
+		return
+	}
+
+	if err := h.service.UpdateTeacherRole(c.Request.Context(), offeringID, userID, req.Role); err != nil {
+		if errors.Is(err, ErrTeacherNotFound) {
+			response.NotFound(c, "teacher not found")
+		} else {
+			h.log.Error("update teacher role failed", zap.Error(err))
+			response.InternalError(c)
+		}
+		return
+	}
+
+	response.NoContent(c)
 }
 
 // My teaching offerings handler

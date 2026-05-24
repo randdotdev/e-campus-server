@@ -66,6 +66,7 @@ type CreateSemesterRequest struct {
 }
 
 type UpdateSemesterRequest struct {
+	Semester          *string    `json:"semester"`
 	StartDate         *time.Time `json:"start_date"`
 	EndDate           *time.Time `json:"end_date"`
 	RegistrationStart *time.Time `json:"registration_start"`
@@ -141,7 +142,7 @@ func ToSemestersResponse(sems []Semester) []SemesterResponse {
 // Curriculum DTOs
 
 type AddCurriculumRequest struct {
-	ProgramID  uuid.UUID `json:"program_id" binding:"required"`
+	ProgramID  uuid.UUID `json:"program_id"`
 	CohortYear int       `json:"cohort_year" binding:"required,gte=2000,lte=2100"`
 	Stage      int       `json:"stage" binding:"required,gte=1,lte=8"`
 	Semester   string    `json:"semester" binding:"required,oneof=fall spring"`

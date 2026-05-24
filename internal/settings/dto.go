@@ -1,7 +1,5 @@
 package settings
 
-import "time"
-
 type UpdateInstitutionRequest struct {
 	Name          map[string]string `json:"name" binding:"required"`
 	Type          string            `json:"type" binding:"required,oneof=public private"`
@@ -51,14 +49,6 @@ type UpdateSettingsRequest struct {
 	Academic     *UpdateAcademicRequest              `json:"academic"`
 }
 
-type UpdatePreferencesRequest struct {
-	Language           *string `json:"language" binding:"omitempty,oneof=en ku ar"`
-	Timezone           *string `json:"timezone"`
-	Theme              *string `json:"theme" binding:"omitempty,oneof=light dark system"`
-	EmailNotifications *bool   `json:"email_notifications"`
-	PushNotifications  *bool   `json:"push_notifications"`
-}
-
 // SettingsResponse is for admin endpoints (all languages)
 type SettingsResponse struct {
 	Institution  Institution            `json:"institution"`
@@ -82,15 +72,6 @@ type InstitutionPublicResponse struct {
 	Email         string `json:"email,omitempty"`
 	Website       string `json:"website,omitempty"`
 	LogoURL       string `json:"logo_url,omitempty"`
-}
-
-type PreferencesResponse struct {
-	Language           string    `json:"language"`
-	Timezone           string    `json:"timezone"`
-	Theme              string    `json:"theme"`
-	EmailNotifications bool      `json:"email_notifications"`
-	PushNotifications  bool      `json:"push_notifications"`
-	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 type FeaturesResponse struct {
@@ -127,17 +108,6 @@ func ToInstitutionPublicResponse(i Institution, lang string) InstitutionPublicRe
 		Email:         i.Email,
 		Website:       i.Website,
 		LogoURL:       i.LogoURL,
-	}
-}
-
-func ToPreferencesResponse(p *UserPreferences) PreferencesResponse {
-	return PreferencesResponse{
-		Language:           p.Language,
-		Timezone:           p.Timezone,
-		Theme:              p.Theme,
-		EmailNotifications: p.EmailNotifications,
-		PushNotifications:  p.PushNotifications,
-		UpdatedAt:          p.UpdatedAt,
 	}
 }
 
@@ -200,8 +170,4 @@ func ToSettingsUpdates(req UpdateSettingsRequest) SettingsUpdates {
 	}
 
 	return updates
-}
-
-func ToPreferencesUpdates(req UpdatePreferencesRequest) PreferencesUpdates {
-	return PreferencesUpdates(req)
 }

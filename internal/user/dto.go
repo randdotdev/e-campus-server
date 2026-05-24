@@ -13,6 +13,7 @@ import (
 type UserFilters struct {
 	IsActive        *bool
 	HasStaffProfile *bool
+	HasRole         *bool
 }
 
 // Request DTOs

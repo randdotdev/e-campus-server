@@ -1,7 +1,5 @@
 package settings
 
-import "github.com/google/uuid"
-
 func ValidateSettings(s *UniversitySettings) error {
 	if s.Institution.GetName("en") == "" {
 		return ErrMissingInstitutionName
@@ -18,14 +16,6 @@ func ValidateSettings(s *UniversitySettings) error {
 func IsValidGradingDisplay(d string) bool {
 	switch d {
 	case GradingDisplayNumeric, GradingDisplayLetter, GradingDisplayBoth:
-		return true
-	}
-	return false
-}
-
-func IsValidLanguage(lang string) bool {
-	switch lang {
-	case LanguageEnglish, LanguageKurdish, LanguageArabic:
 		return true
 	}
 	return false
@@ -99,17 +89,6 @@ func DefaultSettings() *UniversitySettings {
 	}
 }
 
-func DefaultPreferences(userID uuid.UUID) *UserPreferences {
-	return &UserPreferences{
-		UserID:             userID,
-		Language:           LanguageEnglish,
-		Timezone:           "UTC",
-		Theme:              "system",
-		EmailNotifications: true,
-		PushNotifications:  true,
-	}
-}
-
 func ApplyUpdates(current *UniversitySettings, updates SettingsUpdates) *UniversitySettings {
 	result := *current
 
@@ -127,28 +106,6 @@ func ApplyUpdates(current *UniversitySettings, updates SettingsUpdates) *Univers
 	}
 	if updates.Academic != nil {
 		result.Academic = *updates.Academic
-	}
-
-	return &result
-}
-
-func ApplyPreferencesUpdates(current *UserPreferences, updates PreferencesUpdates) *UserPreferences {
-	result := *current
-
-	if updates.Language != nil {
-		result.Language = *updates.Language
-	}
-	if updates.Timezone != nil {
-		result.Timezone = *updates.Timezone
-	}
-	if updates.Theme != nil {
-		result.Theme = *updates.Theme
-	}
-	if updates.EmailNotifications != nil {
-		result.EmailNotifications = *updates.EmailNotifications
-	}
-	if updates.PushNotifications != nil {
-		result.PushNotifications = *updates.PushNotifications
 	}
 
 	return &result

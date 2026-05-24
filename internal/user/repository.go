@@ -212,6 +212,9 @@ func (r *Repository) List(ctx context.Context, params pagination.PageParams, fil
 			conditions = append(conditions, "NOT EXISTS (SELECT 1 FROM staff_profiles WHERE staff_profiles.user_id = users.id)")
 		}
 	}
+	if filters.HasRole != nil && *filters.HasRole {
+		conditions = append(conditions, "EXISTS (SELECT 1 FROM roles WHERE roles.user_id = users.id)")
+	}
 
 	where := ""
 	if len(conditions) > 0 {
@@ -261,6 +264,31 @@ func (r *Repository) GetPasswordHash(ctx context.Context, id uuid.UUID) (string,
 		return "", err
 	}
 	return hash, nil
+}
+
+func (r *Repository) GetRolesForUsers(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*Role, error) {
+	if len(userIDs) == 0 {
+		return map[uuid.UUID]*Role{}, nil
+	}
+	placeholders := make([]string, len(userIDs))
+	args := make([]any, len(userIDs))
+	for i, id := range userIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+	query := fmt.Sprintf(
+		"SELECT * FROM roles WHERE user_id IN (%s) AND (expires_at IS NULL OR expires_at > NOW())",
+		strings.Join(placeholders, ", "),
+	)
+	var roles []Role
+	if err := r.db.SelectContext(ctx, &roles, query, args...); err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]*Role, len(roles))
+	for i := range roles {
+		result[roles[i].UserID] = &roles[i]
+	}
+	return result, nil
 }
 
 func (r *Repository) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {

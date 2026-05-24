@@ -2,9 +2,6 @@ package settings
 
 import (
 	"testing"
-	"time"
-
-	"github.com/google/uuid"
 )
 
 func TestToSettingsResponse(t *testing.T) {
@@ -18,33 +15,6 @@ func TestToSettingsResponse(t *testing.T) {
 	}
 	if resp.Grading.Display != GradingDisplayNumeric {
 		t.Errorf("Grading.Display = %v, want %v", resp.Grading.Display, GradingDisplayNumeric)
-	}
-}
-
-func TestToPreferencesResponse(t *testing.T) {
-	now := time.Now()
-	prefs := &UserPreferences{
-		UserID:             uuid.New(),
-		Language:           LanguageKurdish,
-		Timezone:           "Asia/Baghdad",
-		EmailNotifications: true,
-		PushNotifications:  false,
-		UpdatedAt:          now,
-	}
-
-	resp := ToPreferencesResponse(prefs)
-
-	if resp.Language != LanguageKurdish {
-		t.Errorf("Language = %v, want %v", resp.Language, LanguageKurdish)
-	}
-	if resp.Timezone != "Asia/Baghdad" {
-		t.Errorf("Timezone = %v, want Asia/Baghdad", resp.Timezone)
-	}
-	if !resp.EmailNotifications {
-		t.Error("EmailNotifications should be true")
-	}
-	if resp.PushNotifications {
-		t.Error("PushNotifications should be false")
 	}
 }
 
@@ -136,28 +106,4 @@ func TestToSettingsUpdates(t *testing.T) {
 			t.Error("Features should be nil")
 		}
 	})
-}
-
-func TestToPreferencesUpdates(t *testing.T) {
-	lang := LanguageKurdish
-	tz := "Asia/Baghdad"
-	emailOn := true
-
-	req := UpdatePreferencesRequest{
-		Language:           &lang,
-		Timezone:           &tz,
-		EmailNotifications: &emailOn,
-	}
-
-	updates := ToPreferencesUpdates(req)
-
-	if updates.Language == nil || *updates.Language != LanguageKurdish {
-		t.Errorf("Language = %v, want %v", updates.Language, LanguageKurdish)
-	}
-	if updates.Timezone == nil || *updates.Timezone != "Asia/Baghdad" {
-		t.Errorf("Timezone = %v, want Asia/Baghdad", updates.Timezone)
-	}
-	if updates.PushNotifications != nil {
-		t.Error("PushNotifications should be nil")
-	}
 }

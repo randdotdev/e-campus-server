@@ -157,6 +157,17 @@ func (r *Repository) DeleteCourse(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (r *Repository) DeleteOffering(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM offerings WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrOfferingNotFound
+	}
+	return nil
+}
+
 func (r *Repository) GetCoursesByCode(ctx context.Context, departmentID uuid.UUID, code string) ([]Course, error) {
 	var courses []Course
 	query := `SELECT * FROM courses WHERE department_id = $1 AND code = $2 ORDER BY group_order`
@@ -437,6 +448,22 @@ func (r *Repository) RemoveTeacher(ctx context.Context, offeringID, userID uuid.
 		return err
 	}
 
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrTeacherNotFound
+	}
+	return nil
+}
+
+func (r *Repository) UpdateTeacherRole(ctx context.Context, offeringID, userID uuid.UUID, role string) error {
+	query := `UPDATE course_teachers SET role = $3 WHERE offering_id = $1 AND user_id = $2`
+	result, err := r.db.ExecContext(ctx, query, offeringID, userID, role)
+	if err != nil {
+		return err
+	}
 	rows, err := result.RowsAffected()
 	if err != nil {
 		return err

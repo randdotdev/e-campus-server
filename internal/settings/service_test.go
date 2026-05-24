@@ -28,25 +28,6 @@ func (m *mockSettingsRepo) Update(ctx context.Context, settings json.RawMessage,
 	return nil
 }
 
-type mockPrefsRepo struct {
-	getPreferences    func(ctx context.Context, userID uuid.UUID) (*UserPreferences, error)
-	upsertPreferences func(ctx context.Context, prefs *UserPreferences) error
-}
-
-func (m *mockPrefsRepo) GetPreferences(ctx context.Context, userID uuid.UUID) (*UserPreferences, error) {
-	if m.getPreferences != nil {
-		return m.getPreferences(ctx, userID)
-	}
-	return nil, nil
-}
-
-func (m *mockPrefsRepo) UpsertPreferences(ctx context.Context, prefs *UserPreferences) error {
-	if m.upsertPreferences != nil {
-		return m.upsertPreferences(ctx, prefs)
-	}
-	return nil
-}
-
 func TestService_Get(t *testing.T) {
 	defaultSettings := DefaultSettings()
 	data, _ := json.Marshal(defaultSettings)
@@ -59,7 +40,7 @@ func TestService_Get(t *testing.T) {
 				return &SettingsRow{Settings: data}, nil
 			},
 		}
-		service := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo)
 
 		_, _ = service.Get(context.Background())
 		_, _ = service.Get(context.Background())
@@ -75,7 +56,7 @@ func TestService_Get(t *testing.T) {
 				return nil, nil
 			},
 		}
-		service := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo)
 
 		_, err := service.Get(context.Background())
 		if !errors.Is(err, ErrSettingsNotFound) {
@@ -90,7 +71,7 @@ func TestService_Get(t *testing.T) {
 				return nil, repoErr
 			},
 		}
-		service := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo)
 
 		_, err := service.Get(context.Background())
 		if !errors.Is(err, repoErr) {
@@ -102,7 +83,7 @@ func TestService_Get(t *testing.T) {
 func TestService_Update(t *testing.T) {
 	t.Run("validates before saving", func(t *testing.T) {
 		repo := &mockSettingsRepo{}
-		service := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo)
 
 		invalid := &UniversitySettings{
 			Institution: Institution{Name: map[string]string{}},
@@ -122,7 +103,7 @@ func TestService_Update(t *testing.T) {
 				return nil
 			},
 		}
-		service := NewService(repo, &mockPrefsRepo{})
+		service := NewService(repo)
 
 		settings := DefaultSettings()
 		settings.Institution.Name["en"] = "Updated Name"
@@ -151,7 +132,7 @@ func TestService_UpdatePartial(t *testing.T) {
 			return nil
 		},
 	}
-	service := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo)
 
 	newInstitution := Institution{
 		Name:    map[string]string{"en": "New Name"},
@@ -183,7 +164,7 @@ func TestService_GetFeatures(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	service := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo)
 
 	features, err := service.GetFeatures(context.Background())
 	if err != nil {
@@ -206,7 +187,7 @@ func TestService_IsFeatureEnabled(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	service := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo)
 
 	tests := []struct {
 		feature string
@@ -230,104 +211,6 @@ func TestService_IsFeatureEnabled(t *testing.T) {
 	}
 }
 
-func TestService_GetPreferences(t *testing.T) {
-	userID := uuid.New()
-
-	t.Run("returns defaults when not found", func(t *testing.T) {
-		prefsRepo := &mockPrefsRepo{
-			getPreferences: func(ctx context.Context, id uuid.UUID) (*UserPreferences, error) {
-				return nil, nil
-			},
-		}
-		service := NewService(&mockSettingsRepo{}, prefsRepo)
-
-		prefs, err := service.GetPreferences(context.Background(), userID)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if prefs.Language != LanguageEnglish {
-			t.Errorf("Language = %v, want %v", prefs.Language, LanguageEnglish)
-		}
-	})
-
-	t.Run("returns existing preferences", func(t *testing.T) {
-		existing := &UserPreferences{
-			UserID:   userID,
-			Language: LanguageKurdish,
-			Timezone: "Asia/Baghdad",
-		}
-		prefsRepo := &mockPrefsRepo{
-			getPreferences: func(ctx context.Context, id uuid.UUID) (*UserPreferences, error) {
-				return existing, nil
-			},
-		}
-		service := NewService(&mockSettingsRepo{}, prefsRepo)
-
-		prefs, err := service.GetPreferences(context.Background(), userID)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if prefs.Language != LanguageKurdish {
-			t.Errorf("Language = %v, want %v", prefs.Language, LanguageKurdish)
-		}
-	})
-}
-
-func TestService_UpdatePreferences(t *testing.T) {
-	userID := uuid.New()
-
-	t.Run("validates language", func(t *testing.T) {
-		service := NewService(&mockSettingsRepo{}, &mockPrefsRepo{})
-
-		invalidLang := "invalid"
-		_, err := service.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
-			Language: &invalidLang,
-		})
-		if !errors.Is(err, ErrInvalidLanguage) {
-			t.Errorf("expected ErrInvalidLanguage, got %v", err)
-		}
-	})
-
-	t.Run("updates successfully", func(t *testing.T) {
-		var savedPrefs *UserPreferences
-		prefsRepo := &mockPrefsRepo{
-			getPreferences: func(ctx context.Context, id uuid.UUID) (*UserPreferences, error) {
-				return nil, nil
-			},
-			upsertPreferences: func(ctx context.Context, prefs *UserPreferences) error {
-				savedPrefs = prefs
-				return nil
-			},
-		}
-		service := NewService(&mockSettingsRepo{}, prefsRepo)
-
-		lang := LanguageKurdish
-		tz := "Asia/Baghdad"
-		emailOff := false
-
-		result, err := service.UpdatePreferences(context.Background(), userID, PreferencesUpdates{
-			Language:           &lang,
-			Timezone:           &tz,
-			EmailNotifications: &emailOff,
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if result.Language != LanguageKurdish {
-			t.Errorf("Language = %v, want %v", result.Language, LanguageKurdish)
-		}
-		if savedPrefs == nil {
-			t.Fatal("preferences not saved")
-		}
-		if !savedPrefs.PushNotifications {
-			t.Error("PushNotifications should remain true (default)")
-		}
-	})
-}
-
 func TestService_Refresh(t *testing.T) {
 	settings := DefaultSettings()
 	data, _ := json.Marshal(settings)
@@ -339,7 +222,7 @@ func TestService_Refresh(t *testing.T) {
 			return &SettingsRow{Settings: data}, nil
 		},
 	}
-	service := NewService(repo, &mockPrefsRepo{})
+	service := NewService(repo)
 
 	_, _ = service.Get(context.Background())
 	_ = service.Refresh(context.Background())

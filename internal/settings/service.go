@@ -14,25 +14,16 @@ type SettingsRepository interface {
 	Update(ctx context.Context, settings json.RawMessage, updatedBy uuid.UUID) error
 }
 
-type PreferencesRepository interface {
-	GetPreferences(ctx context.Context, userID uuid.UUID) (*UserPreferences, error)
-	UpsertPreferences(ctx context.Context, prefs *UserPreferences) error
-}
-
 type Service struct {
 	settingsRepo SettingsRepository
-	prefsRepo    PreferencesRepository
 
 	mu       sync.RWMutex
 	cached   *UniversitySettings
 	cachedAt time.Time
 }
 
-func NewService(settingsRepo SettingsRepository, prefsRepo PreferencesRepository) *Service {
-	return &Service{
-		settingsRepo: settingsRepo,
-		prefsRepo:    prefsRepo,
-	}
+func NewService(settingsRepo SettingsRepository) *Service {
+	return &Service{settingsRepo: settingsRepo}
 }
 
 func (s *Service) Get(ctx context.Context) (*UniversitySettings, error) {
@@ -150,52 +141,10 @@ func (s *Service) GetAcademicConfig(ctx context.Context) (AcademicConfig, error)
 	return settings.Academic, nil
 }
 
-func (s *Service) GetPreferences(ctx context.Context, userID uuid.UUID) (*UserPreferences, error) {
-	prefs, err := s.prefsRepo.GetPreferences(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if prefs == nil {
-		return DefaultPreferences(userID), nil
-	}
-	return prefs, nil
-}
-
-func (s *Service) UpdatePreferences(ctx context.Context, userID uuid.UUID, updates PreferencesUpdates) (*UserPreferences, error) {
-	if updates.Language != nil && !IsValidLanguage(*updates.Language) {
-		return nil, ErrInvalidLanguage
-	}
-
-	current, err := s.prefsRepo.GetPreferences(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if current == nil {
-		current = DefaultPreferences(userID)
-	}
-
-	merged := ApplyPreferencesUpdates(current, updates)
-	merged.UpdatedAt = time.Now()
-
-	if err := s.prefsRepo.UpsertPreferences(ctx, merged); err != nil {
-		return nil, err
-	}
-
-	return merged, nil
-}
-
 type SettingsUpdates struct {
 	Institution  *Institution
 	DegreeLabels map[string]DegreeLabel
 	Grading      *GradingConfig
 	Features     *Features
 	Academic     *AcademicConfig
-}
-
-type PreferencesUpdates struct {
-	Language           *string
-	Timezone           *string
-	Theme              *string
-	EmailNotifications *bool
-	PushNotifications  *bool
 }

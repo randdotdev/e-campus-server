@@ -20,6 +20,7 @@ type CourseRepository interface {
 	// Offering operations
 	CreateOffering(ctx context.Context, o *Offering) error
 	GetOffering(ctx context.Context, id uuid.UUID) (*Offering, error)
+	DeleteOffering(ctx context.Context, id uuid.UUID) error
 	ListOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]Offering, bool, error)
 	ListRichOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]RichOffering, bool, error)
 	UpdateOffering(ctx context.Context, o *Offering) error
@@ -30,6 +31,7 @@ type CourseRepository interface {
 	GetTeacher(ctx context.Context, offeringID, userID uuid.UUID) (*Teacher, error)
 	ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error)
 	RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error
+	UpdateTeacherRole(ctx context.Context, offeringID, userID uuid.UUID, role string) error
 	TeacherExists(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 
 	// Section operations
@@ -183,6 +185,10 @@ func (s *Service) GetOffering(ctx context.Context, id uuid.UUID) (*Offering, err
 	return s.repo.GetOffering(ctx, id)
 }
 
+func (s *Service) DeleteOffering(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteOffering(ctx, id)
+}
+
 func (s *Service) ListOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]Offering, bool, error) {
 	return s.repo.ListOfferings(ctx, params, filters)
 }
@@ -249,6 +255,10 @@ func (s *Service) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Tea
 
 func (s *Service) RemoveTeacher(ctx context.Context, offeringID, userID uuid.UUID) error {
 	return s.repo.RemoveTeacher(ctx, offeringID, userID)
+}
+
+func (s *Service) UpdateTeacherRole(ctx context.Context, offeringID, userID uuid.UUID, role string) error {
+	return s.repo.UpdateTeacherRole(ctx, offeringID, userID, role)
 }
 
 func (s *Service) ListMyTeachingOfferings(ctx context.Context, userID uuid.UUID) ([]MyTeachingOffering, error) {

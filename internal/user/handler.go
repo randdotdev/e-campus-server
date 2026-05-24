@@ -488,7 +488,8 @@ func (h *Handler) AdminSetPassword(c *gin.Context) {
 		return
 	}
 
-	if !authz.Check(c, authz.ResourceUser, authz.ActionUpdate, userID) {
+	actorID := middleware.GetUserID(c)
+	if actorID != userID && !authz.Check(c, authz.ResourceUser, authz.ActionUpdate, userID) {
 		response.Forbidden(c, "insufficient permissions")
 		return
 	}
@@ -623,5 +624,58 @@ func (h *Handler) parseUserFilters(c *gin.Context) UserFilters {
 	return UserFilters{
 		IsActive:        pagination.ParseBool(c, "is_active"),
 		HasStaffProfile: pagination.ParseBool(c, "has_staff_profile"),
+		HasRole:         pagination.ParseBool(c, "has_role"),
 	}
+}
+
+func (h *Handler) ListUsersWithRoles(c *gin.Context) {
+	if !authz.Check(c, authz.ResourceUser, authz.ActionList) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	params := pagination.ParsePageParams(c)
+	hasRole := true
+	filters := UserFilters{HasRole: &hasRole}
+
+	users, hasMore, err := h.service.ListUsers(c.Request.Context(), params, filters)
+	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
+		h.log.Error("list users with roles failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	userIDs := make([]uuid.UUID, len(users))
+	for i, u := range users {
+		userIDs[i] = u.ID
+	}
+	rolesMap, err := h.service.GetRolesForUsers(c.Request.Context(), userIDs)
+	if err != nil {
+		h.log.Error("get roles for users failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	items := make([]UserDetailResponse, len(users))
+	for i := range users {
+		items[i] = UserDetailResponse{
+			UserResponse: ToUserResponse(&users[i]),
+			Role:         ToRoleResponse(rolesMap[users[i].ID]),
+		}
+	}
+
+	result := pagination.PageResult[UserDetailResponse]{
+		Data:    items,
+		HasMore: hasMore,
+	}
+	if hasMore && len(users) > 0 {
+		last := users[len(users)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
 }

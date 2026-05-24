@@ -17,7 +17,6 @@ type Repository struct {
 
 var (
 	_ SettingsRepository        = (*Repository)(nil)
-	_ PreferencesRepository     = (*Repository)(nil)
 	_ academic.SettingsProvider = (*Repository)(nil)
 )
 
@@ -41,38 +40,6 @@ func (r *Repository) Get(ctx context.Context) (*SettingsRow, error) {
 func (r *Repository) Update(ctx context.Context, settings json.RawMessage, updatedBy uuid.UUID) error {
 	query := `UPDATE settings SET settings = $1, updated_by = $2, updated_at = NOW()`
 	_, err := r.db.ExecContext(ctx, query, settings, updatedBy)
-	return err
-}
-
-func (r *Repository) GetPreferences(ctx context.Context, userID uuid.UUID) (*UserPreferences, error) {
-	var prefs UserPreferences
-	query := `SELECT user_id, language, timezone, theme, email_notifications, push_notifications, updated_at
-		FROM user_preferences WHERE user_id = $1`
-
-	if err := r.db.GetContext(ctx, &prefs, query, userID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &prefs, nil
-}
-
-func (r *Repository) UpsertPreferences(ctx context.Context, prefs *UserPreferences) error {
-	query := `
-		INSERT INTO user_preferences (user_id, language, timezone, theme, email_notifications, push_notifications, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
-		ON CONFLICT (user_id) DO UPDATE
-		SET language = EXCLUDED.language,
-			timezone = EXCLUDED.timezone,
-			theme = EXCLUDED.theme,
-			email_notifications = EXCLUDED.email_notifications,
-			push_notifications = EXCLUDED.push_notifications,
-			updated_at = NOW()`
-
-	_, err := r.db.ExecContext(ctx, query,
-		prefs.UserID, prefs.Language, prefs.Timezone, prefs.Theme,
-		prefs.EmailNotifications, prefs.PushNotifications)
 	return err
 }
 

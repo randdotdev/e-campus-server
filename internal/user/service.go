@@ -40,6 +40,7 @@ type UserRepository interface {
 	List(ctx context.Context, params pagination.PageParams, filters UserFilters) ([]User, bool, error)
 	Deactivate(ctx context.Context, id uuid.UUID) error
 	GetRole(ctx context.Context, userID uuid.UUID) (*Role, error)
+	GetRolesForUsers(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*Role, error)
 	CreateRole(ctx context.Context, role *Role) error
 	UpdateRole(ctx context.Context, role *Role) error
 	DeleteRole(ctx context.Context, userID uuid.UUID) error
@@ -156,6 +157,10 @@ func (s *Service) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
 
 func (s *Service) GetRole(ctx context.Context, userID uuid.UUID) (*Role, error) {
 	return s.repo.GetRole(ctx, userID)
+}
+
+func (s *Service) GetRolesForUsers(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*Role, error) {
+	return s.repo.GetRolesForUsers(ctx, userIDs)
 }
 
 func (s *Service) GetSessions(ctx context.Context, userID uuid.UUID) ([]Session, error) {

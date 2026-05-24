@@ -206,6 +206,27 @@ func (h *Handler) UpdateSemesterStatus(c *gin.Context) {
 	response.OK(c, ToSemesterResponse(semester))
 }
 
+func (h *Handler) DeleteSemester(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid id")
+		return
+	}
+
+	role := middleware.GetUserRole(c)
+	if role == nil || role.Level != "super_admin" {
+		response.Forbidden(c, "only super admins can delete semesters")
+		return
+	}
+
+	if err := h.service.DeleteSemester(c.Request.Context(), id); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response.NoContent(c)
+}
+
 func (h *Handler) DefinalizeSemester(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

@@ -150,18 +150,29 @@ func (r *Repository) ListSemesters(ctx context.Context, academicYearID *uuid.UUI
 func (r *Repository) UpdateSemester(ctx context.Context, s *Semester) error {
 	query := `
 		UPDATE semesters
-		SET start_date = $2, end_date = $3,
-			registration_start = $4, registration_end = $5,
-			grade_entry_start = $6, grade_entry_end = $7,
-			pass_threshold = $8, status = $9
+		SET semester = $2, start_date = $3, end_date = $4,
+			registration_start = $5, registration_end = $6,
+			grade_entry_start = $7, grade_entry_end = $8,
+			pass_threshold = $9, status = $10
 		WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query,
-		s.ID, s.StartDate, s.EndDate,
+		s.ID, s.Semester, s.StartDate, s.EndDate,
 		s.RegistrationStart, s.RegistrationEnd,
 		s.GradeEntryStart, s.GradeEntryEnd,
 		s.PassThreshold, s.Status,
 	)
 	return err
+}
+
+func (r *Repository) DeleteSemester(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM semesters WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrSemesterNotFound
+	}
+	return nil
 }
 
 func (r *Repository) SemesterExists(ctx context.Context, academicYearID uuid.UUID, semester string) (bool, error) {

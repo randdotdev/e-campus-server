@@ -34,6 +34,7 @@ import (
 	"github.com/ranjdotdev/e-campus-server/internal/post"
 	"github.com/ranjdotdev/e-campus-server/internal/qa"
 	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/ranjdotdev/e-campus-server/internal/preferences"
 	"github.com/ranjdotdev/e-campus-server/internal/settings"
 	"github.com/ranjdotdev/e-campus-server/internal/storage"
 	"github.com/ranjdotdev/e-campus-server/internal/student"
@@ -257,8 +258,12 @@ func run() error {
 	contentHandler := content.NewHandler(contentService, log)
 
 	settingsRepo := settings.NewRepository(db)
-	settingsService := settings.NewService(settingsRepo, settingsRepo)
+	settingsService := settings.NewService(settingsRepo)
 	settingsHandler := settings.NewHandler(settingsService, log)
+
+	prefsRepo := preferences.NewRepository(db)
+	prefsService := preferences.NewService(prefsRepo)
+	prefsHandler := preferences.NewHandler(prefsService, log)
 
 	academicService := academic.NewService(
 		academicRepo,
@@ -363,6 +368,7 @@ func run() error {
 			admin := protected.Group("/admin")
 			{
 				admin.POST("/users", userHandler.CreateUser)
+				admin.GET("/users/with-roles", userHandler.ListUsersWithRoles)
 				admin.PUT("/users/:id/password", userHandler.AdminSetPassword)
 				admin.PUT("/users/:id/role", userHandler.AssignRole)
 				admin.DELETE("/users/:id/role", userHandler.RemoveRole)
@@ -437,12 +443,14 @@ func run() error {
 			protected.POST("/offerings", courseHandler.CreateOffering)
 			protected.GET("/offerings/:id", courseHandler.GetOffering)
 			protected.PUT("/offerings/:id", courseHandler.UpdateOffering)
+			protected.DELETE("/offerings/:id", courseHandler.DeleteOffering)
 			protected.GET("/offerings/:id/access-level", enrollmentHandler.GetAccessLevel)
 
 			// Teacher routes
 			protected.GET("/offerings/:id/teachers", courseHandler.ListTeachers)
 			protected.POST("/offerings/:id/teachers", courseHandler.AddTeacher)
 			protected.DELETE("/offerings/:id/teachers/:user_id", courseHandler.RemoveTeacher)
+			protected.PATCH("/offerings/:id/teachers/:user_id", courseHandler.UpdateTeacherRole)
 
 			// Enrollment routes
 			protected.GET("/offerings/:id/enrollments", enrollmentHandler.ListEnrollments)
@@ -562,6 +570,7 @@ func run() error {
 			protected.POST("/semesters", academicHandler.CreateSemester)
 			protected.GET("/semesters/:id", academicHandler.GetSemester)
 			protected.PUT("/semesters/:id", academicHandler.UpdateSemester)
+			protected.DELETE("/semesters/:id", academicHandler.DeleteSemester)
 			protected.PUT("/semesters/:id/status", academicHandler.UpdateSemesterStatus)
 			protected.POST("/semesters/:id/definalize", academicHandler.DefinalizeSemester)
 			protected.POST("/semesters/:id/generate-offerings", academicHandler.GenerateOfferings)
@@ -615,8 +624,8 @@ func run() error {
 			protected.DELETE("/notifications/:id", notificationHandler.Delete)
 
 			// User preferences
-			protected.GET("/me/preferences", settingsHandler.GetMyPreferences)
-			protected.PUT("/me/preferences", settingsHandler.UpdateMyPreferences)
+			protected.GET("/me/preferences", prefsHandler.GetMyPreferences)
+			protected.PUT("/me/preferences", prefsHandler.UpdateMyPreferences)
 
 			// University settings (admin)
 			protected.GET("/settings", settingsHandler.GetSettings)

@@ -17,6 +17,7 @@ type AcademicRepository interface {
 	GetSemester(ctx context.Context, id uuid.UUID) (*Semester, error)
 	ListSemesters(ctx context.Context, academicYearID *uuid.UUID) ([]Semester, error)
 	UpdateSemester(ctx context.Context, s *Semester) error
+	DeleteSemester(ctx context.Context, id uuid.UUID) error
 	SemesterExists(ctx context.Context, academicYearID uuid.UUID, semester string) (bool, error)
 	GetActiveSemester(ctx context.Context) (*Semester, error)
 	AddCurriculum(ctx context.Context, c *Curriculum) error
@@ -233,6 +234,10 @@ func (s *Service) GetSemester(ctx context.Context, id uuid.UUID) (*Semester, err
 	return s.repo.GetSemester(ctx, id)
 }
 
+func (s *Service) DeleteSemester(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteSemester(ctx, id)
+}
+
 func (s *Service) ListSemesters(ctx context.Context, academicYearID *uuid.UUID) ([]Semester, error) {
 	return s.repo.ListSemesters(ctx, academicYearID)
 }
@@ -243,6 +248,16 @@ func (s *Service) UpdateSemester(ctx context.Context, id uuid.UUID, req UpdateSe
 		return nil, err
 	}
 
+	if req.Semester != nil && *req.Semester != sem.Semester {
+		exists, err := s.repo.SemesterExists(ctx, sem.AcademicYearID, *req.Semester)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, ErrDuplicateSemester
+		}
+		sem.Semester = *req.Semester
+	}
 	if req.StartDate != nil {
 		sem.StartDate = *req.StartDate
 	}
@@ -441,6 +456,25 @@ func (s *Service) GenerateOfferings(ctx context.Context, semesterID uuid.UUID, p
 			stage:      student.CurrentYear,
 		}
 		cohortMap[key] = true
+	}
+
+	// Curriculum-driven fallback: when no active students exist but a specific
+	// program+cohort was requested, derive cohort keys from the curriculum instead.
+	if len(cohortMap) == 0 && programID != nil && cohortYear != nil {
+		curriculum, err := s.repo.ListCurriculum(ctx, *programID, *cohortYear)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range curriculum {
+			if item.Semester != sem.Semester {
+				continue
+			}
+			cohortMap[cohortKey{
+				programID:  *programID,
+				cohortYear: *cohortYear,
+				stage:      item.Stage,
+			}] = true
+		}
 	}
 
 	for key := range cohortMap {
