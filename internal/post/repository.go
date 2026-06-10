@@ -573,19 +573,17 @@ func (r *ScopeRepo) isEnrolledInProgram(ctx context.Context, userID, programID u
 	return exists, err
 }
 
-func (r *ScopeRepo) isMemberOfCourse(ctx context.Context, userID, courseID uuid.UUID) (bool, error) {
+func (r *ScopeRepo) isMemberOfCourse(ctx context.Context, userID, offeringID uuid.UUID) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS(
-			SELECT 1 FROM course_enrollments ce
-			JOIN course_offerings co ON ce.offering_id = co.id
-			WHERE co.course_id = $2 AND ce.student_id = $1
+			SELECT 1 FROM course_enrollments
+			WHERE offering_id = $2 AND student_id = $1 AND status = 'enrolled'
 			UNION
-			SELECT 1 FROM course_teachers ct
-			JOIN course_offerings co ON ct.offering_id = co.id
-			WHERE co.course_id = $2 AND ct.teacher_id = $1
+			SELECT 1 FROM course_teachers
+			WHERE offering_id = $2 AND user_id = $1
 		)`
-	err := r.db.GetContext(ctx, &exists, query, userID, courseID)
+	err := r.db.GetContext(ctx, &exists, query, userID, offeringID)
 	return exists, err
 }
 

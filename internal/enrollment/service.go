@@ -535,7 +535,9 @@ func (s *Service) ApproveRequest(ctx context.Context, id, reviewerID uuid.UUID) 
 		EnrollmentType: request.Type,
 		Status:         EnrollmentStatusEnrolled,
 	}
-	_ = s.repo.CreateEnrollment(ctx, enrollment)
+	if err := s.repo.CreateEnrollment(ctx, enrollment); err == nil {
+		_ = s.authz.InvalidateCourseRoles(ctx, request.StudentID)
+	}
 
 	return request, nil
 }

@@ -167,6 +167,50 @@ func (r *QuestionRepo) ListPending(ctx context.Context, offeringID uuid.UUID, pa
 	return questions, hasMore, nil
 }
 
+func (r *QuestionRepo) ListRejectedForUser(ctx context.Context, offeringID, userID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {
+	var args []any
+	argIndex := 1
+
+	query := `
+		SELECT q.*,
+			u.full_name_en AS author_name,
+			u.full_name_local AS author_name_local
+		FROM qa_questions q
+		JOIN users u ON q.created_by = u.id
+		WHERE q.offering_id = $1
+		  AND q.status = 'rejected'
+		  AND q.created_by = $2
+		  AND q.deleted_at IS NULL`
+	args = append(args, offeringID, userID)
+	argIndex += 2
+
+	if params.Cursor != "" {
+		cursorTime, cursorID, err := pagination.DecodeCursor(params.Cursor)
+		if err != nil {
+			return nil, false, err
+		}
+		query += fmt.Sprintf(" AND (q.created_at, q.id) < ($%d, $%d)", argIndex, argIndex+1)
+		args = append(args, cursorTime, cursorID)
+		argIndex += 2
+	}
+
+	query += " ORDER BY q.created_at DESC, q.id DESC"
+	query += fmt.Sprintf(" LIMIT $%d", argIndex)
+	args = append(args, params.Limit+1)
+
+	var questions []QuestionWithAuthor
+	if err := r.db.SelectContext(ctx, &questions, query, args...); err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(questions) > params.Limit
+	if hasMore {
+		questions = questions[:params.Limit]
+	}
+
+	return questions, hasMore, nil
+}
+
 type AnswerRepo struct {
 	db *sqlx.DB
 }

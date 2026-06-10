@@ -31,6 +31,7 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup, auth gin.HandlerFunc) {
 		offerings.GET("/questions", h.ListQuestions)
 		offerings.GET("/questions/pending", h.ListPendingQuestions)
 		offerings.GET("/questions/faq", h.ListFAQ)
+		offerings.GET("/questions/rejected", h.ListMyRejectedQuestions)
 		offerings.POST("/questions", h.AskQuestion)
 		offerings.POST("/questions/faq", h.CreateFAQ)
 	}
@@ -233,6 +234,44 @@ func (h *Handler) ListFAQ(c *gin.Context) {
 
 	result := pagination.PageResult[QuestionResponse]{
 		Data:    ToQuestionListResponses(questions, isTeacher),
+		HasMore: hasMore,
+	}
+	if hasMore && len(questions) > 0 {
+		last := questions[len(questions)-1]
+		result.NextCursor = pagination.EncodeCursor(last.CreatedAt, last.ID)
+	}
+
+	response.OK(c, result)
+}
+
+func (h *Handler) ListMyRejectedQuestions(c *gin.Context) {
+	offeringID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid offering id")
+		return
+	}
+
+	if !authz.Check(c, authz.ResourceQA, authz.ActionGet, offeringID) {
+		response.Forbidden(c, "insufficient permissions")
+		return
+	}
+
+	userID := middleware.GetUserID(c)
+	params := pagination.ParsePageParams(c)
+
+	questions, hasMore, err := h.service.ListMyRejectedQuestions(c.Request.Context(), offeringID, userID, params)
+	if err != nil {
+		if errors.Is(err, pagination.ErrInvalidCursor) {
+			response.BadRequest(c, "invalid cursor")
+			return
+		}
+		h.log.Error("list my rejected failed", zap.Error(err))
+		response.InternalError(c)
+		return
+	}
+
+	result := pagination.PageResult[QuestionResponse]{
+		Data:    ToQuestionListResponses(questions, false),
 		HasMore: hasMore,
 	}
 	if hasMore && len(questions) > 0 {

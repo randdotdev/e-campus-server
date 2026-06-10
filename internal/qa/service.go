@@ -16,6 +16,7 @@ type QuestionRepository interface {
 	SoftDelete(ctx context.Context, id uuid.UUID, deletedAt time.Time) error
 
 	ListByOffering(ctx context.Context, offeringID uuid.UUID, status string, isFAQ *bool, params pagination.PageParams) ([]QuestionWithAuthor, bool, error)
+	ListRejectedForUser(ctx context.Context, offeringID, userID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error)
 	ListPending(ctx context.Context, offeringID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error)
 }
 
@@ -187,6 +188,10 @@ func (s *Service) GetQuestion(ctx context.Context, id uuid.UUID) (*QuestionWithA
 
 func (s *Service) ListQuestions(ctx context.Context, offeringID uuid.UUID, isFAQ *bool, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {
 	return s.questions.ListByOffering(ctx, offeringID, StatusAnswered, isFAQ, params)
+}
+
+func (s *Service) ListMyRejectedQuestions(ctx context.Context, offeringID, userID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {
+	return s.questions.ListRejectedForUser(ctx, offeringID, userID, params)
 }
 
 func (s *Service) ListPendingQuestions(ctx context.Context, offeringID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {

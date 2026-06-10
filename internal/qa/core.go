@@ -52,7 +52,10 @@ func CanDeleteQuestion(q *Question, userID uuid.UUID) bool {
 	if q.CreatedBy != userID {
 		return false
 	}
-	return q.Status == StatusPending
+	if q.IsFAQ {
+		return true
+	}
+	return q.Status == StatusPending || q.Status == StatusRejected
 }
 
 func CanViewQuestion(q *Question, userID uuid.UUID, isTeacher bool) bool {

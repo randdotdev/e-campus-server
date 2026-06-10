@@ -50,6 +50,10 @@ func (m *mockQuestionRepo) ListByOffering(ctx context.Context, offeringID uuid.U
 	return nil, false, nil
 }
 
+func (m *mockQuestionRepo) ListRejectedForUser(ctx context.Context, offeringID, userID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {
+	return nil, false, nil
+}
+
 func (m *mockQuestionRepo) ListPending(ctx context.Context, offeringID uuid.UUID, params pagination.PageParams) ([]QuestionWithAuthor, bool, error) {
 	return nil, false, nil
 }

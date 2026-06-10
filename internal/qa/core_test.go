@@ -86,18 +86,20 @@ func TestCanDeleteQuestion(t *testing.T) {
 	tests := []struct {
 		name   string
 		status string
+		isFAQ  bool
 		userID uuid.UUID
 		want   bool
 	}{
-		{"author pending", StatusPending, author, true},
-		{"author answered", StatusAnswered, author, false},
-		{"author rejected", StatusRejected, author, false},
-		{"other pending", StatusPending, other, false},
+		{"author pending", StatusPending, false, author, true},
+		{"author answered", StatusAnswered, false, author, false},
+		{"author rejected", StatusRejected, false, author, true},
+		{"author faq", StatusAnswered, true, author, true},
+		{"other pending", StatusPending, false, other, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			q := &Question{CreatedBy: author, Status: tt.status}
+			q := &Question{CreatedBy: author, Status: tt.status, IsFAQ: tt.isFAQ}
 			got := CanDeleteQuestion(q, tt.userID)
 			if got != tt.want {
 				t.Errorf("CanDeleteQuestion() = %v, want %v", got, tt.want)
