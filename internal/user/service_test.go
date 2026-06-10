@@ -137,6 +137,9 @@ func (m *MockUserRepository) ScopeExists(ctx context.Context, scopeType string, 
 	}
 	return true, nil
 }
+func (m *MockUserRepository) GetRolesForUsers(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]*Role, error) {
+	return map[uuid.UUID]*Role{}, nil
+}
 func (m *MockUserRepository) CreateStaffUserTx(ctx context.Context, user *User, profile *StaffProfile, role *Role) error {
 	if m.CreateStaffUserTxFunc != nil {
 		return m.CreateStaffUserTxFunc(ctx, user, profile, role)

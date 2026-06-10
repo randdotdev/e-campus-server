@@ -194,6 +194,10 @@ func (m *MockAcademicRepository) GetCurriculumByID(ctx context.Context, id uuid.
 	return nil, ErrCurriculumNotFound
 }
 
+func (m *MockAcademicRepository) DeleteSemester(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
 type MockStudentProvider struct {
 	GetActiveStudentsFunc        func(ctx context.Context, programID *uuid.UUID, cohortYear *int) ([]StudentInfo, error)
 	GetStudentsByProgramFunc     func(ctx context.Context, programID uuid.UUID) ([]StudentInfo, error)

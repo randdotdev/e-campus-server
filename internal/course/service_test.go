@@ -29,7 +29,7 @@ type mockRepo struct {
 	// Teacher
 	addTeacherFunc    func(ctx context.Context, t *Teacher) error
 	getTeacherFunc    func(ctx context.Context, offeringID, userID uuid.UUID) (*Teacher, error)
-	listTeachersFunc  func(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error)
+	listTeachersFunc  func(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error)
 	removeTeacherFunc func(ctx context.Context, offeringID, userID uuid.UUID) error
 	teacherExistsFunc func(ctx context.Context, offeringID, userID uuid.UUID) (bool, error)
 
@@ -42,6 +42,26 @@ type mockRepo struct {
 
 	// Access
 	getOfferingsByCourseCodeAndCohortFunc func(ctx context.Context, departmentID uuid.UUID, code string, cohortYear int, shift string) ([]Offering, error)
+}
+
+func (m *mockRepo) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *mockRepo) DeleteOffering(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *mockRepo) ListRichOfferings(ctx context.Context, params pagination.PageParams, filters OfferingFilters) ([]RichOffering, bool, error) {
+	return nil, false, nil
+}
+
+func (m *mockRepo) UpdateTeacherRole(ctx context.Context, offeringID, userID uuid.UUID, role string) error {
+	return nil
+}
+
+func (m *mockRepo) ListMyTeachingOfferings(ctx context.Context, userID uuid.UUID) ([]MyTeachingOffering, error) {
+	return nil, nil
 }
 
 func (m *mockRepo) CreateCourse(ctx context.Context, c *Course) error {
@@ -138,7 +158,7 @@ func (m *mockRepo) GetTeacher(ctx context.Context, offeringID, userID uuid.UUID)
 	return nil, ErrTeacherNotFound
 }
 
-func (m *mockRepo) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]Teacher, error) {
+func (m *mockRepo) ListTeachers(ctx context.Context, offeringID uuid.UUID) ([]TeacherWithUser, error) {
 	if m.listTeachersFunc != nil {
 		return m.listTeachersFunc(ctx, offeringID)
 	}

@@ -17,7 +17,7 @@ type mockRepo struct {
 	// Enrollment operations
 	createEnrollmentFunc      func(ctx context.Context, e *Enrollment) error
 	getEnrollmentFunc         func(ctx context.Context, offeringID, studentID uuid.UUID) (*Enrollment, error)
-	listEnrollmentsFunc       func(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error)
+	listEnrollmentsFunc       func(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]EnrollmentWithStudent, bool, error)
 	updateEnrollmentFunc      func(ctx context.Context, e *Enrollment) error
 	isEnrolledFunc            func(ctx context.Context, offeringID, studentID uuid.UUID) (bool, error)
 	getEnrolledStudentIDsFunc func(ctx context.Context, offeringID uuid.UUID) ([]uuid.UUID, error)
@@ -83,11 +83,11 @@ func (m *mockRepo) GetEnrollment(ctx context.Context, offeringID, studentID uuid
 	return nil, nil
 }
 
-func (m *mockRepo) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]Enrollment, bool, error) {
+func (m *mockRepo) ListEnrollments(ctx context.Context, params pagination.PageParams, filters EnrollmentFilters) ([]EnrollmentWithStudent, bool, error) {
 	if m.listEnrollmentsFunc != nil {
 		return m.listEnrollmentsFunc(ctx, params, filters)
 	}
-	return []Enrollment{}, false, nil
+	return []EnrollmentWithStudent{}, false, nil
 }
 
 func (m *mockRepo) UpdateEnrollment(ctx context.Context, e *Enrollment) error {

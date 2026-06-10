@@ -106,12 +106,16 @@ func TestToOfferingResponse(t *testing.T) {
 
 func TestToTeacherResponse(t *testing.T) {
 	now := time.Now()
-	teacher := &Teacher{
-		ID:         uuid.New(),
-		OfferingID: uuid.New(),
-		UserID:     uuid.New(),
-		Role:       TeacherRoleTeacher,
-		CreatedAt:  now,
+	teacher := &TeacherWithUser{
+		Teacher: Teacher{
+			ID:         uuid.New(),
+			OfferingID: uuid.New(),
+			UserID:     uuid.New(),
+			Role:       TeacherRoleTeacher,
+			CreatedAt:  now,
+		},
+		UserFullNameEN: "Test Teacher",
+		UserEmail:      "teacher@example.com",
 	}
 
 	resp := ToTeacherResponse(teacher)
