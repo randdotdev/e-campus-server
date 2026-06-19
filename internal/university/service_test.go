@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/subscription"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/subscription"
 )
 
 // MockRepository implements UniversityRepository for testing

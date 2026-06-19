@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ranjdotdev/e-campus-server/internal/authz"
-	"github.com/ranjdotdev/e-campus-server/internal/middleware"
-	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/randdotdev/e-campus-server/internal/authz"
+	"github.com/randdotdev/e-campus-server/internal/middleware"
+	"github.com/randdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
 

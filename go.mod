@@ -1,4 +1,4 @@
-module github.com/ranjdotdev/e-campus-server
+module github.com/randdotdev/e-campus-server
 
 go 1.25.4
 

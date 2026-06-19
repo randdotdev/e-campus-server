@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/randdotdev/e-campus-server/internal/response"
 	"go.uber.org/zap"
 )
 

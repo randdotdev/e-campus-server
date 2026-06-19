@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/subscription"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/subscription"
 )
 
 type UniversityRepository interface {

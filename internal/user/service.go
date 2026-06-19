@@ -6,12 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/ranjdotdev/e-campus-server/internal/auth"
-	"github.com/ranjdotdev/e-campus-server/internal/authz"
-	"github.com/ranjdotdev/e-campus-server/internal/ctxversion"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/student"
-	"github.com/ranjdotdev/e-campus-server/internal/university"
+	"github.com/randdotdev/e-campus-server/internal/auth"
+	"github.com/randdotdev/e-campus-server/internal/authz"
+	"github.com/randdotdev/e-campus-server/internal/ctxversion"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/student"
+	"github.com/randdotdev/e-campus-server/internal/university"
 	"golang.org/x/sync/errgroup"
 )
 

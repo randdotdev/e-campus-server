@@ -10,12 +10,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"github.com/ranjdotdev/e-campus-server/internal/academic"
-	"github.com/ranjdotdev/e-campus-server/internal/assignment"
-	"github.com/ranjdotdev/e-campus-server/internal/content"
-	"github.com/ranjdotdev/e-campus-server/internal/enrollment"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
-	"github.com/ranjdotdev/e-campus-server/internal/qa"
+	"github.com/randdotdev/e-campus-server/internal/academic"
+	"github.com/randdotdev/e-campus-server/internal/assignment"
+	"github.com/randdotdev/e-campus-server/internal/content"
+	"github.com/randdotdev/e-campus-server/internal/enrollment"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/qa"
 )
 
 func isUniqueViolation(err error) bool {

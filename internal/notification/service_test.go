@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
 )
 
 type mockRepo struct {

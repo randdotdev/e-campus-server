@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/config"
+	"github.com/randdotdev/e-campus-server/internal/config"
 )
 
 type UserRepository interface {

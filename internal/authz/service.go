@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/ranjdotdev/e-campus-server/internal/auth"
-	"github.com/ranjdotdev/e-campus-server/internal/middleware"
+	"github.com/randdotdev/e-campus-server/internal/auth"
+	"github.com/randdotdev/e-campus-server/internal/middleware"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 )

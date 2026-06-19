@@ -3,7 +3,7 @@ package authz
 
 import (
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/auth"
+	"github.com/randdotdev/e-campus-server/internal/auth"
 )
 
 type Resource struct {

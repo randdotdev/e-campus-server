@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/ranjdotdev/e-campus-server/internal/authz"
+	"github.com/randdotdev/e-campus-server/internal/authz"
 )
 
 type Repository struct {

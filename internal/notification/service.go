@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
 )
 
 type NotificationRepository interface {

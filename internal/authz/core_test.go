@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/auth"
+	"github.com/randdotdev/e-campus-server/internal/auth"
 )
 
 func ptr(s string) *string { return &s }

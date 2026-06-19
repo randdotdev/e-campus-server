@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/files"
+	"github.com/randdotdev/e-campus-server/internal/files"
 )
 
 type SubscriptionRepository interface {

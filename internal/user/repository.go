@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/ranjdotdev/e-campus-server/internal/auth"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/auth"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
 )
 
 type Repository struct {

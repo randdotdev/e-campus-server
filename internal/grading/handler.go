@@ -3,9 +3,9 @@ package grading
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/ranjdotdev/e-campus-server/internal/authz"
-	"github.com/ranjdotdev/e-campus-server/internal/middleware"
-	"github.com/ranjdotdev/e-campus-server/internal/response"
+	"github.com/randdotdev/e-campus-server/internal/authz"
+	"github.com/randdotdev/e-campus-server/internal/middleware"
+	"github.com/randdotdev/e-campus-server/internal/response"
 )
 
 type Handler struct {

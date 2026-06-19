@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/ranjdotdev/e-campus-server/internal/pagination"
+	"github.com/randdotdev/e-campus-server/internal/pagination"
 )
 
 // postView is a query-result type used when the display requires scope name via JOIN.
