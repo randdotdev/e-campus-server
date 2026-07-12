@@ -1,0 +1,2 @@
+ALTER TABLE academic_years DROP COLUMN IF EXISTS version;
+ALTER TABLE semesters DROP COLUMN IF EXISTS version;

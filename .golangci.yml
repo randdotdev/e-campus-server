@@ -1,0 +1,11 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - exhaustive
+  settings:
+    exhaustive:
+      # A default arm is a deliberate "everything else" decision; the linter
+      # exists to catch enum switches that silently skip a named member.
+      default-signifies-exhaustive: true

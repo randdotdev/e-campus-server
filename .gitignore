@@ -39,5 +39,9 @@ logs/
 tmp/
 temp/
 
-# Air (hot reload)
-tmp/
+# Agent tooling (never commit)
+.claude/
+.agents/
+
+# Workspace docs (belong to the outer workspace, not this repo)
+assets/
