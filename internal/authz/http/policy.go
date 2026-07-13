@@ -55,7 +55,7 @@ type createPermissionRequest struct {
 	MinLevel     string `json:"min_level"`
 	Scope        string `json:"scope"`
 	Domain       string `json:"domain"`
-	OfferingRole string `json:"course_role"`
+	OfferingRole string `json:"offering_role"`
 }
 
 type permissionResponse struct {
@@ -66,7 +66,7 @@ type permissionResponse struct {
 	MinLevel     *string   `json:"min_level,omitempty"`
 	Scope        *string   `json:"scope,omitempty"`
 	Domain       *string   `json:"domain,omitempty"`
-	OfferingRole *string   `json:"course_role,omitempty"`
+	OfferingRole *string   `json:"offering_role,omitempty"`
 	Active       bool      `json:"is_active"`
 }
 

@@ -158,8 +158,6 @@ type Policy struct {
 }
 
 // Permission is one stored policy row — the unit administration edits.
-// The course_role column keeps its legacy name until classroom's own
-// migration renames the underlying tables.
 type Permission struct {
 	ID           uuid.UUID      `db:"id"`
 	Resource     Entity         `db:"resource"`
@@ -168,7 +166,7 @@ type Permission struct {
 	MinLevel     *Level         `db:"min_level"`
 	Scope        *Scope         `db:"scope_type"`
 	Domain       *Domain        `db:"domain"`
-	OfferingRole *OfferingRole  `db:"course_role"`
+	OfferingRole *OfferingRole  `db:"offering_role"`
 	Active       bool           `db:"is_active"`
 }
 

@@ -29,7 +29,7 @@ func NewPolicyStore(db *sqlx.DB) *PolicyStore {
 func (r *PolicyStore) PolicyFor(ctx context.Context, key authz.PolicyKey) (authz.Policy, error) {
 	var rows []authz.Permission
 	const q = `
-		SELECT id, resource, verb, type, scope_type, min_level, course_role, domain, is_active
+		SELECT id, resource, verb, type, scope_type, min_level, offering_role, domain, is_active
 		FROM authz_policies
 		WHERE resource = $1 AND verb = $2 AND is_active = true
 	`
@@ -43,7 +43,7 @@ func (r *PolicyStore) PolicyFor(ctx context.Context, key authz.PolicyKey) (authz
 func (r *PolicyStore) ListPermissions(ctx context.Context) ([]authz.Permission, error) {
 	var rows []authz.Permission
 	const q = `
-		SELECT id, resource, verb, type, scope_type, min_level, course_role, domain, is_active
+		SELECT id, resource, verb, type, scope_type, min_level, offering_role, domain, is_active
 		FROM authz_policies
 		ORDER BY resource, verb, type
 	`
@@ -58,9 +58,9 @@ func (r *PolicyStore) ListPermissions(ctx context.Context) ([]authz.Permission, 
 func (r *PolicyStore) CreatePermission(ctx context.Context, in authz.PermissionInput) (*authz.Permission, error) {
 	var created authz.Permission
 	const q = `
-		INSERT INTO authz_policies (resource, verb, type, scope_type, min_level, course_role, domain)
+		INSERT INTO authz_policies (resource, verb, type, scope_type, min_level, offering_role, domain)
 		VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''))
-		RETURNING id, resource, verb, type, scope_type, min_level, course_role, domain, is_active
+		RETURNING id, resource, verb, type, scope_type, min_level, offering_role, domain, is_active
 	`
 	err := r.db.GetContext(ctx, &created, q,
 		in.Resource, in.Action, in.Type, in.Scope, in.MinLevel, in.OfferingRole, in.Domain)
@@ -179,7 +179,7 @@ func insertPolicy(ctx context.Context, tx *sqlx.Tx, key authz.PolicyKey, policy 
 		}
 	}
 	const courseQ = `
-		INSERT INTO authz_policies (resource, verb, type, course_role)
+		INSERT INTO authz_policies (resource, verb, type, offering_role)
 		VALUES ($1, $2, 'offering', $3)
 	`
 	for _, role := range policy.Offering {
