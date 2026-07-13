@@ -396,7 +396,7 @@ func (s *RequestService) validateCourseAndSemester(ctx context.Context, courseID
 
 func (s *RequestService) logEnrollSkip(ctx context.Context, r *EnrollmentRequest, err error) {
 	if err == nil {
-		err = errors.New("no matching offering")
+		err = errors.New("management: no matching offering")
 	}
 	s.log.WarnContext(ctx, "approved request not immediately enrolled; bulk-enroll will retry",
 		"request_id", r.ID, "student_id", r.StudentID, "course_id", r.CourseID, "error", err)
