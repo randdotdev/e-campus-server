@@ -283,8 +283,13 @@ func (h *Handler) ProjectCustom(c *gin.Context) {
 }
 
 func (h *Handler) DownloadProjectAttachment(c *gin.Context) {
+	attachmentID, err := uuid.Parse(c.Param("attachmentId"))
+	if err != nil {
+		response.NotFound(c, "attachment not found")
+		return
+	}
 	url, err := h.projects.PresignAttachment(c.Request.Context(), offeringID(c), targetID(c),
-		c.Param("name"), studentView(c))
+		attachmentID, studentView(c))
 	if err != nil {
 		h.respondError(c, err)
 		return
@@ -397,8 +402,13 @@ func (h *Handler) DownloadProjectSubmissionFile(c *gin.Context) {
 			return
 		}
 	}
+	fileID, err := uuid.Parse(c.Param("fileId"))
+	if err != nil {
+		response.NotFound(c, "file not found")
+		return
+	}
 	url, err := h.projects.PresignSubmissionFile(c.Request.Context(), offeringID(c), targetID(c),
-		submissionID, c.Param("name"))
+		submissionID, fileID)
 	if err != nil {
 		h.respondError(c, err)
 		return

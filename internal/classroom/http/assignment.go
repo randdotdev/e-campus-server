@@ -257,8 +257,13 @@ func (h *Handler) AssignmentCustom(c *gin.Context) {
 }
 
 func (h *Handler) DownloadAssignmentAttachment(c *gin.Context) {
+	attachmentID, err := uuid.Parse(c.Param("attachmentId"))
+	if err != nil {
+		response.NotFound(c, "attachment not found")
+		return
+	}
 	url, err := h.assignments.PresignAttachment(c.Request.Context(), offeringID(c), targetID(c),
-		c.Param("name"), studentView(c))
+		attachmentID, studentView(c))
 	if err != nil {
 		h.respondError(c, err)
 		return
@@ -327,8 +332,13 @@ func (h *Handler) DownloadSubmissionFile(c *gin.Context) {
 		response.Forbidden(c, "permission denied")
 		return
 	}
+	fileID, err := uuid.Parse(c.Param("fileId"))
+	if err != nil {
+		response.NotFound(c, "file not found")
+		return
+	}
 	url, err := h.assignments.PresignSubmissionFile(c.Request.Context(), offeringID(c), targetID(c),
-		studentID, c.Param("name"))
+		studentID, fileID)
 	if err != nil {
 		h.respondError(c, err)
 		return

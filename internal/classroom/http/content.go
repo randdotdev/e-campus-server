@@ -318,8 +318,13 @@ func (h *Handler) LessonCustom(c *gin.Context) {
 
 // DownloadLessonAttachment 307-redirects to a short-lived presigned URL.
 func (h *Handler) DownloadLessonAttachment(c *gin.Context) {
+	attachmentID, err := uuid.Parse(c.Param("attachmentId"))
+	if err != nil {
+		response.NotFound(c, "attachment not found")
+		return
+	}
 	url, err := h.content.PresignAttachment(c.Request.Context(), offeringID(c), targetID(c),
-		c.Param("name"), studentView(c))
+		attachmentID, studentView(c))
 	if err != nil {
 		h.respondError(c, err)
 		return

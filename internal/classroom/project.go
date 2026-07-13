@@ -287,7 +287,7 @@ type ProjectRepository interface {
 
 	CreateAttachment(ctx context.Context, a *ProjectAttachment) error
 	ListAttachments(ctx context.Context, projectID uuid.UUID) ([]ProjectAttachment, error)
-	GetAttachmentByName(ctx context.Context, projectID uuid.UUID, displayName string) (*ProjectAttachment, error)
+	GetAttachment(ctx context.Context, projectID, id uuid.UUID) (*ProjectAttachment, error)
 	DeleteAttachment(ctx context.Context, projectID, id uuid.UUID) (inodeID uuid.UUID, err error)
 
 	Register(ctx context.Context, r *Registration, minMembers, maxMembers int) error
@@ -308,7 +308,7 @@ type ProjectRepository interface {
 	GetSubmission(ctx context.Context, projectID, id uuid.UUID) (*ProjectSubmission, error)
 	ListSubmissions(ctx context.Context, projectID uuid.UUID) ([]ProjectSubmission, error)
 	ListSubmissionFiles(ctx context.Context, submissionID uuid.UUID) ([]ProjectSubmissionFile, error)
-	GetSubmissionFileByName(ctx context.Context, submissionID uuid.UUID, displayName string) (*ProjectSubmissionFile, error)
+	GetSubmissionFile(ctx context.Context, submissionID, id uuid.UUID) (*ProjectSubmissionFile, error)
 
 	UpsertGrade(ctx context.Context, g *ProjectGrade) error
 	ListGrades(ctx context.Context, submissionID uuid.UUID) ([]ProjectGradeWithStudent, error)
@@ -493,7 +493,7 @@ func (s *ProjectService) Detach(ctx context.Context, offeringID, projectID, atta
 
 // PresignAttachment mints a download URL for a project attachment;
 // students reach it only once the project is published.
-func (s *ProjectService) PresignAttachment(ctx context.Context, offeringID, projectID uuid.UUID, displayName string, forStudent bool) (string, error) {
+func (s *ProjectService) PresignAttachment(ctx context.Context, offeringID, projectID, attachmentID uuid.UUID, forStudent bool) (string, error) {
 	p, err := s.repo.GetProject(ctx, offeringID, projectID)
 	if err != nil {
 		return "", err
@@ -501,7 +501,7 @@ func (s *ProjectService) PresignAttachment(ctx context.Context, offeringID, proj
 	if forStudent && !Published(p.PublishAt, time.Now()) {
 		return "", ErrProjectNotFound
 	}
-	att, err := s.repo.GetAttachmentByName(ctx, projectID, displayName)
+	att, err := s.repo.GetAttachment(ctx, projectID, attachmentID)
 	if err != nil {
 		return "", err
 	}
@@ -839,14 +839,14 @@ func (s *ProjectService) MyGrade(ctx context.Context, offeringID, projectID, use
 
 // PresignSubmissionFile mints a download URL for one submission file;
 // group members and staff only — the edge routes accordingly.
-func (s *ProjectService) PresignSubmissionFile(ctx context.Context, offeringID, projectID, submissionID uuid.UUID, displayName string) (string, error) {
+func (s *ProjectService) PresignSubmissionFile(ctx context.Context, offeringID, projectID, submissionID, fileID uuid.UUID) (string, error) {
 	if _, err := s.repo.GetProject(ctx, offeringID, projectID); err != nil {
 		return "", err
 	}
 	if _, err := s.repo.GetSubmission(ctx, projectID, submissionID); err != nil {
 		return "", err
 	}
-	file, err := s.repo.GetSubmissionFileByName(ctx, submissionID, displayName)
+	file, err := s.repo.GetSubmissionFile(ctx, submissionID, fileID)
 	if err != nil {
 		return "", err
 	}

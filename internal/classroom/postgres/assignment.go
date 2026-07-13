@@ -118,11 +118,10 @@ func (r *AssignmentRepository) ListAttachments(ctx context.Context, assignmentID
 	return attachments, err
 }
 
-func (r *AssignmentRepository) GetAttachmentByName(ctx context.Context, assignmentID uuid.UUID, displayName string) (*classroom.AssignmentAttachment, error) {
+func (r *AssignmentRepository) GetAttachment(ctx context.Context, assignmentID, id uuid.UUID) (*classroom.AssignmentAttachment, error) {
 	var a classroom.AssignmentAttachment
 	err := r.db.GetContext(ctx, &a,
-		`SELECT * FROM assignment_attachments WHERE assignment_id = $1 AND display_name = $2
-		 ORDER BY order_index LIMIT 1`, assignmentID, displayName)
+		`SELECT * FROM assignment_attachments WHERE id = $1 AND assignment_id = $2`, id, assignmentID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, classroom.ErrAttachmentNotFound
 	}
@@ -293,11 +292,10 @@ func (r *AssignmentRepository) ListSubmissionFiles(ctx context.Context, submissi
 	return files, err
 }
 
-func (r *AssignmentRepository) GetSubmissionFileByName(ctx context.Context, submissionID uuid.UUID, displayName string) (*classroom.SubmissionFile, error) {
+func (r *AssignmentRepository) GetSubmissionFile(ctx context.Context, submissionID, id uuid.UUID) (*classroom.SubmissionFile, error) {
 	var f classroom.SubmissionFile
 	err := r.db.GetContext(ctx, &f,
-		`SELECT * FROM submission_files WHERE submission_id = $1 AND display_name = $2
-		 ORDER BY order_index LIMIT 1`, submissionID, displayName)
+		`SELECT * FROM submission_files WHERE id = $1 AND submission_id = $2`, id, submissionID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, classroom.ErrAttachmentNotFound
 	}

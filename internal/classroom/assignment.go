@@ -130,7 +130,7 @@ type AssignmentRepository interface {
 
 	CreateAttachment(ctx context.Context, a *AssignmentAttachment) error
 	ListAttachments(ctx context.Context, assignmentID uuid.UUID) ([]AssignmentAttachment, error)
-	GetAttachmentByName(ctx context.Context, assignmentID uuid.UUID, displayName string) (*AssignmentAttachment, error)
+	GetAttachment(ctx context.Context, assignmentID, id uuid.UUID) (*AssignmentAttachment, error)
 	DeleteAttachment(ctx context.Context, assignmentID, id uuid.UUID) (inodeID uuid.UUID, err error)
 
 	SaveDraft(ctx context.Context, sub *Submission, files []SubmissionFile) (replaced []uuid.UUID, err error)
@@ -141,7 +141,7 @@ type AssignmentRepository interface {
 	GetSubmission(ctx context.Context, assignmentID, studentID uuid.UUID) (*Submission, error)
 	ListSubmissions(ctx context.Context, assignmentID uuid.UUID) ([]SubmissionWithStudent, error)
 	ListSubmissionFiles(ctx context.Context, submissionID uuid.UUID) ([]SubmissionFile, error)
-	GetSubmissionFileByName(ctx context.Context, submissionID uuid.UUID, displayName string) (*SubmissionFile, error)
+	GetSubmissionFile(ctx context.Context, submissionID, id uuid.UUID) (*SubmissionFile, error)
 }
 
 // ── Service input types ─────────────────────────────────────────────────────
@@ -314,7 +314,7 @@ func (s *AssignmentService) Detach(ctx context.Context, offeringID, assignmentID
 
 // PresignAttachment mints a download URL for a teacher-attached file;
 // students reach it only once the assignment is published.
-func (s *AssignmentService) PresignAttachment(ctx context.Context, offeringID, assignmentID uuid.UUID, displayName string, forStudent bool) (string, error) {
+func (s *AssignmentService) PresignAttachment(ctx context.Context, offeringID, assignmentID, attachmentID uuid.UUID, forStudent bool) (string, error) {
 	a, err := s.repo.GetAssignment(ctx, offeringID, assignmentID)
 	if err != nil {
 		return "", err
@@ -322,7 +322,7 @@ func (s *AssignmentService) PresignAttachment(ctx context.Context, offeringID, a
 	if forStudent && !Published(a.PublishAt, time.Now()) {
 		return "", ErrAssignmentNotFound
 	}
-	att, err := s.repo.GetAttachmentByName(ctx, assignmentID, displayName)
+	att, err := s.repo.GetAttachment(ctx, assignmentID, attachmentID)
 	if err != nil {
 		return "", err
 	}
@@ -473,7 +473,7 @@ func (s *AssignmentService) Submissions(ctx context.Context, offeringID, assignm
 // PresignSubmissionFile mints a download URL for one submission file. Whose
 // submission may be read is the edge's decision: students are routed here
 // with their own ID only, staff with any.
-func (s *AssignmentService) PresignSubmissionFile(ctx context.Context, offeringID, assignmentID, studentID uuid.UUID, displayName string) (string, error) {
+func (s *AssignmentService) PresignSubmissionFile(ctx context.Context, offeringID, assignmentID, studentID, fileID uuid.UUID) (string, error) {
 	if _, err := s.repo.GetAssignment(ctx, offeringID, assignmentID); err != nil {
 		return "", err
 	}
@@ -481,7 +481,7 @@ func (s *AssignmentService) PresignSubmissionFile(ctx context.Context, offeringI
 	if err != nil {
 		return "", err
 	}
-	file, err := s.repo.GetSubmissionFileByName(ctx, sub.ID, displayName)
+	file, err := s.repo.GetSubmissionFile(ctx, sub.ID, fileID)
 	if err != nil {
 		return "", err
 	}

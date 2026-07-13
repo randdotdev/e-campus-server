@@ -199,7 +199,6 @@ type ContentRepository interface {
 
 	CreateAttachment(ctx context.Context, a *LessonAttachment) error
 	GetAttachment(ctx context.Context, lessonID, id uuid.UUID) (*LessonAttachment, error)
-	GetAttachmentByName(ctx context.Context, lessonID uuid.UUID, displayName string) (*LessonAttachment, error)
 	ListAttachments(ctx context.Context, lessonID uuid.UUID) ([]LessonAttachment, error)
 	DeleteAttachment(ctx context.Context, lessonID, id uuid.UUID) (inodeID uuid.UUID, err error)
 
@@ -441,10 +440,10 @@ func (s *ContentService) Detach(ctx context.Context, offeringID, lessonID, attac
 	return nil
 }
 
-// PresignAttachment mints a download URL for one attachment, addressed by
-// its display name within the lesson. Students reach it only through an
-// unlocked lesson.
-func (s *ContentService) PresignAttachment(ctx context.Context, offeringID, lessonID uuid.UUID, displayName string, forStudent bool) (string, error) {
+// PresignAttachment mints a download URL for one attachment; the display
+// name rides the presigned response's Content-Disposition. Students reach
+// it only through an unlocked lesson.
+func (s *ContentService) PresignAttachment(ctx context.Context, offeringID, lessonID, attachmentID uuid.UUID, forStudent bool) (string, error) {
 	lesson, err := s.repo.GetLesson(ctx, offeringID, lessonID)
 	if err != nil {
 		return "", err
@@ -458,7 +457,7 @@ func (s *ContentService) PresignAttachment(ctx context.Context, offeringID, less
 			return "", ErrLessonLocked
 		}
 	}
-	att, err := s.repo.GetAttachmentByName(ctx, lessonID, displayName)
+	att, err := s.repo.GetAttachment(ctx, lessonID, attachmentID)
 	if err != nil {
 		return "", err
 	}

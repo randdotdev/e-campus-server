@@ -74,7 +74,7 @@ func (h *Handler) Routes(rg *gin.RouterGroup, gates *authzhttp.Gates) {
 	lessons.PATCH("/:id", h.UpdateLesson)
 	lessons.DELETE("/:id", h.DeleteLesson)
 	lessons.POST("/:id", h.LessonCustom) // :attach, :schedule, :unschedule
-	lessons.GET("/:id/attachments/:name", h.DownloadLessonAttachment)
+	lessons.GET("/:id/attachments/:attachmentId", h.DownloadLessonAttachment)
 	lessons.DELETE("/:id/attachments/:attachmentId", h.DetachLessonFile)
 
 	assignments := offering.Group("/assignments")
@@ -85,11 +85,11 @@ func (h *Handler) Routes(rg *gin.RouterGroup, gates *authzhttp.Gates) {
 	assignments.PATCH("/:id", h.UpdateAssignment)
 	assignments.DELETE("/:id", h.DeleteAssignment)
 	assignments.POST("/:id", h.AssignmentCustom) // :attach, :save, :submit, :discard, :grade
-	assignments.GET("/:id/attachments/:name", h.DownloadAssignmentAttachment)
+	assignments.GET("/:id/attachments/:attachmentId", h.DownloadAssignmentAttachment)
 	assignments.DELETE("/:id/attachments/:attachmentId", h.DetachAssignmentFile)
 	assignments.GET("/:id/submission", h.MySubmission)
 	assignments.GET("/:id/submissions", h.ListSubmissions)
-	assignments.GET("/:id/submissions/:studentId/files/:name", h.DownloadSubmissionFile)
+	assignments.GET("/:id/submissions/:studentId/files/:fileId", h.DownloadSubmissionFile)
 
 	questions := offering.Group("/questions")
 	gates.Classroom(questions, authz.ResourceExam)
@@ -156,14 +156,14 @@ func (h *Handler) Routes(rg *gin.RouterGroup, gates *authzhttp.Gates) {
 	projects.PATCH("/:id", h.UpdateProject)
 	projects.DELETE("/:id", h.DeleteProject)
 	projects.POST("/:id", h.ProjectCustom) // :attach, :register, :unregister, :formGroups, :save, :submit, :grade
-	projects.GET("/:id/attachments/:name", h.DownloadProjectAttachment)
+	projects.GET("/:id/attachments/:attachmentId", h.DownloadProjectAttachment)
 	projects.DELETE("/:id/attachments/:attachmentId", h.DetachProjectFile)
 	projects.GET("/:id/registrations", h.ListRegistrations)
 	projects.GET("/:id/groups", h.ListGroups)
 	projects.GET("/:id/groups/me", h.MyGroup)
 	projects.GET("/:id/submission", h.MyProjectSubmission)
 	projects.GET("/:id/submissions", h.ListProjectSubmissions)
-	projects.GET("/:id/submissions/:submissionId/files/:name", h.DownloadProjectSubmissionFile)
+	projects.GET("/:id/submissions/:submissionId/files/:fileId", h.DownloadProjectSubmissionFile)
 	projects.GET("/:id/submissions/:submissionId/grades", h.ListProjectGrades)
 	projects.GET("/:id/grade", h.MyProjectGrade)
 

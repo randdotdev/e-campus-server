@@ -217,19 +217,6 @@ func (r *ContentRepository) GetAttachment(ctx context.Context, lessonID, id uuid
 	return &a, nil
 }
 
-func (r *ContentRepository) GetAttachmentByName(ctx context.Context, lessonID uuid.UUID, displayName string) (*classroom.LessonAttachment, error) {
-	var a classroom.LessonAttachment
-	err := r.db.GetContext(ctx, &a,
-		`SELECT * FROM lesson_attachments WHERE lesson_id = $1 AND display_name = $2`, lessonID, displayName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, classroom.ErrAttachmentNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &a, nil
-}
-
 func (r *ContentRepository) ListAttachments(ctx context.Context, lessonID uuid.UUID) ([]classroom.LessonAttachment, error) {
 	attachments := []classroom.LessonAttachment{}
 	err := r.db.SelectContext(ctx, &attachments,
