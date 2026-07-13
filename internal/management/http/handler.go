@@ -164,8 +164,7 @@ func (h *Handler) Routes(public, protected *gin.RouterGroup) {
 	semesters.GET("/:id", h.GetSemester)
 	semesters.PUT("/:id", h.UpdateSemester)
 	semesters.DELETE("/:id", h.DeleteSemester)
-	semesters.PUT("/:id/status", h.UpdateSemesterStatus)
-	semesters.POST("/:id", h.SemesterCustom) // :definalize, :generateOfferings, :bulkEnroll, :end
+	semesters.POST("/:id", h.SemesterCustom) // :activate, :startGrading, :finalize, :definalize, :generateOfferings, :bulkEnroll, :end
 
 	// ── Settings (singleton) ──────────────────────────────────────────────────
 	settings := protected.Group("/settings")

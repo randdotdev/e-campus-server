@@ -166,7 +166,6 @@ func TestRoutesRegisterManagementEndpoints(t *testing.T) {
 		{"PUT", "/api/v1/offerings/:offeringId"},
 		{"PUT", "/api/v1/programs/:id"},
 		{"PUT", "/api/v1/semesters/:id"},
-		{"PUT", "/api/v1/semesters/:id/status"},
 		{"PUT", "/api/v1/settings"},
 		{"PUT", "/api/v1/settings/features"},
 		{"PUT", "/api/v1/settings/institution"},

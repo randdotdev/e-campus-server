@@ -132,6 +132,18 @@ var defaultPolicies = map[PolicyKey]Policy{
 		{MinLevel: LevelAdmin, Scope: ScopePlatform},
 	}},
 	// Semester lifecycle custom methods: same custodians as update.
+	{ResourceSemester, ActionActivate}: {Staff: []StaffPermission{
+		{MinLevel: LevelAdmin, Scope: ScopeUniversity},
+		{MinLevel: LevelAdmin, Scope: ScopePlatform},
+	}},
+	{ResourceSemester, ActionStartGrading}: {Staff: []StaffPermission{
+		{MinLevel: LevelAdmin, Scope: ScopeUniversity},
+		{MinLevel: LevelAdmin, Scope: ScopePlatform},
+	}},
+	{ResourceSemester, ActionFinalize}: {Staff: []StaffPermission{
+		{MinLevel: LevelAdmin, Scope: ScopeUniversity},
+		{MinLevel: LevelAdmin, Scope: ScopePlatform},
+	}},
 	{ResourceSemester, ActionDefinalize}: {Staff: []StaffPermission{
 		{MinLevel: LevelAdmin, Scope: ScopeUniversity},
 		{MinLevel: LevelAdmin, Scope: ScopePlatform},

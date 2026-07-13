@@ -101,12 +101,16 @@ const (
 	ActionExcuse     Action = "excuse"
 
 	// Management custom methods (2026-07-11: the management gate
-	// conversion). Semester lifecycle: definalize grades, generate the
-	// term's offerings, bulk-enroll cohorts, end the term. Admissions and
+	// conversion). Semester lifecycle: activate the term, open grading,
+	// finalize grades, definalize grades, generate the term's offerings,
+	// bulk-enroll cohorts, end the term. Admissions and
 	// enrollment requests: review decides an application, approve/reject
 	// decide a request. Student leaves: requestLeave opens one; approve
 	// and end close its two transitions (reject reused from the shared
 	// vocabulary).
+	ActionActivate          Action = "activate"
+	ActionStartGrading      Action = "startGrading"
+	ActionFinalize          Action = "finalize"
 	ActionDefinalize        Action = "definalize"
 	ActionGenerateOfferings Action = "generateOfferings"
 	ActionBulkEnroll        Action = "bulkEnroll"
@@ -214,7 +218,8 @@ var validActions = map[Action]bool{
 	ActionRecord: true, ActionReview: true, ActionAnswer: true,
 	ActionReject: true, ActionRegister: true, ActionUnregister: true,
 	ActionFormGroups: true, ActionInitialize: true, ActionMark: true,
-	ActionExcuse:     true,
+	ActionExcuse:   true,
+	ActionActivate: true, ActionStartGrading: true, ActionFinalize: true,
 	ActionDefinalize: true, ActionGenerateOfferings: true, ActionBulkEnroll: true,
 	ActionEnd: true, ActionApprove: true, ActionRequestLeave: true,
 	ActionPin: true,

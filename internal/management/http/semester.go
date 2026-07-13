@@ -40,11 +40,6 @@ type UpdateSemesterRequest struct {
 	PassThreshold     *int       `json:"pass_threshold" binding:"omitempty,gte=0,lte=100"`
 }
 
-// UpdateSemesterStatusRequest binds a semester status transition.
-type UpdateSemesterStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=upcoming active grading finalized archived"`
-}
-
 // GenerateOfferingsRequest binds the optional scope of an offering-generation
 // run.
 type GenerateOfferingsRequest struct {
@@ -317,28 +312,6 @@ func (h *Handler) UpdateSemester(c *gin.Context) {
 	response.OK(c, toSemesterResponse(semester))
 }
 
-// UpdateSemesterStatus handles PUT /semesters/:id/status.
-func (h *Handler) UpdateSemesterStatus(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		response.BadRequest(c, "invalid id")
-		return
-	}
-
-	var req UpdateSemesterStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "invalid request body")
-		return
-	}
-
-	semester, err := h.semesters.UpdateStatus(c.Request.Context(), id, management.SemesterStatus(req.Status))
-	if err != nil {
-		h.respondError(c, err)
-		return
-	}
-	response.OK(c, toSemesterResponse(semester))
-}
-
 // DeleteSemester handles DELETE /semesters/:id. The semester is soft-deleted
 // with its offerings and stays recoverable until the purge window passes.
 func (h *Handler) DeleteSemester(c *gin.Context) {
@@ -361,11 +334,19 @@ func (h *Handler) DeleteSemester(c *gin.Context) {
 	response.NoContent(c)
 }
 
-// SemesterCustom dispatches POST /semesters/:id — :definalize,
-// :generateOfferings, :bulkEnroll, :end.
+// SemesterCustom dispatches POST /semesters/:id — the lifecycle transitions
+// :activate, :startGrading, :finalize, :definalize, :end (each one edge of
+// CanTransitionSemester; :end also runs year-end progression) plus
+// :generateOfferings and :bulkEnroll.
 func (h *Handler) SemesterCustom(c *gin.Context) {
 	info := authzhttp.Access(c)
 	switch info.Action() {
+	case authz.ActionActivate:
+		h.transitionSemester(c, info.TargetID(), management.SemesterActive)
+	case authz.ActionStartGrading:
+		h.transitionSemester(c, info.TargetID(), management.SemesterGrading)
+	case authz.ActionFinalize:
+		h.transitionSemester(c, info.TargetID(), management.SemesterFinalized)
 	case authz.ActionDefinalize:
 		h.definalizeSemester(c, info.TargetID())
 	case authz.ActionGenerateOfferings:
@@ -377,6 +358,17 @@ func (h *Handler) SemesterCustom(c *gin.Context) {
 	default:
 		response.NotFound(c, "unknown action")
 	}
+}
+
+// transitionSemester walks one forward edge of the lifecycle; the service's
+// transition table refuses anything else.
+func (h *Handler) transitionSemester(c *gin.Context, id uuid.UUID, to management.SemesterStatus) {
+	semester, err := h.semesters.UpdateStatus(c.Request.Context(), id, to)
+	if err != nil {
+		h.respondError(c, err)
+		return
+	}
+	response.OK(c, toSemesterResponse(semester))
 }
 
 func (h *Handler) definalizeSemester(c *gin.Context, id uuid.UUID) {
