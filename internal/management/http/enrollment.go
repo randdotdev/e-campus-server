@@ -184,7 +184,7 @@ func (h *Handler) GetMyEnrollments(c *gin.Context) {
 	response.OK(c, toMyEnrollmentsResponse(enrollments))
 }
 
-// GetAccessLevel handles GET /offerings/:id/access-level.
+// GetAccessLevel handles GET /offerings/:offeringId/access-level.
 func (h *Handler) GetAccessLevel(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("offeringId"))
 	if err != nil {
@@ -200,7 +200,7 @@ func (h *Handler) GetAccessLevel(c *gin.Context) {
 	response.OK(c, gin.H{"access_level": access.String()})
 }
 
-// DropEnrollment handles DELETE /offerings/:id/enrollments/:student_id.
+// DropEnrollment handles DELETE /offerings/:offeringId/enrollments/:studentId.
 func (h *Handler) DropEnrollment(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("offeringId"))
 	if err != nil {
@@ -208,7 +208,7 @@ func (h *Handler) DropEnrollment(c *gin.Context) {
 		return
 	}
 
-	studentID, err := uuid.Parse(c.Param("student_id"))
+	studentID, err := uuid.Parse(c.Param("studentId"))
 	if err != nil {
 		response.BadRequest(c, "invalid student id")
 		return

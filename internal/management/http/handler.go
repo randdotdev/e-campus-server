@@ -197,21 +197,26 @@ func (h *Handler) Routes(public, protected *gin.RouterGroup) {
 	h.gates.StaffUnder(enrollments, authz.ResourceEnrollment, authz.ResourceOffering, "offeringId")
 	enrollments.GET("", h.ListEnrollments)
 	enrollments.POST("", h.EnrollStudent)
-	enrollments.DELETE("/:student_id", h.DropEnrollment)
+	enrollments.DELETE("/:studentId", h.DropEnrollment)
 
 	teachers := protected.Group("/offerings/:offeringId/teachers")
 	h.gates.StaffUnder(teachers, authz.ResourceTeacher, authz.ResourceOffering, "offeringId")
 	teachers.GET("", h.ListTeachers)
 	teachers.POST("", h.AddTeacher)
-	teachers.DELETE("/:user_id", h.RemoveTeacher)
-	teachers.PATCH("/:user_id", h.UpdateTeacherRole)
+	teachers.DELETE("/:userId", h.RemoveTeacher)
+	teachers.PATCH("/:userId", h.UpdateTeacherRole)
 
 	// ── Cohort groups (rank-gated; program-scoped reads live under /programs) ─
 	cohortGroups := protected.Group("/cohort-groups")
 	h.gates.Staff(cohortGroups, authz.ResourceCohortGroup)
 	cohortGroups.POST("", h.CreateCohortGroup)
-	cohortGroups.POST("/assign", h.AssignToCohortGroup)
-	cohortGroups.DELETE("/:id/members/:student_id", h.RemoveFromCohortGroup)
+
+	// Membership is parent-addressed like team members: the group in the
+	// path, the student in the body (or the member's own path segment).
+	members := protected.Group("/cohort-groups/:id/members")
+	h.gates.StaffUnder(members, authz.ResourceCohortGroup, authz.ResourceCohortGroup, "id")
+	members.POST("", h.AssignToCohortGroup)
+	members.DELETE("/:studentId", h.RemoveFromCohortGroup)
 
 	// ── Enrollment requests (admin; student requests are self-scoped above) ──
 	requests := protected.Group("/enrollment-requests")
@@ -237,7 +242,6 @@ func (h *Handler) Routes(public, protected *gin.RouterGroup) {
 	students.POST("", h.CreateStudent) // narrows to the body's program
 	students.GET("/:id", h.GetStudent)
 	students.PUT("/:id", h.UpdateStudent)
-	students.PUT("/:id/status", h.UpdateStudentStatus)
 	students.GET("/:id/transcript", h.GetTranscript)
 	students.GET("/:id/leaves", h.ListLeaves)
 	students.GET("/:id/history", h.ListCohortHistory)

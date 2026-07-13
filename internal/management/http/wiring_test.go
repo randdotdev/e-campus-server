@@ -78,12 +78,12 @@ func TestRoutesRegisterManagementEndpoints(t *testing.T) {
 	}
 
 	want := [][2]string{
-		{"DELETE", "/api/v1/cohort-groups/:id/members/:student_id"},
+		{"DELETE", "/api/v1/cohort-groups/:id/members/:studentId"},
 		{"DELETE", "/api/v1/courses/:id"},
 		{"DELETE", "/api/v1/curriculum/:id"},
 		{"DELETE", "/api/v1/offerings/:offeringId"},
-		{"DELETE", "/api/v1/offerings/:offeringId/enrollments/:student_id"},
-		{"DELETE", "/api/v1/offerings/:offeringId/teachers/:user_id"},
+		{"DELETE", "/api/v1/offerings/:offeringId/enrollments/:studentId"},
+		{"DELETE", "/api/v1/offerings/:offeringId/teachers/:userId"},
 		{"DELETE", "/api/v1/semesters/:id"},
 		{"GET", "/api/v1/academic-years"},
 		{"GET", "/api/v1/academic-years/:id"},
@@ -134,12 +134,12 @@ func TestRoutesRegisterManagementEndpoints(t *testing.T) {
 		{"GET", "/api/v1/students/:id/history"},
 		{"GET", "/api/v1/students/:id/leaves"},
 		{"GET", "/api/v1/students/:id/transcript"},
-		{"PATCH", "/api/v1/offerings/:offeringId/teachers/:user_id"},
+		{"PATCH", "/api/v1/offerings/:offeringId/teachers/:userId"},
 		{"POST", "/api/v1/academic-years"},
 		{"POST", "/api/v1/applications"},
 		{"POST", "/api/v1/applications/:id"},
 		{"POST", "/api/v1/cohort-groups"},
-		{"POST", "/api/v1/cohort-groups/assign"},
+		{"POST", "/api/v1/cohort-groups/:id/members"},
 		{"POST", "/api/v1/colleges"},
 		{"POST", "/api/v1/courses"},
 		{"POST", "/api/v1/departments"},
@@ -171,7 +171,6 @@ func TestRoutesRegisterManagementEndpoints(t *testing.T) {
 		{"PUT", "/api/v1/settings/features"},
 		{"PUT", "/api/v1/settings/institution"},
 		{"PUT", "/api/v1/students/:id"},
-		{"PUT", "/api/v1/students/:id/status"},
 	}
 
 	for _, w := range want {

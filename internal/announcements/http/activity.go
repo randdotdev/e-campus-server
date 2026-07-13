@@ -402,13 +402,32 @@ func (h *Handler) DeleteActivity(c *gin.Context) {
 	response.NoContent(c)
 }
 
-func (h *Handler) PinActivity(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
+// ActivityCustom dispatches POST /activities/:id — :pin, :attach. Activities
+// carry no gate (authorization is in-handler per publisher unit), so the
+// colon suffix is split here instead of by a gate's attribution.
+func (h *Handler) ActivityCustom(c *gin.Context) {
+	rawID, action, hasAction := strings.Cut(c.Param("id"), ":")
+	if !hasAction {
+		response.NotFound(c, "unknown action")
+		return
+	}
+	id, err := uuid.Parse(rawID)
 	if err != nil {
 		response.BadRequest(c, "invalid activity id")
 		return
 	}
 
+	switch authz.Action(action) {
+	case authz.ActionPin:
+		h.pinActivity(c, id)
+	case authz.ActionAttach:
+		h.addActivityAttachment(c, id)
+	default:
+		response.NotFound(c, "unknown action")
+	}
+}
+
+func (h *Handler) pinActivity(c *gin.Context, id uuid.UUID) {
 	var req PinRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request body")
@@ -437,13 +456,7 @@ func (h *Handler) PinActivity(c *gin.Context) {
 	response.NoContent(c)
 }
 
-func (h *Handler) AddActivityAttachment(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		response.BadRequest(c, "invalid activity id")
-		return
-	}
-
+func (h *Handler) addActivityAttachment(c *gin.Context, id uuid.UUID) {
 	var req AddAttachmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request body")

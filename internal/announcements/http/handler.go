@@ -67,8 +67,7 @@ func (h *Handler) Routes(rg *gin.RouterGroup) {
 	activities.GET("/:id/translation", h.GetTranslation)
 	activities.PUT("/:id", h.UpdateActivity)
 	activities.DELETE("/:id", h.DeleteActivity)
-	activities.PUT("/:id/pin", h.PinActivity)
-	activities.POST("/:id/attachments", h.AddActivityAttachment)
+	activities.POST("/:id", h.ActivityCustom) // :pin, :attach
 	activities.GET("/:id/attachments/:attachmentId", h.DownloadActivityAttachment)
 	rg.DELETE("/activity-attachments/:id", h.RemoveActivityAttachment)
 }

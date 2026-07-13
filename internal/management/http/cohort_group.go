@@ -22,10 +22,10 @@ type CreateCohortGroupRequest struct {
 	Name       string    `json:"name" binding:"required,min=1,max=10"`
 }
 
-// AssignToCohortGroupRequest binds a cohort group membership assignment.
+// AssignToCohortGroupRequest binds a cohort group membership assignment;
+// the group comes from the path.
 type AssignToCohortGroupRequest struct {
 	StudentID uuid.UUID `json:"student_id" binding:"required"`
-	GroupID   uuid.UUID `json:"group_id" binding:"required"`
 }
 
 // ── Response DTOs ────────────────────────────────────────────────────────────
@@ -110,24 +110,30 @@ func (h *Handler) CreateCohortGroup(c *gin.Context) {
 	response.Created(c, toCohortGroupResponse(group))
 }
 
-// AssignToCohortGroup handles POST /cohort-groups/assign.
+// AssignToCohortGroup handles POST /cohort-groups/:id/members.
 func (h *Handler) AssignToCohortGroup(c *gin.Context) {
+	groupID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid group id")
+		return
+	}
+
 	var req AssignToCohortGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	if err := h.cohortGroups.AssignToCohortGroup(c.Request.Context(), req.StudentID, req.GroupID); err != nil {
+	if err := h.cohortGroups.AssignToCohortGroup(c.Request.Context(), req.StudentID, groupID); err != nil {
 		h.respondError(c, err)
 		return
 	}
 	response.NoContent(c)
 }
 
-// RemoveFromCohortGroup handles DELETE /cohort-groups/:id/members/:student_id.
+// RemoveFromCohortGroup handles DELETE /cohort-groups/:id/members/:studentId.
 func (h *Handler) RemoveFromCohortGroup(c *gin.Context) {
-	studentID, err := uuid.Parse(c.Param("student_id"))
+	studentID, err := uuid.Parse(c.Param("studentId"))
 	if err != nil {
 		response.BadRequest(c, "invalid student id")
 		return

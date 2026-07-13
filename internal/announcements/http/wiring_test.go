@@ -64,13 +64,12 @@ func TestRoutesRegisterAnnouncementsEndpoints(t *testing.T) {
 		{"GET", "/api/v1/posts/:id/attachments/:attachmentId"},
 		{"GET", "/api/v1/posts/:id/comments"},
 		{"POST", "/api/v1/activities"},
-		{"POST", "/api/v1/activities/:id/attachments"},
+		{"POST", "/api/v1/activities/:id"},
 		{"POST", "/api/v1/posts"},
 		{"POST", "/api/v1/posts/:id"},
 		{"POST", "/api/v1/posts/:id/comments"},
 		{"POST", "/api/v1/posts/:id/like"},
 		{"PUT", "/api/v1/activities/:id"},
-		{"PUT", "/api/v1/activities/:id/pin"},
 		{"PUT", "/api/v1/posts/:id"},
 	}
 

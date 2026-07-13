@@ -31,11 +31,7 @@ type UpdateStudentRequest struct {
 	CurrentCohortYear *int    `json:"current_cohort_year" binding:"omitempty,gte=2000,lte=2100"`
 	Shift             *string `json:"shift" binding:"omitempty,oneof=day evening"`
 	Tuition           *string `json:"tuition" binding:"omitempty,oneof=free paid"`
-}
-
-// UpdateStudentStatusRequest binds a student status change.
-type UpdateStudentStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=active graduated withdrawn suspended on_leave"`
+	Status            *string `json:"status" binding:"omitempty,oneof=active graduated withdrawn suspended on_leave"`
 }
 
 // ── Response DTOs ────────────────────────────────────────────────────────────
@@ -304,30 +300,12 @@ func (h *Handler) UpdateStudent(c *gin.Context) {
 		tuition := management.Tuition(*req.Tuition)
 		upd.Tuition = &tuition
 	}
+	if req.Status != nil {
+		status := management.StudentStatus(*req.Status)
+		upd.Status = &status
+	}
 
 	student, err := h.students.UpdateStudent(c.Request.Context(), id, upd)
-	if err != nil {
-		h.respondError(c, err)
-		return
-	}
-	response.OK(c, toStudentResponse(student))
-}
-
-// UpdateStudentStatus handles PUT /students/:id/status.
-func (h *Handler) UpdateStudentStatus(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		response.BadRequest(c, "invalid id")
-		return
-	}
-
-	var req UpdateStudentStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "invalid request body")
-		return
-	}
-
-	student, err := h.students.UpdateStudentStatus(c.Request.Context(), id, management.StudentStatus(req.Status))
 	if err != nil {
 		h.respondError(c, err)
 		return

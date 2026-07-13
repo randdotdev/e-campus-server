@@ -128,14 +128,14 @@ func (h *Handler) ListTeachers(c *gin.Context) {
 	response.OK(c, toTeachersResponse(teachers))
 }
 
-// RemoveTeacher handles DELETE /offerings/:id/teachers/:user_id.
+// RemoveTeacher handles DELETE /offerings/:offeringId/teachers/:userId.
 func (h *Handler) RemoveTeacher(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("offeringId"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
 	}
-	userID, err := uuid.Parse(c.Param("user_id"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
 		response.BadRequest(c, "invalid user id")
 		return
@@ -148,14 +148,14 @@ func (h *Handler) RemoveTeacher(c *gin.Context) {
 	response.NoContent(c)
 }
 
-// UpdateTeacherRole handles PATCH /offerings/:id/teachers/:user_id.
+// UpdateTeacherRole handles PATCH /offerings/:offeringId/teachers/:userId.
 func (h *Handler) UpdateTeacherRole(c *gin.Context) {
 	offeringID, err := uuid.Parse(c.Param("offeringId"))
 	if err != nil {
 		response.BadRequest(c, "invalid offering id")
 		return
 	}
-	userID, err := uuid.Parse(c.Param("user_id"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
 		response.BadRequest(c, "invalid user id")
 		return

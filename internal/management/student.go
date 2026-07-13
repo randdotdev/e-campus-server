@@ -199,6 +199,9 @@ type StudentUpdate struct {
 	CurrentCohortYear *int
 	Shift             *Shift
 	Tuition           *Tuition
+	// Status is a plain field set: any transition is legal by policy
+	// (admins correct records freely), so no state machine guards it.
+	Status *StudentStatus
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -276,6 +279,9 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, upd St
 	if upd.Tuition != nil && !ValidTuition(*upd.Tuition) {
 		return nil, ErrInvalidStatus
 	}
+	if upd.Status != nil && !ValidStudentStatus(*upd.Status) {
+		return nil, ErrInvalidStatus
+	}
 	for attempt := 0; attempt < maxUpdateRetries; attempt++ {
 		student, err := s.repo.GetStudent(ctx, id)
 		if err != nil {
@@ -293,32 +299,9 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, upd St
 		if upd.Tuition != nil {
 			student.Tuition = *upd.Tuition
 		}
-		newVersion, err := s.repo.UpdateStudent(ctx, &student.Student, student.Version)
-		if errors.Is(err, ErrConflict) {
-			continue
+		if upd.Status != nil {
+			student.Status = *upd.Status
 		}
-		if err != nil {
-			return nil, err
-		}
-		student.Version = newVersion
-		return student, nil
-	}
-	return nil, ErrConflict
-}
-
-// UpdateStudentStatus sets the student's standing. Any transition is legal by
-// policy (admins correct records freely), so the write is a plain version CAS
-// rather than a guarded state transition.
-func (s *StudentService) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status StudentStatus) (*StudentSummary, error) {
-	if !ValidStudentStatus(status) {
-		return nil, ErrInvalidStatus
-	}
-	for attempt := 0; attempt < maxUpdateRetries; attempt++ {
-		student, err := s.repo.GetStudent(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		student.Status = status
 		newVersion, err := s.repo.UpdateStudent(ctx, &student.Student, student.Version)
 		if errors.Is(err, ErrConflict) {
 			continue
