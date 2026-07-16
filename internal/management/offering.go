@@ -14,14 +14,15 @@ import (
 
 // Offering is one course taught in one semester to one cohort and shift.
 type Offering struct {
-	ID         uuid.UUID `db:"id"`
-	CourseID   uuid.UUID `db:"course_id"`
-	SemesterID uuid.UUID `db:"semester_id"`
-	CohortYear int       `db:"cohort_year"`
-	Shift      Shift     `db:"shift"`
-	IsActive   bool      `db:"is_active"`
-	CreatedAt  time.Time `db:"created_at"`
-	Version    int64     `db:"version"`
+	ID         uuid.UUID  `db:"id"`
+	CourseID   uuid.UUID  `db:"course_id"`
+	SemesterID uuid.UUID  `db:"semester_id"`
+	CohortYear int        `db:"cohort_year"`
+	Shift      Shift      `db:"shift"`
+	IsActive   bool       `db:"is_active"`
+	CreatedAt  time.Time  `db:"created_at"`
+	DeletedAt  *time.Time `db:"deleted_at"`
+	Version    int64      `db:"version"`
 }
 
 // ── Derived read models ───────────────────────────────────────────────────────

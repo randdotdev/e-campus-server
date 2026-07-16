@@ -80,6 +80,7 @@ type Semester struct {
 	PassThreshold     int            `db:"pass_threshold"`
 	Status            SemesterStatus `db:"status"`
 	CreatedAt         time.Time      `db:"created_at"`
+	DeletedAt         *time.Time     `db:"deleted_at"`
 	Version           int64          `db:"version"`
 }
 
