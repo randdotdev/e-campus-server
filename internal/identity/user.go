@@ -132,11 +132,11 @@ type UniversityReader interface {
 	ListActiveColleges(ctx context.Context) ([]CollegeInfo, error)
 }
 
-// CourseRoleReader returns the user's teacher record id (nil if not a teacher)
-// plus their ACTIVE course memberships (teaching + enrolled). Bounded —
+// OfferingRoleReader returns the user's teacher record id (nil if not a teacher)
+// plus their ACTIVE offering memberships (teaching + enrolled). Bounded —
 // historical memberships belong to a separate paginated endpoint.
-type CourseRoleReader interface {
-	CourseRolesForUser(ctx context.Context, userID uuid.UUID) (*CourseMemberships, error)
+type OfferingRoleReader interface {
+	OfferingRolesForUser(ctx context.Context, userID uuid.UUID) (*OfferingMemberships, error)
 }
 
 // UserRepository is the user aggregate's store: account fields, credentials,
@@ -182,12 +182,12 @@ type UserService struct {
 	roles      RoleManager
 	students   StudentReader
 	university UniversityReader
-	courses    CourseRoleReader
+	courses    OfferingRoleReader
 	log        *slog.Logger
 }
 
 // NewUserService wires the user use cases.
-func NewUserService(repo UserRepository, tokens TokenRepository, notifier Notifier, roles RoleManager, students StudentReader, university UniversityReader, courses CourseRoleReader, log *slog.Logger) *UserService {
+func NewUserService(repo UserRepository, tokens TokenRepository, notifier Notifier, roles RoleManager, students StudentReader, university UniversityReader, courses OfferingRoleReader, log *slog.Logger) *UserService {
 	return &UserService{repo: repo, tokens: tokens, notifier: notifier, roles: roles, students: students, university: university, courses: courses, log: log}
 }
 

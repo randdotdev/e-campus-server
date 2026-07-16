@@ -231,22 +231,22 @@ func (r *CourseRepository) GetCourseForAcademic(ctx context.Context, id uuid.UUI
 	return &info, nil
 }
 
-// ── Course-membership read for identity ───────────────────────────────────────
+// ── Offering-membership read for identity ─────────────────────────────────────
 
-// CourseMembershipRow is one active seat in an offering: a teaching
+// OfferingMembershipRow is one active seat in an offering: a teaching
 // assignment or an enrollment.
-type CourseMembershipRow struct {
+type OfferingMembershipRow struct {
 	OfferingID      uuid.UUID `db:"offering_id"`
 	CourseNameEN    string    `db:"name_en"`
 	CourseNameLocal *string   `db:"name_local"`
 	Role            string    `db:"role"` // teacher | assistant | observer | student
 }
 
-// CourseMemberships returns the user's active seats across all offerings:
+// OfferingMemberships returns the user's active seats across all offerings:
 // teaching assignments on live offerings plus enrollments still in the
 // 'enrolled' state. Identity's /me/context reads this through its
-// CourseRoleReader port.
-func (r *CourseRepository) CourseMemberships(ctx context.Context, userID uuid.UUID) ([]CourseMembershipRow, error) {
+// OfferingRoleReader port.
+func (r *CourseRepository) OfferingMemberships(ctx context.Context, userID uuid.UUID) ([]OfferingMembershipRow, error) {
 	const q = `
 		SELECT ct.offering_id, c.name_en, c.name_local, ct.role
 		FROM course_teachers ct
@@ -260,7 +260,7 @@ func (r *CourseRepository) CourseMemberships(ctx context.Context, userID uuid.UU
 		JOIN courses c ON c.id = o.course_id
 		WHERE e.student_id = $1 AND e.status = 'enrolled'
 	`
-	var rows []CourseMembershipRow
+	var rows []OfferingMembershipRow
 	if err := r.db.SelectContext(ctx, &rows, q, userID); err != nil {
 		return nil, err
 	}

@@ -28,7 +28,7 @@ type identitySet struct {
 // wireIdentity builds the identity context: auth, users, preferences.
 func wireIdentity(infra *infra, authzService *authz.Service,
 	notification *communication.NotificationService, mgmt managementSet) identitySet {
-	courseReader := courseRoleAdapter{mgmt.courseRepo}
+	offeringReader := offeringRoleAdapter{mgmt.courseRepo}
 	loginLimiter := middleware.AuthRateLimiter(middleware.AuthRateLimiterConfig{
 		Enabled:       infra.cfg.AuthRate.Enabled,
 		MaxAttempts:   infra.cfg.AuthRate.MaxAttempts,
@@ -46,7 +46,7 @@ func wireIdentity(infra *infra, authzService *authz.Service,
 	auth := identity.NewAuthService(tokensRepo, userRepo, &infra.cfg.JWT, infra.slog)
 	userService := identity.NewUserService(
 		userRepo, tokensRepo, notification,
-		roleManager, studentReader, structureReader, courseReader, infra.slog,
+		roleManager, studentReader, structureReader, offeringReader, infra.slog,
 	)
 	prefsService := identity.NewPreferencesService(prefsRepo)
 
@@ -56,21 +56,21 @@ func wireIdentity(infra *infra, authzService *authz.Service,
 	}
 }
 
-// courseRoleAdapter answers identity.CourseRoleReader from management's
-// course-membership read. With no separate teacher record in the schema, a
+// offeringRoleAdapter answers identity.OfferingRoleReader from management's
+// offering-membership read. With no separate teacher record in the schema, a
 // user who holds any teaching seat is their own teacher id.
-type courseRoleAdapter struct {
+type offeringRoleAdapter struct {
 	repo *managementpg.CourseRepository
 }
 
-func (a courseRoleAdapter) CourseRolesForUser(ctx context.Context, userID uuid.UUID) (*identity.CourseMemberships, error) {
-	rows, err := a.repo.CourseMemberships(ctx, userID)
+func (a offeringRoleAdapter) OfferingRolesForUser(ctx context.Context, userID uuid.UUID) (*identity.OfferingMemberships, error) {
+	rows, err := a.repo.OfferingMemberships(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	m := &identity.CourseMemberships{Roles: make([]identity.CourseRole, len(rows))}
+	m := &identity.OfferingMemberships{Roles: make([]identity.OfferingRole, len(rows))}
 	for i, r := range rows {
-		m.Roles[i] = identity.CourseRole{
+		m.Roles[i] = identity.OfferingRole{
 			OfferingID:      r.OfferingID,
 			CourseNameEN:    r.CourseNameEN,
 			CourseNameLocal: r.CourseNameLocal,

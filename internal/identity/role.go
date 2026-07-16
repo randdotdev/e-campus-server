@@ -55,23 +55,23 @@ type StudentContext struct {
 	College    ScopeRef
 }
 
-// CourseRole is one active membership in a course offering.
-type CourseRole struct {
+// OfferingRole is one active seat in a course offering.
+type OfferingRole struct {
 	OfferingID      uuid.UUID
 	CourseNameEN    string
 	CourseNameLocal *string
 	Role            string // teacher | assistant | student
 }
 
-// CourseMemberships is a user's teacher record (nil if not a teacher) plus
-// their active course roles.
-type CourseMemberships struct {
+// OfferingMemberships is a user's teacher record (nil if not a teacher) plus
+// their active offering seats.
+type OfferingMemberships struct {
 	TeacherID *uuid.UUID
-	Roles     []CourseRole
+	Roles     []OfferingRole
 }
 
 // UserContext is everything the frontend needs to render a user's world:
-// account, role, student placement, reachable scopes, and course memberships.
+// account, role, student placement, reachable scopes, and offering memberships.
 type UserContext struct {
 	User               *User
 	Role               *Role
@@ -80,7 +80,7 @@ type UserContext struct {
 	TeacherID          *uuid.UUID
 	Scopes             []ScopeRef
 	AccessibleColleges []ScopeRef
-	CourseRoles        []CourseRole
+	OfferingRoles      []OfferingRole
 }
 
 // ── Use cases ──────────────────────────────────────────────────────────────
@@ -247,12 +247,12 @@ func (s *UserService) ResolveUserContext(ctx context.Context, userID uuid.UUID, 
 		}
 	}
 
-	m, err := s.courses.CourseRolesForUser(ctx, userID)
+	m, err := s.courses.OfferingRolesForUser(ctx, userID)
 	if err != nil {
-		s.log.WarnContext(ctx, "user context course roles lookup failed", "user_id", userID, "error", err)
+		s.log.WarnContext(ctx, "user context offering roles lookup failed", "user_id", userID, "error", err)
 	} else if m != nil {
 		res.TeacherID = m.TeacherID
-		res.CourseRoles = m.Roles
+		res.OfferingRoles = m.Roles
 	}
 
 	return res, nil

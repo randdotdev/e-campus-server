@@ -177,7 +177,7 @@ type StudentContextResponse struct {
 	College    ScopeRefResponse `json:"college"`
 }
 
-type CourseRoleResponse struct {
+type OfferingRoleResponse struct {
 	OfferingID      uuid.UUID `json:"offering_id"`
 	CourseNameEN    string    `json:"course_name_en"`
 	CourseNameLocal *string   `json:"course_name_local,omitempty"`
@@ -192,7 +192,7 @@ type UserContextResponse struct {
 	TeacherID          *uuid.UUID              `json:"teacher_id,omitempty"`
 	Scopes             []ScopeRefResponse      `json:"scopes"`
 	AccessibleColleges []ScopeRefResponse      `json:"accessible_colleges,omitempty"`
-	CourseRoles        []CourseRoleResponse    `json:"course_roles,omitempty"`
+	OfferingRoles      []OfferingRoleResponse  `json:"offering_roles,omitempty"`
 }
 
 func toUserResponse(u *identity.User) UserResponse {
@@ -263,8 +263,8 @@ func toUserContextResponse(c *identity.UserContext) UserContextResponse {
 	}
 	resp.StudentID = c.StudentID
 	resp.TeacherID = c.TeacherID
-	for _, cr := range c.CourseRoles {
-		resp.CourseRoles = append(resp.CourseRoles, CourseRoleResponse{OfferingID: cr.OfferingID, CourseNameEN: cr.CourseNameEN, CourseNameLocal: cr.CourseNameLocal, Role: cr.Role})
+	for _, cr := range c.OfferingRoles {
+		resp.OfferingRoles = append(resp.OfferingRoles, OfferingRoleResponse{OfferingID: cr.OfferingID, CourseNameEN: cr.CourseNameEN, CourseNameLocal: cr.CourseNameLocal, Role: cr.Role})
 	}
 	return resp
 }
