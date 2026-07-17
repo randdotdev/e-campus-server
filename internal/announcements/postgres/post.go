@@ -402,7 +402,7 @@ func (r *PostRepository) ListAttachmentsByPostIDs(ctx context.Context, postIDs [
 func (r *PostRepository) ListMentionsByPostID(ctx context.Context, postID uuid.UUID) ([]announcements.MentionedUser, error) {
 	var result []announcements.MentionedUser
 	if err := r.db.SelectContext(ctx, &result, `
-		SELECT pm.user_id, u.username, u.full_name_en AS full_name
+		SELECT pm.user_id, u.email, u.full_name_en AS full_name
 		FROM post_mentions pm
 		JOIN users u ON pm.user_id = u.id
 		WHERE pm.post_id = $1`, postID); err != nil {
@@ -419,11 +419,11 @@ func (r *PostRepository) ListMentionsByPostIDs(ctx context.Context, postIDs []uu
 	type row struct {
 		PostID   uuid.UUID `db:"post_id"`
 		UserID   uuid.UUID `db:"user_id"`
-		Username string    `db:"username"`
+		Email    string    `db:"email"`
 		FullName string    `db:"full_name"`
 	}
 	query, args, err := sqlx.In(`
-		SELECT pm.post_id, pm.user_id, u.username, u.full_name_en AS full_name
+		SELECT pm.post_id, pm.user_id, u.email, u.full_name_en AS full_name
 		FROM post_mentions pm
 		JOIN users u ON pm.user_id = u.id
 		WHERE pm.post_id IN (?)`, postIDs)
@@ -439,7 +439,7 @@ func (r *PostRepository) ListMentionsByPostIDs(ctx context.Context, postIDs []uu
 	for _, rw := range rows {
 		result[rw.PostID] = append(result[rw.PostID], announcements.MentionedUser{
 			UserID:   rw.UserID,
-			Username: rw.Username,
+			Email:    rw.Email,
 			FullName: rw.FullName,
 		})
 	}

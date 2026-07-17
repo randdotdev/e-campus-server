@@ -57,7 +57,7 @@ type TeamMember struct {
 type TeamMemberInfo struct {
 	UserID   uuid.UUID `db:"user_id"`
 	Name     string    `db:"name"`
-	Username string    `db:"username"`
+	Email    string    `db:"email"`
 	Avatar   *string   `db:"avatar"`
 	JoinedAt time.Time `db:"joined_at"`
 }

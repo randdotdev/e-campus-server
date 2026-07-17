@@ -144,8 +144,8 @@ type Attempt struct {
 // (exam_attempts ⋈ users) for the teacher's list.
 type AttemptWithStudent struct {
 	Attempt
-	StudentName     string `db:"student_name"`
-	StudentUsername string `db:"student_username"`
+	StudentName  string `db:"student_name"`
+	StudentEmail string `db:"student_email"`
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────

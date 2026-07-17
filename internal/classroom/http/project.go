@@ -73,7 +73,7 @@ type ProjectGroupResponse struct {
 func projectGroupResponse(g *classroom.ProjectGroupWithMembers) ProjectGroupResponse {
 	members := make([]gin.H, len(g.Members))
 	for i, m := range g.Members {
-		members[i] = gin.H{"user_id": m.UserID, "name": m.Name, "username": m.Username}
+		members[i] = gin.H{"user_id": m.UserID, "name": m.Name, "email": m.Email}
 	}
 	return ProjectGroupResponse{
 		ID: g.ID, Name: g.Name, ProjectTitle: g.ProjectTitle,

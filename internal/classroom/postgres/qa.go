@@ -86,7 +86,7 @@ func (r *QARepository) GetQuestion(ctx context.Context, offeringID, id uuid.UUID
 }
 
 const qaQuestionViewQuery = `
-	SELECT q.*, u.full_name_en AS author_name, u.username AS author_username,
+	SELECT q.*, u.full_name_en AS author_name, u.email AS author_email,
 	       u.avatar_url AS author_avatar
 	FROM qa_questions q
 	JOIN users u ON u.id = q.created_by`
@@ -230,7 +230,7 @@ func (r *QARepository) AnswerQuestion(ctx context.Context, questionID uuid.UUID,
 func (r *QARepository) GetAnswerView(ctx context.Context, questionID uuid.UUID) (*classroom.QAAnswerView, error) {
 	var a classroom.QAAnswerView
 	err := r.db.GetContext(ctx, &a, `
-		SELECT ans.*, u.full_name_en AS author_name, u.username AS author_username,
+		SELECT ans.*, u.full_name_en AS author_name, u.email AS author_email,
 		       u.avatar_url AS author_avatar
 		FROM qa_answers ans
 		JOIN users u ON u.id = ans.created_by

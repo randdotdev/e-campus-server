@@ -69,7 +69,7 @@ type PostAttachment struct {
 // MentionedUser is one @mentioned user's display projection.
 type MentionedUser struct {
 	UserID   uuid.UUID `db:"user_id"`
-	Username string    `db:"username"`
+	Email    string    `db:"email"`
 	FullName string    `db:"full_name"`
 }
 
@@ -136,7 +136,7 @@ func ValidScopeID(s ScopeType, scopeID *uuid.UUID) bool {
 
 var mentionRegex = regexp.MustCompile(`@([a-zA-Z0-9._]+)`)
 
-// ParseMentions extracts the distinct @mentioned usernames from a post body,
+// ParseMentions extracts the distinct @mentioned emails from a post body,
 // lower-cased, in order of first appearance.
 func ParseMentions(body string) []string {
 	matches := mentionRegex.FindAllStringSubmatch(body, -1)
@@ -242,9 +242,9 @@ type PostRepository interface {
 	ListMentionsByPostIDs(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID][]MentionedUser, error)
 }
 
-// UserLookup resolves @mention usernames to user IDs (identity context).
+// UserLookup resolves @mention emails to user IDs (identity context).
 type UserLookup interface {
-	GetUserIDsByUsernames(ctx context.Context, usernames []string) (map[string]uuid.UUID, error)
+	GetUserIDsByEmails(ctx context.Context, emails []string) (map[string]uuid.UUID, error)
 }
 
 // ScopeChecker validates and authorizes post scopes (management context
@@ -665,14 +665,14 @@ func (s *PostService) MentionsFor(ctx context.Context, postIDs []uuid.UUID) (map
 	return s.repo.ListMentionsByPostIDs(ctx, postIDs)
 }
 
-// resolveMentions parses @usernames and resolves them to user IDs (read-only,
+// resolveMentions parses @emails and resolves them to user IDs (read-only,
 // runs outside the transaction).
 func (s *PostService) resolveMentions(ctx context.Context, body string) ([]uuid.UUID, error) {
-	usernames := ParseMentions(body)
-	if len(usernames) == 0 {
+	emails := ParseMentions(body)
+	if len(emails) == 0 {
 		return nil, nil
 	}
-	idMap, err := s.users.GetUserIDsByUsernames(ctx, usernames)
+	idMap, err := s.users.GetUserIDsByEmails(ctx, emails)
 	if err != nil {
 		return nil, err
 	}

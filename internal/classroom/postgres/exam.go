@@ -212,7 +212,7 @@ func (r *ExamRepository) GetStudentAttempt(ctx context.Context, examID, studentI
 func (r *ExamRepository) ListAttempts(ctx context.Context, examID uuid.UUID) ([]classroom.AttemptWithStudent, error) {
 	attempts := []classroom.AttemptWithStudent{}
 	err := r.db.SelectContext(ctx, &attempts, `
-		SELECT ea.*, u.full_name_en AS student_name, u.username AS student_username
+		SELECT ea.*, u.full_name_en AS student_name, u.email AS student_email
 		FROM exam_attempts ea
 		JOIN users u ON u.id = ea.student_id
 		WHERE ea.exam_id = $1

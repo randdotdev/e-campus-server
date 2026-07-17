@@ -65,9 +65,9 @@ func submissionResponse(s *classroom.Submission) SubmissionResponse {
 
 type SubmissionWithStudentResponse struct {
 	SubmissionResponse
-	StudentName     string  `json:"student_name"`
-	StudentUsername string  `json:"student_username"`
-	StudentAvatar   *string `json:"student_avatar"`
+	StudentName   string  `json:"student_name"`
+	StudentEmail  string  `json:"student_email"`
+	StudentAvatar *string `json:"student_avatar"`
 }
 
 type CreateAssignmentRequest struct {
@@ -313,7 +313,7 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 		result[i] = SubmissionWithStudentResponse{
 			SubmissionResponse: submissionResponse(&s.Submission),
 			StudentName:        s.StudentName,
-			StudentUsername:    s.StudentUsername,
+			StudentEmail:       s.StudentEmail,
 			StudentAvatar:      s.StudentAvatar,
 		}
 	}

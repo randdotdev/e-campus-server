@@ -276,7 +276,7 @@ func (r *AssignmentRepository) GetSubmission(ctx context.Context, assignmentID, 
 func (r *AssignmentRepository) ListSubmissions(ctx context.Context, assignmentID uuid.UUID) ([]classroom.SubmissionWithStudent, error) {
 	subs := []classroom.SubmissionWithStudent{}
 	err := r.db.SelectContext(ctx, &subs, `
-		SELECT asub.*, u.full_name_en AS student_name, u.username AS student_username,
+		SELECT asub.*, u.full_name_en AS student_name, u.email AS student_email,
 		       u.avatar_url AS student_avatar
 		FROM assignment_submissions asub
 		JOIN users u ON u.id = asub.student_id

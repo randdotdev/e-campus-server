@@ -71,7 +71,7 @@ type PostResponse struct {
 // MentionResponse is one @mentioned user in a post.
 type MentionResponse struct {
 	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
+	Email    string    `json:"email"`
 	FullName string    `json:"full_name"`
 }
 
@@ -119,7 +119,7 @@ func mentionResponses(mentions []announcements.MentionedUser) []MentionResponse 
 	}
 	result := make([]MentionResponse, len(mentions))
 	for i, m := range mentions {
-		result[i] = MentionResponse{UserID: m.UserID, Username: m.Username, FullName: m.FullName}
+		result[i] = MentionResponse{UserID: m.UserID, Email: m.Email, FullName: m.FullName}
 	}
 	return result
 }

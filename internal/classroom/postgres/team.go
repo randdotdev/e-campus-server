@@ -55,7 +55,7 @@ func (r *TeamRepository) GetTeamWithMembers(ctx context.Context, id uuid.UUID) (
 	}
 	members := []classroom.TeamMemberInfo{}
 	if err := r.db.SelectContext(ctx, &members, `
-		SELECT tm.student_id AS user_id, u.full_name_en AS name, u.username, u.avatar_url AS avatar,
+		SELECT tm.student_id AS user_id, u.full_name_en AS name, u.email, u.avatar_url AS avatar,
 		       tm.joined_at
 		FROM team_members tm
 		JOIN users u ON u.id = tm.student_id

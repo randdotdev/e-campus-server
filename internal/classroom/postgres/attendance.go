@@ -103,7 +103,7 @@ func (r *AttendanceRepository) BulkMark(ctx context.Context, lessonID, markerID 
 }
 
 const attendanceRecordQuery = `
-	SELECT a.*, u.full_name_en AS student_name, u.username AS student_username,
+	SELECT a.*, u.full_name_en AS student_name, u.email AS student_email,
 	       er.status AS excuse_status
 	FROM attendance a
 	JOIN users u ON u.id = a.student_id
@@ -207,7 +207,7 @@ func (r *AttendanceRepository) ReviewExcuse(ctx context.Context, id, reviewerID 
 func (r *AttendanceRepository) ListPendingExcuses(ctx context.Context, offeringID uuid.UUID) ([]classroom.ExcuseWithStudent, error) {
 	excuses := []classroom.ExcuseWithStudent{}
 	err := r.db.SelectContext(ctx, &excuses, `
-		SELECT er.*, u.full_name_en AS student_name, u.username AS student_username,
+		SELECT er.*, u.full_name_en AS student_name, u.email AS student_email,
 		       l.title AS lesson_title
 		FROM excuse_requests er
 		JOIN lessons l ON l.id = er.lesson_id

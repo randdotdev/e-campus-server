@@ -12,15 +12,15 @@ import (
 )
 
 type AttendanceRecordResponse struct {
-	ID              uuid.UUID  `json:"id"`
-	LessonID        uuid.UUID  `json:"lesson_id"`
-	StudentID       uuid.UUID  `json:"student_id"`
-	StudentName     string     `json:"student_name"`
-	StudentUsername string     `json:"student_username"`
-	Percentage      int        `json:"percentage"`
-	Marked          bool       `json:"marked"`
-	MarkedAt        *time.Time `json:"marked_at"`
-	ExcuseStatus    *string    `json:"excuse_status"`
+	ID           uuid.UUID  `json:"id"`
+	LessonID     uuid.UUID  `json:"lesson_id"`
+	StudentID    uuid.UUID  `json:"student_id"`
+	StudentName  string     `json:"student_name"`
+	StudentEmail string     `json:"student_email"`
+	Percentage   int        `json:"percentage"`
+	Marked       bool       `json:"marked"`
+	MarkedAt     *time.Time `json:"marked_at"`
+	ExcuseStatus *string    `json:"excuse_status"`
 }
 
 func attendanceRecordResponse(r *classroom.AttendanceRecord) AttendanceRecordResponse {
@@ -31,7 +31,7 @@ func attendanceRecordResponse(r *classroom.AttendanceRecord) AttendanceRecordRes
 	}
 	return AttendanceRecordResponse{
 		ID: r.ID, LessonID: r.LessonID, StudentID: r.StudentID,
-		StudentName: r.StudentName, StudentUsername: r.StudentUsername,
+		StudentName: r.StudentName, StudentEmail: r.StudentEmail,
 		Percentage: r.Percentage, Marked: r.MarkedBy != nil, MarkedAt: r.MarkedAt,
 		ExcuseStatus: excuse,
 	}
@@ -215,13 +215,13 @@ func (h *Handler) ListExcuses(c *gin.Context) {
 		}
 		type row struct {
 			ExcuseResponse
-			StudentName     string `json:"student_name"`
-			StudentUsername string `json:"student_username"`
-			LessonTitle     string `json:"lesson_title"`
+			StudentName  string `json:"student_name"`
+			StudentEmail string `json:"student_email"`
+			LessonTitle  string `json:"lesson_title"`
 		}
 		result := make([]row, len(excuses))
 		for i, e := range excuses {
-			result[i] = row{excuseResponse(&e.ExcuseRequest), e.StudentName, e.StudentUsername, e.LessonTitle}
+			result[i] = row{excuseResponse(&e.ExcuseRequest), e.StudentName, e.StudentEmail, e.LessonTitle}
 		}
 		response.OK(c, result)
 		return

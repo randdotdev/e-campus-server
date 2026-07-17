@@ -88,17 +88,17 @@ type QARejection struct {
 // Anonymity is applied at the edge, not here — teachers see the author.
 type QAQuestionView struct {
 	QAQuestion
-	AuthorName     string  `db:"author_name"`
-	AuthorUsername string  `db:"author_username"`
-	AuthorAvatar   *string `db:"author_avatar"`
+	AuthorName   string  `db:"author_name"`
+	AuthorEmail  string  `db:"author_email"`
+	AuthorAvatar *string `db:"author_avatar"`
 }
 
 // QAAnswerView joins the answerer's display columns (qa_answers ⋈ users).
 type QAAnswerView struct {
 	QAAnswer
-	AuthorName     string  `db:"author_name"`
-	AuthorUsername string  `db:"author_username"`
-	AuthorAvatar   *string `db:"author_avatar"`
+	AuthorName   string  `db:"author_name"`
+	AuthorEmail  string  `db:"author_email"`
+	AuthorAvatar *string `db:"author_avatar"`
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────

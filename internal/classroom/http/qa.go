@@ -22,13 +22,13 @@ type QAQuestionResponse struct {
 	Status      string    `json:"status"`
 	// Author fields are blanked when the question is anonymous and the
 	// reader is not teaching staff.
-	AuthorID       *uuid.UUID `json:"author_id"`
-	AuthorName     *string    `json:"author_name"`
-	AuthorUsername *string    `json:"author_username"`
-	AuthorAvatar   *string    `json:"author_avatar"`
-	Version        int64      `json:"version"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      *time.Time `json:"updated_at"`
+	AuthorID     *uuid.UUID `json:"author_id"`
+	AuthorName   *string    `json:"author_name"`
+	AuthorEmail  *string    `json:"author_email"`
+	AuthorAvatar *string    `json:"author_avatar"`
+	Version      int64      `json:"version"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at"`
 }
 
 func qaQuestionResponse(q *classroom.QAQuestionView, revealAuthor bool) QAQuestionResponse {
@@ -40,7 +40,7 @@ func qaQuestionResponse(q *classroom.QAQuestionView, revealAuthor bool) QAQuesti
 	if !q.IsAnonymous || revealAuthor {
 		resp.AuthorID = &q.CreatedBy
 		resp.AuthorName = &q.AuthorName
-		resp.AuthorUsername = &q.AuthorUsername
+		resp.AuthorEmail = &q.AuthorEmail
 		resp.AuthorAvatar = q.AuthorAvatar
 	}
 	return resp

@@ -66,9 +66,9 @@ type ExcuseRequest struct {
 // (attendance ⋈ users, plus the excuse status when one exists).
 type AttendanceRecord struct {
 	Attendance
-	StudentName     string        `db:"student_name"`
-	StudentUsername string        `db:"student_username"`
-	ExcuseStatus    *ExcuseStatus `db:"excuse_status"`
+	StudentName  string        `db:"student_name"`
+	StudentEmail string        `db:"student_email"`
+	ExcuseStatus *ExcuseStatus `db:"excuse_status"`
 }
 
 // AttendanceSummary aggregates one student's duration-weighted hours over
@@ -108,9 +108,9 @@ type CourseAttendance struct {
 // ExcuseWithStudent joins the requester's display columns for review lists.
 type ExcuseWithStudent struct {
 	ExcuseRequest
-	StudentName     string `db:"student_name"`
-	StudentUsername string `db:"student_username"`
-	LessonTitle     string `db:"lesson_title"`
+	StudentName  string `db:"student_name"`
+	StudentEmail string `db:"student_email"`
+	LessonTitle  string `db:"lesson_title"`
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────

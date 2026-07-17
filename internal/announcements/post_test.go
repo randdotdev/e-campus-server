@@ -168,7 +168,7 @@ func (m *muteState) IsMuted(ctx context.Context, u uuid.UUID, o *uuid.UUID) (boo
 
 type noUsers struct{}
 
-func (noUsers) GetUserIDsByUsernames(ctx context.Context, names []string) (map[string]uuid.UUID, error) {
+func (noUsers) GetUserIDsByEmails(ctx context.Context, emails []string) (map[string]uuid.UUID, error) {
 	return map[string]uuid.UUID{}, nil
 }
 

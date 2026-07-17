@@ -312,12 +312,12 @@ func (h *Handler) ListAttempts(c *gin.Context) {
 	}
 	type row struct {
 		AttemptResponse
-		StudentName     string `json:"student_name"`
-		StudentUsername string `json:"student_username"`
+		StudentName  string `json:"student_name"`
+		StudentEmail string `json:"student_email"`
 	}
 	result := make([]row, len(attempts))
 	for i, a := range attempts {
-		result[i] = row{attemptResponse(&a.Attempt), a.StudentName, a.StudentUsername}
+		result[i] = row{attemptResponse(&a.Attempt), a.StudentName, a.StudentEmail}
 	}
 	response.OK(c, result)
 }

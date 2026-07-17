@@ -30,7 +30,7 @@ func teamResponse(t *classroom.Team) TeamResponse {
 type TeamMemberResponse struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Name     string    `json:"name"`
-	Username string    `json:"username"`
+	Email    string    `json:"email"`
 	Avatar   *string   `json:"avatar"`
 	JoinedAt time.Time `json:"joined_at"`
 }
@@ -75,7 +75,7 @@ func (h *Handler) GetTeam(c *gin.Context) {
 	members := make([]TeamMemberResponse, len(team.Members))
 	for i, m := range team.Members {
 		members[i] = TeamMemberResponse{
-			UserID: m.UserID, Name: m.Name, Username: m.Username,
+			UserID: m.UserID, Name: m.Name, Email: m.Email,
 			Avatar: m.Avatar, JoinedAt: m.JoinedAt,
 		}
 	}

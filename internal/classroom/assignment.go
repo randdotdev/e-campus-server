@@ -72,9 +72,9 @@ type SubmissionFile struct {
 // (assignment_submissions ⋈ users) for the teacher's list.
 type SubmissionWithStudent struct {
 	Submission
-	StudentName     string  `db:"student_name"`
-	StudentUsername string  `db:"student_username"`
-	StudentAvatar   *string `db:"student_avatar"`
+	StudentName   string  `db:"student_name"`
+	StudentEmail  string  `db:"student_email"`
+	StudentAvatar *string `db:"student_avatar"`
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────

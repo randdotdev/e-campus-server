@@ -133,9 +133,9 @@ type RegistrationWithTeam struct {
 // GroupMemberInfo joins member display columns
 // (course_group_members ⋈ users).
 type GroupMemberInfo struct {
-	UserID   uuid.UUID `db:"user_id"`
-	Name     string    `db:"name"`
-	Username string    `db:"username"`
+	UserID uuid.UUID `db:"user_id"`
+	Name   string    `db:"name"`
+	Email  string    `db:"email"`
 }
 
 // ProjectGroupWithMembers is the full group view.
@@ -148,8 +148,8 @@ type ProjectGroupWithMembers struct {
 // (project_grades ⋈ users).
 type ProjectGradeWithStudent struct {
 	ProjectGrade
-	StudentName     string `db:"student_name"`
-	StudentUsername string `db:"student_username"`
+	StudentName  string `db:"student_name"`
+	StudentEmail string `db:"student_email"`
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────

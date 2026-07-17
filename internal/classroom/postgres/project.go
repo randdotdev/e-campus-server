@@ -354,7 +354,7 @@ func (r *ProjectRepository) GetMemberGroup(ctx context.Context, projectID, userI
 func (r *ProjectRepository) groupMembers(ctx context.Context, groupID uuid.UUID) ([]classroom.GroupMemberInfo, error) {
 	members := []classroom.GroupMemberInfo{}
 	err := r.db.SelectContext(ctx, &members, `
-		SELECT pgm.student_id AS user_id, u.full_name_en AS name, u.username
+		SELECT pgm.student_id AS user_id, u.full_name_en AS name, u.email
 		FROM project_group_members pgm
 		JOIN users u ON u.id = pgm.student_id
 		WHERE pgm.project_group_id = $1
@@ -492,7 +492,7 @@ func (r *ProjectRepository) UpsertGrade(ctx context.Context, g *classroom.Projec
 func (r *ProjectRepository) ListGrades(ctx context.Context, submissionID uuid.UUID) ([]classroom.ProjectGradeWithStudent, error) {
 	grades := []classroom.ProjectGradeWithStudent{}
 	err := r.db.SelectContext(ctx, &grades, `
-		SELECT pg.*, u.full_name_en AS student_name, u.username AS student_username
+		SELECT pg.*, u.full_name_en AS student_name, u.email AS student_email
 		FROM project_grades pg
 		JOIN users u ON u.id = pg.student_id
 		WHERE pg.submission_id = $1
