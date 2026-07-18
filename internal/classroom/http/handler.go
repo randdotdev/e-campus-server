@@ -148,36 +148,10 @@ func (h *Handler) Routes(rg *gin.RouterGroup, gates *authzhttp.Gates) {
 	qa.POST("/:id", h.QACustom) // :answer, :reject
 	qa.GET("/:id/attachments/:attachmentId", h.DownloadQAAttachment)
 
-	projects := offering.Group("/projects")
-	gates.Classroom(projects, authz.ResourceProject)
-	projects.GET("", h.ListProjects)
-	projects.POST("", h.CreateProject)
-	projects.GET("/:id", h.GetProject)
-	projects.PATCH("/:id", h.UpdateProject)
-	projects.DELETE("/:id", h.DeleteProject)
-	projects.POST("/:id", h.ProjectCustom) // :attach, :register, :unregister, :formGroups, :save, :submit, :grade
-	projects.GET("/:id/attachments/:attachmentId", h.DownloadProjectAttachment)
-	projects.DELETE("/:id/attachments/:attachmentId", h.DetachProjectFile)
-	projects.GET("/:id/registrations", h.ListRegistrations)
-	projects.GET("/:id/groups", h.ListGroups)
-	projects.GET("/:id/groups/me", h.MyGroup)
-	projects.GET("/:id/submission", h.MyProjectSubmission)
-	projects.GET("/:id/submissions", h.ListProjectSubmissions)
-	projects.GET("/:id/submissions/:submissionId/files/:fileId", h.DownloadProjectSubmissionFile)
-	projects.GET("/:id/submissions/:submissionId/grades", h.ListProjectGrades)
-	projects.GET("/:id/grade", h.MyProjectGrade)
-
-	// Teams: no offering, no gate; leadership and membership are the law.
-	teams := rg.Group("/teams")
-	teams.GET("", h.MyTeams)
-	teams.POST("", h.CreateTeam)
-	teams.GET("/:id", h.GetTeam)
-	teams.PATCH("/:id", h.RenameTeam)
-	teams.DELETE("/:id", h.DeleteTeam)
-	teams.POST("/:id/members", h.AddTeamMember)
-	teams.DELETE("/:id/members/:userId", h.RemoveTeamMember)
-	teams.POST("/:id/leave", h.LeaveTeam)
-	teams.POST("/:id/transfer", h.TransferTeamLeadership)
+	// Projects and teams are disabled: the product does not surface group
+	// work yet, so their routes are left unmounted. The ProjectService and
+	// TeamService and their handlers stay intact — re-register these two
+	// groups to bring the feature back.
 
 	// The reader's own cross-offering reads, scoped to them by construction.
 	rg.GET("/me/classes", h.MyClasses)
