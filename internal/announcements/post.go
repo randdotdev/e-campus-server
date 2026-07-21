@@ -329,6 +329,9 @@ func (s *PostService) CreatePost(ctx context.Context, in CreatePostInput) (*Post
 	if !ValidScopeType(in.ScopeType) || !ValidScopeID(in.ScopeType, in.ScopeID) {
 		return nil, ErrInvalidScope
 	}
+	if err := s.checkMuted(ctx, in.AuthorID, in.ScopeType, in.ScopeID); err != nil {
+		return nil, err
+	}
 	if in.ScopeID != nil {
 		exists, err := s.scopes.ScopeExists(ctx, in.ScopeType, *in.ScopeID)
 		if err != nil {
