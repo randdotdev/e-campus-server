@@ -74,27 +74,29 @@ func (r *AssignmentRepository) UpdateAssignment(ctx context.Context, a *classroo
 // collected first, in the same transaction, for unlinking.
 func (r *AssignmentRepository) DeleteAssignment(ctx context.Context, offeringID, id uuid.UUID) ([]uuid.UUID, error) {
 	var inodeIDs []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if err := tx.SelectContext(ctx, &inodeIDs, `
-			SELECT inode_id FROM assignment_attachments WHERE assignment_id = $1
-			UNION ALL
-			SELECT sf.inode_id
-			FROM submission_files sf
-			JOIN assignment_submissions asub ON asub.id = sf.submission_id
-			WHERE asub.assignment_id = $1`, id); err != nil {
-			return err
-		}
-		result, err := tx.ExecContext(ctx,
-			`DELETE FROM assignments WHERE id = $1 AND offering_id = $2`, id, offeringID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			return classroom.ErrAssignmentNotFound
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.SelectContext(ctx, &inodeIDs, `
+		SELECT inode_id FROM assignment_attachments WHERE assignment_id = $1
+		UNION ALL
+		SELECT sf.inode_id
+		FROM submission_files sf
+		JOIN assignment_submissions asub ON asub.id = sf.submission_id
+		WHERE asub.assignment_id = $1`, id); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx,
+		`DELETE FROM assignments WHERE id = $1 AND offering_id = $2`, id, offeringID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		return nil, classroom.ErrAssignmentNotFound
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return inodeIDs, nil
@@ -148,42 +150,44 @@ func (r *AssignmentRepository) DeleteAttachment(ctx context.Context, assignmentI
 // submitted or graded row refuses the write.
 func (r *AssignmentRepository) SaveDraft(ctx context.Context, sub *classroom.Submission, files []classroom.SubmissionFile) ([]uuid.UUID, error) {
 	var replaced []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		var subID uuid.UUID
-		err := tx.QueryRowxContext(ctx, `
-			INSERT INTO assignment_submissions (id, assignment_id, student_id, content, created_at)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (assignment_id, student_id) DO UPDATE
-				SET content = EXCLUDED.content, updated_at = NOW()
-				WHERE assignment_submissions.submitted_at IS NULL
-				  AND assignment_submissions.graded_at IS NULL
-			RETURNING id`,
-			sub.ID, sub.AssignmentID, sub.StudentID, sub.Content, sub.CreatedAt,
-		).Scan(&subID)
-		if errors.Is(err, sql.ErrNoRows) {
-			// The upsert's guard refused: the existing row is past draft.
-			return classroom.ErrAlreadySubmitted
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := tx.SelectContext(ctx, &replaced,
-			`DELETE FROM submission_files WHERE submission_id = $1 RETURNING inode_id`, subID); err != nil {
-			return err
-		}
-		for i := range files {
-			files[i].SubmissionID = subID
-			if _, err := tx.NamedExecContext(ctx, `
-				INSERT INTO submission_files (id, submission_id, inode_id, display_name, order_index, created_at)
-				VALUES (:id, :submission_id, :inode_id, :display_name, :order_index, :created_at)`,
-				files[i]); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var subID uuid.UUID
+	err = tx.QueryRowxContext(ctx, `
+		INSERT INTO assignment_submissions (id, assignment_id, student_id, content, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (assignment_id, student_id) DO UPDATE
+			SET content = EXCLUDED.content, updated_at = NOW()
+			WHERE assignment_submissions.submitted_at IS NULL
+			  AND assignment_submissions.graded_at IS NULL
+		RETURNING id`,
+		sub.ID, sub.AssignmentID, sub.StudentID, sub.Content, sub.CreatedAt,
+	).Scan(&subID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// The upsert's guard refused: the existing row is past draft.
+		return nil, classroom.ErrAlreadySubmitted
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.SelectContext(ctx, &replaced,
+		`DELETE FROM submission_files WHERE submission_id = $1 RETURNING inode_id`, subID); err != nil {
+		return nil, err
+	}
+	for i := range files {
+		files[i].SubmissionID = subID
+		if _, err := tx.NamedExecContext(ctx, `
+			INSERT INTO submission_files (id, submission_id, inode_id, display_name, order_index, created_at)
+			VALUES (:id, :submission_id, :inode_id, :display_name, :order_index, :created_at)`,
+			files[i]); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return replaced, nil
@@ -211,30 +215,32 @@ func (r *AssignmentRepository) SubmitDraft(ctx context.Context, assignmentID, st
 
 func (r *AssignmentRepository) DiscardDraft(ctx context.Context, assignmentID, studentID uuid.UUID) ([]uuid.UUID, error) {
 	var inodeIDs []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if err := tx.SelectContext(ctx, &inodeIDs, `
-			SELECT sf.inode_id
-			FROM submission_files sf
-			JOIN assignment_submissions asub ON asub.id = sf.submission_id
-			WHERE asub.assignment_id = $1 AND asub.student_id = $2`, assignmentID, studentID); err != nil {
-			return err
-		}
-		result, err := tx.ExecContext(ctx, `
-			DELETE FROM assignment_submissions
-			WHERE assignment_id = $1 AND student_id = $2 AND submitted_at IS NULL`,
-			assignmentID, studentID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			if _, gerr := r.GetSubmission(ctx, assignmentID, studentID); gerr != nil {
-				return gerr
-			}
-			return classroom.ErrAlreadySubmitted
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.SelectContext(ctx, &inodeIDs, `
+		SELECT sf.inode_id
+		FROM submission_files sf
+		JOIN assignment_submissions asub ON asub.id = sf.submission_id
+		WHERE asub.assignment_id = $1 AND asub.student_id = $2`, assignmentID, studentID); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx, `
+		DELETE FROM assignment_submissions
+		WHERE assignment_id = $1 AND student_id = $2 AND submitted_at IS NULL`,
+		assignmentID, studentID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		if _, gerr := r.GetSubmission(ctx, assignmentID, studentID); gerr != nil {
+			return nil, gerr
+		}
+		return nil, classroom.ErrAlreadySubmitted
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return inodeIDs, nil

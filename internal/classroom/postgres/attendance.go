@@ -85,21 +85,24 @@ func (r *AttendanceRepository) MarkAttendance(ctx context.Context, id, markerID 
 }
 
 func (r *AttendanceRepository) BulkMark(ctx context.Context, lessonID, markerID uuid.UUID, updates []classroom.AttendanceUpdate, at time.Time) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		for _, u := range updates {
-			result, err := tx.ExecContext(ctx, `
-				UPDATE attendance SET percentage = $1, marked_by = $2, marked_at = $3
-				WHERE id = $4 AND lesson_id = $5`,
-				u.Percentage, markerID, at, u.AttendanceID, lessonID)
-			if err != nil {
-				return err
-			}
-			if n, _ := result.RowsAffected(); n == 0 {
-				return classroom.ErrAttendanceNotFound
-			}
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, u := range updates {
+		result, err := tx.ExecContext(ctx, `
+			UPDATE attendance SET percentage = $1, marked_by = $2, marked_at = $3
+			WHERE id = $4 AND lesson_id = $5`,
+			u.Percentage, markerID, at, u.AttendanceID, lessonID)
+		if err != nil {
+			return err
 		}
-		return nil
-	})
+		if n, _ := result.RowsAffected(); n == 0 {
+			return classroom.ErrAttendanceNotFound
+		}
+	}
+	return tx.Commit()
 }
 
 const attendanceRecordQuery = `

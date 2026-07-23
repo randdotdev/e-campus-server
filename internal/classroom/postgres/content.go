@@ -167,24 +167,26 @@ func (r *ContentRepository) UpdateLesson(ctx context.Context, l *classroom.Lesso
 // collected first, in the same transaction, and handed back for unlinking.
 func (r *ContentRepository) DeleteLesson(ctx context.Context, offeringID, id uuid.UUID) ([]uuid.UUID, error) {
 	var inodeIDs []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if err := tx.SelectContext(ctx, &inodeIDs,
-			`SELECT inode_id FROM lesson_attachments WHERE lesson_id = $1`, id); err != nil {
-			return err
-		}
-		result, err := tx.ExecContext(ctx, `
-			DELETE FROM lessons l
-			USING sections s
-			WHERE l.id = $1 AND l.section_id = s.id AND s.offering_id = $2`, id, offeringID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			return classroom.ErrLessonNotFound
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.SelectContext(ctx, &inodeIDs,
+		`SELECT inode_id FROM lesson_attachments WHERE lesson_id = $1`, id); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx, `
+		DELETE FROM lessons l
+		USING sections s
+		WHERE l.id = $1 AND l.section_id = s.id AND s.offering_id = $2`, id, offeringID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		return nil, classroom.ErrLessonNotFound
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return inodeIDs, nil

@@ -38,37 +38,49 @@ func insertQAAttachments(ctx context.Context, tx *sqlx.Tx, table, fkColumn strin
 }
 
 func (r *QARepository) CreateQuestion(ctx context.Context, q *classroom.QAQuestion, attachments []classroom.QAAttachment) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if _, err := tx.NamedExecContext(ctx, `
-			INSERT INTO qa_questions (id, offering_id, title, body, is_anonymous, is_faq,
-				status, created_by, created_at)
-			VALUES (:id, :offering_id, :title, :body, :is_anonymous, :is_faq,
-				:status, :created_by, :created_at)`, q); err != nil {
-			return err
-		}
-		return insertQAAttachments(ctx, tx, "qa_question_attachments", "question_id", attachments)
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.NamedExecContext(ctx, `
+		INSERT INTO qa_questions (id, offering_id, title, body, is_anonymous, is_faq,
+			status, created_by, created_at)
+		VALUES (:id, :offering_id, :title, :body, :is_anonymous, :is_faq,
+			:status, :created_by, :created_at)`, q); err != nil {
+		return err
+	}
+	if err := insertQAAttachments(ctx, tx, "qa_question_attachments", "question_id", attachments); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *QARepository) CreateFAQ(ctx context.Context, q *classroom.QAQuestion, a *classroom.QAAnswer, qAtts, aAtts []classroom.QAAttachment) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if _, err := tx.NamedExecContext(ctx, `
-			INSERT INTO qa_questions (id, offering_id, title, body, is_anonymous, is_faq,
-				status, created_by, created_at)
-			VALUES (:id, :offering_id, :title, :body, :is_anonymous, :is_faq,
-				:status, :created_by, :created_at)`, q); err != nil {
-			return err
-		}
-		if _, err := tx.NamedExecContext(ctx, `
-			INSERT INTO qa_answers (id, question_id, body, created_by, created_at)
-			VALUES (:id, :question_id, :body, :created_by, :created_at)`, a); err != nil {
-			return err
-		}
-		if err := insertQAAttachments(ctx, tx, "qa_question_attachments", "question_id", qAtts); err != nil {
-			return err
-		}
-		return insertQAAttachments(ctx, tx, "qa_answer_attachments", "answer_id", aAtts)
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.NamedExecContext(ctx, `
+		INSERT INTO qa_questions (id, offering_id, title, body, is_anonymous, is_faq,
+			status, created_by, created_at)
+		VALUES (:id, :offering_id, :title, :body, :is_anonymous, :is_faq,
+			:status, :created_by, :created_at)`, q); err != nil {
+		return err
+	}
+	if _, err := tx.NamedExecContext(ctx, `
+		INSERT INTO qa_answers (id, question_id, body, created_by, created_at)
+		VALUES (:id, :question_id, :body, :created_by, :created_at)`, a); err != nil {
+		return err
+	}
+	if err := insertQAAttachments(ctx, tx, "qa_question_attachments", "question_id", qAtts); err != nil {
+		return err
+	}
+	if err := insertQAAttachments(ctx, tx, "qa_answer_attachments", "answer_id", aAtts); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *QARepository) GetQuestion(ctx context.Context, offeringID, id uuid.UUID) (*classroom.QAQuestion, error) {
@@ -134,40 +146,42 @@ func (r *QARepository) UpdateQuestion(ctx context.Context, q *classroom.QAQuesti
 
 func (r *QARepository) SoftDeleteQuestion(ctx context.Context, offeringID, id uuid.UUID, at time.Time) ([]uuid.UUID, error) {
 	var inodeIDs []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if err := tx.SelectContext(ctx, &inodeIDs, `
-			SELECT inode_id FROM qa_question_attachments WHERE question_id = $1
-			UNION ALL
-			SELECT qa.inode_id
-			FROM qa_answer_attachments qa
-			JOIN qa_answers a ON a.id = qa.answer_id
-			WHERE a.question_id = $1`, id); err != nil {
-			return err
-		}
-		// The attachment rows go too: a soft-deleted thread must not keep
-		// its blobs pinned for a purge that may never come.
-		if _, err := tx.ExecContext(ctx,
-			`DELETE FROM qa_question_attachments WHERE question_id = $1`, id); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM qa_answer_attachments qa
-			USING qa_answers a
-			WHERE qa.answer_id = a.id AND a.question_id = $1`, id); err != nil {
-			return err
-		}
-		result, err := tx.ExecContext(ctx, `
-			UPDATE qa_questions SET deleted_at = $1
-			WHERE id = $2 AND offering_id = $3 AND deleted_at IS NULL`, at, id, offeringID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			return classroom.ErrQuestionNotFound
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.SelectContext(ctx, &inodeIDs, `
+		SELECT inode_id FROM qa_question_attachments WHERE question_id = $1
+		UNION ALL
+		SELECT qa.inode_id
+		FROM qa_answer_attachments qa
+		JOIN qa_answers a ON a.id = qa.answer_id
+		WHERE a.question_id = $1`, id); err != nil {
+		return nil, err
+	}
+	// The attachment rows go too: a soft-deleted thread must not keep
+	// its blobs pinned for a purge that may never come.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM qa_question_attachments WHERE question_id = $1`, id); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM qa_answer_attachments qa
+		USING qa_answers a
+		WHERE qa.answer_id = a.id AND a.question_id = $1`, id); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx, `
+		UPDATE qa_questions SET deleted_at = $1
+		WHERE id = $2 AND offering_id = $3 AND deleted_at IS NULL`, at, id, offeringID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		return nil, classroom.ErrQuestionNotFound
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return inodeIDs, nil
@@ -178,50 +192,55 @@ func (r *QARepository) SoftDeleteQuestion(ctx context.Context, offeringID, id uu
 // the question UPDATE's WHERE.
 func (r *QARepository) AnswerQuestion(ctx context.Context, questionID uuid.UUID, a *classroom.QAAnswer, attachments []classroom.QAAttachment, questionEdit *string, editorID uuid.UUID) ([]uuid.UUID, error) {
 	var replaced []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		result, err := tx.ExecContext(ctx, `
-			UPDATE qa_questions SET
-				status = 'answered', updated_at = NOW(),
-				body = COALESCE($1, body),
-				edited_by = CASE WHEN $1 IS NULL THEN edited_by ELSE $2 END
-			WHERE id = $3 AND status <> 'rejected' AND deleted_at IS NULL`,
-			questionEdit, editorID, questionID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			var status string
-			if err := tx.GetContext(ctx, &status,
-				`SELECT status FROM qa_questions WHERE id = $1 AND deleted_at IS NULL`, questionID); err != nil {
-				return classroom.ErrQuestionNotFound
-			}
-			return classroom.ErrQuestionRejected
-		}
-
-		var answerID uuid.UUID
-		if err := tx.QueryRowxContext(ctx, `
-			INSERT INTO qa_answers (id, question_id, body, created_by, created_at)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (question_id) DO UPDATE
-				SET body = EXCLUDED.body, updated_by = $4, updated_at = NOW()
-			RETURNING id`,
-			a.ID, questionID, a.Body, a.CreatedBy, a.CreatedAt,
-		).Scan(&answerID); err != nil {
-			return err
-		}
-		a.ID = answerID
-
-		if err := tx.SelectContext(ctx, &replaced,
-			`DELETE FROM qa_answer_attachments WHERE answer_id = $1 RETURNING inode_id`,
-			answerID); err != nil {
-			return err
-		}
-		for i := range attachments {
-			attachments[i].ParentID = answerID
-		}
-		return insertQAAttachments(ctx, tx, "qa_answer_attachments", "answer_id", attachments)
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `
+		UPDATE qa_questions SET
+			status = 'answered', updated_at = NOW(),
+			body = COALESCE($1, body),
+			edited_by = CASE WHEN $1 IS NULL THEN edited_by ELSE $2 END
+		WHERE id = $3 AND status <> 'rejected' AND deleted_at IS NULL`,
+		questionEdit, editorID, questionID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		var status string
+		if err := tx.GetContext(ctx, &status,
+			`SELECT status FROM qa_questions WHERE id = $1 AND deleted_at IS NULL`, questionID); err != nil {
+			return nil, classroom.ErrQuestionNotFound
+		}
+		return nil, classroom.ErrQuestionRejected
+	}
+
+	var answerID uuid.UUID
+	if err := tx.QueryRowxContext(ctx, `
+		INSERT INTO qa_answers (id, question_id, body, created_by, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (question_id) DO UPDATE
+			SET body = EXCLUDED.body, updated_by = $4, updated_at = NOW()
+		RETURNING id`,
+		a.ID, questionID, a.Body, a.CreatedBy, a.CreatedAt,
+	).Scan(&answerID); err != nil {
+		return nil, err
+	}
+	a.ID = answerID
+
+	if err := tx.SelectContext(ctx, &replaced,
+		`DELETE FROM qa_answer_attachments WHERE answer_id = $1 RETURNING inode_id`,
+		answerID); err != nil {
+		return nil, err
+	}
+	for i := range attachments {
+		attachments[i].ParentID = answerID
+	}
+	if err := insertQAAttachments(ctx, tx, "qa_answer_attachments", "answer_id", attachments); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return replaced, nil
@@ -246,25 +265,30 @@ func (r *QARepository) GetAnswerView(ctx context.Context, questionID uuid.UUID) 
 
 // RejectQuestion flips pending → rejected and records why, atomically.
 func (r *QARepository) RejectQuestion(ctx context.Context, rej *classroom.QARejection) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		result, err := tx.ExecContext(ctx, `
-			UPDATE qa_questions SET status = 'rejected', updated_at = NOW()
-			WHERE id = $1 AND status = 'pending' AND deleted_at IS NULL`, rej.QuestionID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			return classroom.ErrQuestionNotPending
-		}
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO qa_rejections (question_id, reason, rejected_by, rejected_at)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (question_id) DO UPDATE
-				SET reason = EXCLUDED.reason, rejected_by = EXCLUDED.rejected_by,
-				    rejected_at = EXCLUDED.rejected_at`,
-			rej.QuestionID, rej.Reason, rej.RejectedBy, rej.RejectedAt)
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
 		return err
-	})
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `
+		UPDATE qa_questions SET status = 'rejected', updated_at = NOW()
+		WHERE id = $1 AND status = 'pending' AND deleted_at IS NULL`, rej.QuestionID)
+	if err != nil {
+		return err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		return classroom.ErrQuestionNotPending
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO qa_rejections (question_id, reason, rejected_by, rejected_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (question_id) DO UPDATE
+			SET reason = EXCLUDED.reason, rejected_by = EXCLUDED.rejected_by,
+			    rejected_at = EXCLUDED.rejected_at`,
+		rej.QuestionID, rej.Reason, rej.RejectedBy, rej.RejectedAt); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *QARepository) GetRejection(ctx context.Context, questionID uuid.UUID) (*classroom.QARejection, error) {

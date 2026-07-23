@@ -282,28 +282,31 @@ func (r *ExamRepository) UpdateAttemptReview(ctx context.Context, id uuid.UUID, 
 // RecordResults stamps the exam used and upserts one submitted, graded
 // attempt per student, all in one transaction.
 func (r *ExamRepository) RecordResults(ctx context.Context, exam *classroom.Exam, results []classroom.ManualResult, visibility classroom.ResultVisibility, visibleAt *time.Time) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE exams SET used_at = NOW() WHERE id = $1 AND used_at IS NULL`, exam.ID); err != nil {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE exams SET used_at = NOW() WHERE id = $1 AND used_at IS NULL`, exam.ID); err != nil {
+		return err
+	}
+	for _, res := range results {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO exam_attempts (exam_id, student_id, total_score, started_at,
+				submitted_at, visibility, visible_at)
+			VALUES ($1, $2, $3, NOW(), NOW(), $4, $5)
+			ON CONFLICT (exam_id, student_id) WHERE submitted_at IS NULL
+			DO UPDATE SET total_score = EXCLUDED.total_score, submitted_at = NOW(),
+				visibility = EXCLUDED.visibility, visible_at = EXCLUDED.visible_at`,
+			exam.ID, res.StudentID, res.TotalScore, visibility, visibleAt); err != nil {
+			if isForeignKeyViolation(err) {
+				return fmt.Errorf("classroom: manual result for unknown student %s: %w", res.StudentID, classroom.ErrInvalidInput)
+			}
 			return err
 		}
-		for _, res := range results {
-			if _, err := tx.ExecContext(ctx, `
-				INSERT INTO exam_attempts (exam_id, student_id, total_score, started_at,
-					submitted_at, visibility, visible_at)
-				VALUES ($1, $2, $3, NOW(), NOW(), $4, $5)
-				ON CONFLICT (exam_id, student_id) WHERE submitted_at IS NULL
-				DO UPDATE SET total_score = EXCLUDED.total_score, submitted_at = NOW(),
-					visibility = EXCLUDED.visibility, visible_at = EXCLUDED.visible_at`,
-				exam.ID, res.StudentID, res.TotalScore, visibility, visibleAt); err != nil {
-				if isForeignKeyViolation(err) {
-					return fmt.Errorf("classroom: manual result for unknown student %s: %w", res.StudentID, classroom.ErrInvalidInput)
-				}
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return tx.Commit()
 }
 
 // ── Grading reads (classroom.ExamScoreReader) ───────────────────────────────

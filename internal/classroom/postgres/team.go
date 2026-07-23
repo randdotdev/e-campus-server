@@ -23,17 +23,22 @@ func NewTeamRepository(db *sqlx.DB) *TeamRepository {
 var _ classroom.TeamRepository = (*TeamRepository)(nil)
 
 func (r *TeamRepository) CreateTeam(ctx context.Context, t *classroom.Team, leader *classroom.TeamMember) error {
-	return inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if _, err := tx.NamedExecContext(ctx, `
-			INSERT INTO teams (id, name, leader_id, program_id, cohort_year, status, created_at, updated_at)
-			VALUES (:id, :name, :leader_id, :program_id, :cohort_year, :status, :created_at, :updated_at)`, t); err != nil {
-			return err
-		}
-		_, err := tx.NamedExecContext(ctx, `
-			INSERT INTO team_members (id, team_id, student_id, joined_at)
-			VALUES (:id, :team_id, :student_id, :joined_at)`, leader)
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
 		return err
-	})
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.NamedExecContext(ctx, `
+		INSERT INTO teams (id, name, leader_id, program_id, cohort_year, status, created_at, updated_at)
+		VALUES (:id, :name, :leader_id, :program_id, :cohort_year, :status, :created_at, :updated_at)`, t); err != nil {
+		return err
+	}
+	if _, err := tx.NamedExecContext(ctx, `
+		INSERT INTO team_members (id, team_id, student_id, joined_at)
+		VALUES (:id, :team_id, :student_id, :joined_at)`, leader); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *TeamRepository) GetTeam(ctx context.Context, id uuid.UUID) (*classroom.Team, error) {

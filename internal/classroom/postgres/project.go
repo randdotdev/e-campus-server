@@ -76,27 +76,29 @@ func (r *ProjectRepository) UpdateProject(ctx context.Context, p *classroom.Proj
 
 func (r *ProjectRepository) DeleteProject(ctx context.Context, offeringID, id uuid.UUID) ([]uuid.UUID, error) {
 	var inodeIDs []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		if err := tx.SelectContext(ctx, &inodeIDs, `
-			SELECT inode_id FROM project_attachments WHERE project_id = $1
-			UNION ALL
-			SELECT psf.inode_id
-			FROM project_submission_files psf
-			JOIN project_submissions ps ON ps.id = psf.submission_id
-			WHERE ps.project_id = $1`, id); err != nil {
-			return err
-		}
-		result, err := tx.ExecContext(ctx,
-			`DELETE FROM projects WHERE id = $1 AND offering_id = $2`, id, offeringID)
-		if err != nil {
-			return err
-		}
-		if n, _ := result.RowsAffected(); n == 0 {
-			return classroom.ErrProjectNotFound
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.SelectContext(ctx, &inodeIDs, `
+		SELECT inode_id FROM project_attachments WHERE project_id = $1
+		UNION ALL
+		SELECT psf.inode_id
+		FROM project_submission_files psf
+		JOIN project_submissions ps ON ps.id = psf.submission_id
+		WHERE ps.project_id = $1`, id); err != nil {
+		return nil, err
+	}
+	result, err := tx.ExecContext(ctx,
+		`DELETE FROM projects WHERE id = $1 AND offering_id = $2`, id, offeringID)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		return nil, classroom.ErrProjectNotFound
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return inodeIDs, nil
@@ -210,16 +212,20 @@ func (r *ProjectRepository) IsTeamRegistered(ctx context.Context, projectID, tea
 // counted back.
 func (r *ProjectRepository) FormGroups(ctx context.Context, p *classroom.Project) (int, int, error) {
 	formed, unmergedCount := 0, 0
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		type reg struct {
-			TeamID       uuid.UUID `db:"team_id"`
-			ProjectTitle string    `db:"project_title"`
-			TeamName     *string   `db:"team_name"`
-			LeaderID     uuid.UUID `db:"leader_id"`
-			Size         int       `db:"size"`
-		}
-		var regs []reg
-		if err := tx.SelectContext(ctx, &regs, `
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	type reg struct {
+		TeamID       uuid.UUID `db:"team_id"`
+		ProjectTitle string    `db:"project_title"`
+		TeamName     *string   `db:"team_name"`
+		LeaderID     uuid.UUID `db:"leader_id"`
+		Size         int       `db:"size"`
+	}
+	var regs []reg
+	if err := tx.SelectContext(ctx, &regs, `
 			SELECT pr.team_id, pr.project_title, t.name AS team_name, t.leader_id,
 			       (SELECT COUNT(*) FROM team_members WHERE team_id = pr.team_id) AS size
 			FROM project_registrations pr
@@ -231,71 +237,69 @@ func (r *ProjectRepository) FormGroups(ctx context.Context, p *classroom.Project
 				WHERE pg.project_id = $1 AND pgm.from_team_id = pr.team_id)
 			ORDER BY pr.registered_at
 			FOR UPDATE OF pr`, p.ID); err != nil {
-			return err
-		}
+		return 0, 0, err
+	}
 
-		byTeam := make(map[uuid.UUID]reg, len(regs))
-		var undersized []classroom.MergeSeed
-		freeze := func(teams []uuid.UUID, lead reg) error {
-			groupID := uuid.New()
-			if _, err := tx.ExecContext(ctx, `
+	byTeam := make(map[uuid.UUID]reg, len(regs))
+	var undersized []classroom.MergeSeed
+	freeze := func(teams []uuid.UUID, lead reg) error {
+		groupID := uuid.New()
+		if _, err := tx.ExecContext(ctx, `
 				INSERT INTO project_groups (id, project_id, name, project_title, leader_id, finalized)
 				VALUES ($1, $2, $3, $4, $5, FALSE)`,
-				groupID, p.ID, lead.TeamName, lead.ProjectTitle, lead.LeaderID); err != nil {
-				return err
-			}
-			for _, teamID := range teams {
-				if _, err := tx.ExecContext(ctx, `
+			groupID, p.ID, lead.TeamName, lead.ProjectTitle, lead.LeaderID); err != nil {
+			return err
+		}
+		for _, teamID := range teams {
+			if _, err := tx.ExecContext(ctx, `
 					INSERT INTO project_group_members (id, project_group_id, student_id, from_team_id)
 					SELECT gen_random_uuid(), $1, student_id, $2
 					FROM team_members WHERE team_id = $2`,
-					groupID, teamID); err != nil {
-					return err
-				}
-			}
-			formed++
-			return nil
-		}
-
-		for _, rg := range regs {
-			byTeam[rg.TeamID] = rg
-			if rg.Size >= p.MinMembers && rg.Size <= p.MaxMembers {
-				if err := freeze([]uuid.UUID{rg.TeamID}, rg); err != nil {
-					return err
-				}
-				continue
-			}
-			if rg.Size < p.MinMembers {
-				undersized = append(undersized, classroom.MergeSeed{TeamID: rg.TeamID, Size: rg.Size})
-			}
-			// Over-sized teams are the leader's problem: the size gate at
-			// registration should have refused them; skip silently.
-		}
-
-		target := p.MinMembers
-		if p.MergeTarget != nil {
-			target = *p.MergeTarget
-		}
-		merged, unmerged := classroom.PlanMerge(undersized, p.MinMembers, p.MaxMembers, target)
-		for _, group := range merged {
-			largest := group[0]
-			for _, seed := range group[1:] {
-				if seed.Size > largest.Size {
-					largest = seed
-				}
-			}
-			teamIDs := make([]uuid.UUID, len(group))
-			for i, seed := range group {
-				teamIDs[i] = seed.TeamID
-			}
-			if err := freeze(teamIDs, byTeam[largest.TeamID]); err != nil {
+				groupID, teamID); err != nil {
 				return err
 			}
 		}
-		unmergedCount = len(unmerged)
+		formed++
 		return nil
-	})
-	if err != nil {
+	}
+
+	for _, rg := range regs {
+		byTeam[rg.TeamID] = rg
+		if rg.Size >= p.MinMembers && rg.Size <= p.MaxMembers {
+			if err := freeze([]uuid.UUID{rg.TeamID}, rg); err != nil {
+				return 0, 0, err
+			}
+			continue
+		}
+		if rg.Size < p.MinMembers {
+			undersized = append(undersized, classroom.MergeSeed{TeamID: rg.TeamID, Size: rg.Size})
+		}
+		// Over-sized teams are the leader's problem: the size gate at
+		// registration should have refused them; skip silently.
+	}
+
+	target := p.MinMembers
+	if p.MergeTarget != nil {
+		target = *p.MergeTarget
+	}
+	merged, unmerged := classroom.PlanMerge(undersized, p.MinMembers, p.MaxMembers, target)
+	for _, group := range merged {
+		largest := group[0]
+		for _, seed := range group[1:] {
+			if seed.Size > largest.Size {
+				largest = seed
+			}
+		}
+		teamIDs := make([]uuid.UUID, len(group))
+		for i, seed := range group {
+			teamIDs[i] = seed.TeamID
+		}
+		if err := freeze(teamIDs, byTeam[largest.TeamID]); err != nil {
+			return 0, 0, err
+		}
+	}
+	unmergedCount = len(unmerged)
+	if err := tx.Commit(); err != nil {
 		return 0, 0, err
 	}
 	return formed, unmergedCount, nil
@@ -366,40 +370,42 @@ func (r *ProjectRepository) groupMembers(ctx context.Context, groupID uuid.UUID)
 // one transaction; a submitted row refuses the write.
 func (r *ProjectRepository) SaveGroupSubmission(ctx context.Context, sub *classroom.ProjectSubmission, files []classroom.ProjectSubmissionFile) ([]uuid.UUID, error) {
 	var replaced []uuid.UUID
-	err := inTx(ctx, r.db, func(tx *sqlx.Tx) error {
-		var subID uuid.UUID
-		err := tx.QueryRowxContext(ctx, `
-			INSERT INTO project_submissions (id, project_id, project_group_id, content, created_at)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (project_id, project_group_id) DO UPDATE
-				SET content = EXCLUDED.content, updated_at = NOW()
-				WHERE project_submissions.submitted_at IS NULL
-			RETURNING id`,
-			sub.ID, sub.ProjectID, sub.ProjectGroupID, sub.Content, sub.CreatedAt,
-		).Scan(&subID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return classroom.ErrAlreadySubmitted
-		}
-		if err != nil {
-			return err
-		}
-		if err := tx.SelectContext(ctx, &replaced,
-			`DELETE FROM project_submission_files WHERE submission_id = $1 RETURNING inode_id`,
-			subID); err != nil {
-			return err
-		}
-		for i := range files {
-			files[i].SubmissionID = subID
-			if _, err := tx.NamedExecContext(ctx, `
-				INSERT INTO project_submission_files (id, submission_id, inode_id, display_name, order_index, created_at)
-				VALUES (:id, :submission_id, :inode_id, :display_name, :order_index, :created_at)`,
-				files[i]); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var subID uuid.UUID
+	err = tx.QueryRowxContext(ctx, `
+		INSERT INTO project_submissions (id, project_id, project_group_id, content, created_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (project_id, project_group_id) DO UPDATE
+			SET content = EXCLUDED.content, updated_at = NOW()
+			WHERE project_submissions.submitted_at IS NULL
+		RETURNING id`,
+		sub.ID, sub.ProjectID, sub.ProjectGroupID, sub.Content, sub.CreatedAt,
+	).Scan(&subID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, classroom.ErrAlreadySubmitted
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.SelectContext(ctx, &replaced,
+		`DELETE FROM project_submission_files WHERE submission_id = $1 RETURNING inode_id`,
+		subID); err != nil {
+		return nil, err
+	}
+	for i := range files {
+		files[i].SubmissionID = subID
+		if _, err := tx.NamedExecContext(ctx, `
+			INSERT INTO project_submission_files (id, submission_id, inode_id, display_name, order_index, created_at)
+			VALUES (:id, :submission_id, :inode_id, :display_name, :order_index, :created_at)`,
+			files[i]); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return replaced, nil

@@ -6,7 +6,6 @@
 package postgres
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 
@@ -38,17 +37,4 @@ func scanVersion(row *sqlx.Row) (int64, error) {
 		return 0, err
 	}
 	return version, nil
-}
-
-// inTx runs fn inside one transaction, translating panics into rollbacks.
-func inTx(ctx context.Context, db *sqlx.DB, fn func(tx *sqlx.Tx) error) error {
-	tx, err := db.BeginTxx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
